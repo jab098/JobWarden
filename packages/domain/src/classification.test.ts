@@ -22,6 +22,18 @@ describe("UK eligibility", () => {
     ["Remote", "This is a UK-wide remote role", "explicit_uk_remote"],
     ["Remote", "UK applicants only", "explicit_uk_remote"],
     ["Remote", "Remote — UK residents only", "explicit_uk_remote"],
+    [
+      "Remote",
+      "Remote anywhere in the UK; our headquarters are in the USA",
+      "explicit_uk_remote",
+    ],
+    [
+      "Remote",
+      "UK applicants only; collaborate with our New York office",
+      "explicit_uk_remote",
+    ],
+    ["London", "Office based", "explicit_uk_location"],
+    ["London (England)", "Office based", "explicit_uk_location"],
   ] as const)(
     "accepts explicit UK employment evidence from %s",
     (location, description, reason) => {
@@ -41,6 +53,9 @@ describe("UK eligibility", () => {
     ["New York, NY", "US applicants only", "non_uk"],
     ["London, Ontario", "Office based", "non_uk"],
     ["North West, USA", "Office based", "non_uk"],
+    ["London, Kentucky", "Office based", "non_uk"],
+    ["South East, Australia", "Office based", "non_uk"],
+    ["London (Kentucky)", "Office based", "non_uk"],
   ] as const)(
     "rejects a listing without UK employment evidence from %s",
     (location, description, reason) => {
@@ -61,6 +76,14 @@ describe("UK eligibility", () => {
       "Applicants cannot be based in the UK",
       "Description: Applicants cannot be based in the UK",
     ],
+    [
+      "Candidates are not based in the UK",
+      "Description: Candidates are not based in the UK",
+    ],
+    [
+      "You cannot work remotely within the UK",
+      "Description: You cannot work remotely within the UK",
+    ],
   ])(
     "keeps explicit UK exclusion ineligible with evidence: %s",
     (description, evidence) => {
@@ -71,6 +94,25 @@ describe("UK eligibility", () => {
       });
     },
   );
+
+  it("lets a concrete foreign location outrank remote UK permission", () => {
+    expect(
+      classifyUkEligibility(
+        "London, Kentucky",
+        "You may work remotely anywhere in the UK",
+      ),
+    ).toEqual({ eligible: false, evidence: [], reason: "non_uk" });
+  });
+
+  it("bounds clause evidence for the normalised job schema", () => {
+    const result = classifyUkEligibility(
+      "Remote",
+      `You may work remotely anywhere in the UK ${"supporting detail ".repeat(40)}`,
+    );
+
+    expect(result.eligible).toBe(true);
+    expect(result.evidence[0].length).toBeLessThanOrEqual(500);
+  });
 
   it.each([
     ["Ukraine", "Office based"],

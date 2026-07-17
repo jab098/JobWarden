@@ -26,24 +26,15 @@ function classifyPeriod(raw: string): CompensationPeriod {
 }
 
 const amountSource = String.raw`(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?[kK]?`;
+const amountCandidateSource = String.raw`\d[\d.,]*[kK]?`;
 const amountStart = String.raw`(?<![\w.,])`;
 const amountEnd = String.raw`(?![\w.,])`;
 const rangeSeparator = String.raw`\s*(?:-|–|—|to)\s*`;
 
-const rangePatterns = [
-  new RegExp(
-    `£\\s*(${amountSource})${amountEnd}${rangeSeparator}(?:£\\s*)?(${amountSource})${amountEnd}`,
-    "i",
-  ),
-  new RegExp(
-    `\\bGBP\\s*(${amountSource})${amountEnd}${rangeSeparator}(?:GBP\\s*)?(${amountSource})${amountEnd}`,
-    "i",
-  ),
-  new RegExp(
-    `${amountStart}(${amountSource})${amountEnd}${rangeSeparator}(${amountSource})${amountEnd}\\s+GBP\\b`,
-    "i",
-  ),
-] as const;
+const rangeCandidatePattern = new RegExp(
+  `${amountStart}(?:(£|GBP)\\s*)?(${amountCandidateSource})(?:\\s*(GBP))?${rangeSeparator}(?:(£|GBP)\\s*)?(${amountCandidateSource})(?:\\s*(GBP))?${amountEnd}`,
+  "gi",
+);
 
 const singleAmountPatterns = [
   new RegExp(`£\\s*(${amountSource})${amountEnd}`, "i"),
@@ -51,8 +42,14 @@ const singleAmountPatterns = [
   new RegExp(`${amountStart}(${amountSource})${amountEnd}\\s+GBP\\b`, "i"),
 ] as const;
 
-function toMinorUnits(rawAmount: string): number | null {
-  const usesThousandsSuffix = /k$/i.test(rawAmount);
+function toMinorUnits(
+  rawAmount: string,
+  usesSharedThousandsSuffix = false,
+): number | null {
+  if (!new RegExp(`^${amountSource}$`).test(rawAmount)) return null;
+
+  const usesThousandsSuffix =
+    usesSharedThousandsSuffix || /k$/i.test(rawAmount);
   const majorUnits = Number(rawAmount.replaceAll(",", "").replace(/k$/i, ""));
   const minorUnits = Math.round(
     majorUnits * (usesThousandsSuffix ? 1_000 : 1) * 100,
@@ -63,15 +60,33 @@ function toMinorUnits(rawAmount: string): number | null {
     : null;
 }
 
-function findAmounts(raw: string): readonly [number, number | null] | null {
-  for (const pattern of rangePatterns) {
-    const match = raw.match(pattern);
-    if (!match) continue;
+type RangeCandidateResult =
+  { found: false } | { found: true; amounts: readonly [number, number] | null };
 
-    const minimum = toMinorUnits(match[1]);
-    const maximum = toMinorUnits(match[2]);
-    return minimum === null || maximum === null ? null : [minimum, maximum];
+function findRangeCandidate(raw: string): RangeCandidateResult {
+  for (const match of raw.matchAll(rangeCandidatePattern)) {
+    const currencyMarkers = [match[1], match[3], match[4], match[6]];
+    if (!currencyMarkers.some(Boolean)) continue;
+
+    const firstAmount = match[2];
+    const secondAmount = match[5];
+    const usesSharedThousandsSuffix =
+      /k$/i.test(firstAmount) !== /k$/i.test(secondAmount);
+    const minimum = toMinorUnits(firstAmount, usesSharedThousandsSuffix);
+    const maximum = toMinorUnits(secondAmount, usesSharedThousandsSuffix);
+
+    return {
+      found: true,
+      amounts: minimum === null || maximum === null ? null : [minimum, maximum],
+    };
   }
+
+  return { found: false };
+}
+
+function findAmounts(raw: string): readonly [number, number | null] | null {
+  const rangeCandidate = findRangeCandidate(raw);
+  if (rangeCandidate.found) return rangeCandidate.amounts;
 
   for (const pattern of singleAmountPatterns) {
     const match = raw.match(pattern);
