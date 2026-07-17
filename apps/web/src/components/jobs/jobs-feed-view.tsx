@@ -26,6 +26,10 @@ export function JobsFeedView({
   const hasPreviousPage = result.page > 1;
   const hasNextPage = result.page * result.pageSize < result.total;
   const isOutOfRange = result.items.length === 0 && result.total > 0;
+  const lastAvailablePage = Math.max(
+    1,
+    Math.ceil(result.total / result.pageSize),
+  );
   const pageHref = (page: number) => {
     const query = createJobFiltersQueryString({ ...filters, page });
     return query ? `/jobs?${query}` : "/jobs";
@@ -83,7 +87,7 @@ export function JobsFeedView({
               </h2>
               <p className="mt-3 max-w-xl text-sm leading-6 text-[#596173]">
                 {isOutOfRange
-                  ? "Return to the previous page to continue browsing these UK roles."
+                  ? "Go to the last available page to continue browsing these UK roles."
                   : active
                     ? "Adjust or clear the filters to see other UK roles."
                     : "Permitted sources have not produced active listings yet. Check back after the next listing update."}
@@ -105,10 +109,12 @@ export function JobsFeedView({
             >
               {hasPreviousPage ? (
                 <Link
-                  href={pageHref(result.page - 1)}
+                  href={pageHref(
+                    isOutOfRange ? lastAvailablePage : result.page - 1,
+                  )}
                   className="rounded-sm font-semibold text-[#2458a6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
                 >
-                  ← Previous
+                  {isOutOfRange ? "← Last available page" : "← Previous"}
                 </Link>
               ) : (
                 <span />

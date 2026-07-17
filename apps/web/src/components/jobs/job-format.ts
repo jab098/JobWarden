@@ -46,10 +46,8 @@ export function formatCompensation(job: JobListItem): string | null {
       job.compensationMinimum === job.compensationMaximum
         ? formatPence(job.compensationMinimum)
         : `${formatPence(job.compensationMinimum)}–${formatPence(job.compensationMaximum)}`;
-  } else if (job.compensationMinimum !== null) {
-    amount = `From ${formatPence(job.compensationMinimum)}`;
   } else {
-    amount = `Up to ${formatPence(job.compensationMaximum!)}`;
+    amount = formatPence((job.compensationMinimum ?? job.compensationMaximum)!);
   }
 
   return `${amount} per ${job.compensationPeriod}`;

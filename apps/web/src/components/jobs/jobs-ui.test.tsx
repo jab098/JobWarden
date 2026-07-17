@@ -235,6 +235,16 @@ describe("jobs workspace", () => {
     expect(
       screen.queryByText(/permitted sources have not produced/i),
     ).not.toBeInTheDocument();
+
+    rerender(
+      <JobsFeedView
+        filters={{ ...defaultFilters, page: 1_000 }}
+        result={createResult({ items: [], total: 6, page: 1_000 })}
+      />,
+    );
+    expect(
+      screen.getByRole("link", { name: /last available page/i }),
+    ).toHaveAttribute("href", "/jobs");
   });
 
   it("preserves fractional and one-sided compensation semantics", () => {
@@ -245,7 +255,7 @@ describe("jobs workspace", () => {
       compensationMaximum: 1_475,
       compensationPeriod: "hour" as const,
     };
-    const oneSided = {
+    const singleAmount = {
       ...hourly,
       id: "2dff65c2-c153-43db-befc-f3bb66210458",
       title: "Support Engineer",
@@ -255,12 +265,13 @@ describe("jobs workspace", () => {
     render(
       <JobsFeedView
         filters={defaultFilters}
-        result={createResult({ items: [hourly, oneSided] })}
+        result={createResult({ items: [hourly, singleAmount] })}
       />,
     );
 
     expect(screen.getByText("£12.50–£14.75 per hour")).toBeInTheDocument();
-    expect(screen.getByText("From £12.50 per hour")).toBeInTheDocument();
+    expect(screen.getByText("£12.50 per hour")).toBeInTheDocument();
+    expect(screen.queryByText(/From £12.50/)).not.toBeInTheDocument();
   });
 
   it("uses designed generic loading and error states", async () => {
