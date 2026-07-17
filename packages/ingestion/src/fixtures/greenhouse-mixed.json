@@ -1,0 +1,59 @@
+{
+  "jobs": [
+    {
+      "id": 1001,
+      "title": "Platform Engineer",
+      "location": { "name": "London, England" },
+      "content": "<p>Permanent full-time hybrid role.</p><p>Build reliable platforms for our customers.</p>",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/1001",
+      "updated_at": "2026-07-16T09:30:00Z",
+      "metadata": [
+        { "name": "Employment Type", "value": "Permanent" },
+        { "name": "Salary", "value": "£60,000 per year" }
+      ]
+    },
+    {
+      "id": 1002,
+      "title": "Delivery Lead",
+      "location": { "name": "Remote" },
+      "content": "<p>This is a full-time contract role open to candidates in the UK.</p><p>The engagement is outside IR35.</p>",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/1002",
+      "updated_at": "2026-07-16T10:30:00Z",
+      "metadata": [
+        { "name": "Engagement", "value": ["Contract", "Outside IR35"] },
+        { "name": "Rate", "value": "£550 per day" }
+      ]
+    },
+    {
+      "id": 1003,
+      "title": "Europe Support Engineer",
+      "location": { "name": "Remote" },
+      "content": "<p>Permanent remote role available to candidates working within Europe.</p>",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/1003",
+      "updated_at": null,
+      "metadata": []
+    },
+    {
+      "id": 1004,
+      "title": "Remote Product Designer",
+      "location": { "name": "Remote" },
+      "content": "<p>Join our distributed design team in this permanent remote role.</p>",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/1004",
+      "updated_at": null,
+      "metadata": null
+    },
+    {
+      "id": 1005,
+      "title": "US Account Executive",
+      "location": { "name": "New York, NY" },
+      "content": "<p>Full-time role for US applicants only.</p>",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/1005",
+      "updated_at": "2026-07-15T10:30:00-04:00",
+      "metadata": [
+        { "name": "Openings", "value": 2 },
+        { "name": "Travel required", "value": false },
+        { "name": "Internal note", "value": null }
+      ]
+    }
+  ]
+}
