@@ -386,6 +386,115 @@ describe("Greenhouse normalisation", () => {
     });
   });
 
+  it("applies static visibility rules while preserving genuinely visible dialog and details text", () => {
+    const html = [
+      "<audio>HIDDEN_AUDIO</audio>",
+      "<video>HIDDEN_VIDEO</video>",
+      "<picture><span>HIDDEN_PICTURE</span></picture>",
+      "<datalist><span>HIDDEN_DATALIST</span></datalist>",
+      "<meter>HIDDEN_METER</meter>",
+      "<progress>HIDDEN_PROGRESS</progress>",
+      "<dialog>HIDDEN_CLOSED_DIALOG</dialog>",
+      "<dialog open>Visible dialog. </dialog>",
+      "<details><summary>Visible closed summary. </summary>HIDDEN_CLOSED_DETAILS<p>HIDDEN_DETAILS_BODY</p></details>",
+      "<details open><summary>Visible open summary. </summary><p>Visible open details. </p></details>",
+      "<aside popover>HIDDEN_POPOVER</aside>",
+      "<p>Visible ordinary text.</p>",
+    ].join("");
+
+    expect(htmlToPlainText(html)).toBe(
+      "Visible dialog. Visible closed summary. Visible open summary. Visible open details. Visible ordinary text.",
+    );
+  });
+
+  it("ignores decoded audio fallback text in provider titles", async () => {
+    await expect(
+      normaliseProviderJob(source, {
+        ...baseJob,
+        title: "<audio>role is based in UK</audio> US Engineer",
+        location: "Remote",
+        descriptionHtml: "<p>Visible engineering role.</p>",
+      }),
+    ).resolves.toEqual({
+      outcome: "quarantined",
+      reason: "ambiguous_uk_eligibility",
+      providerJobId: baseJob.providerJobId,
+    });
+  });
+
+  it("ignores entity-encoded video fallback text in provider locations", async () => {
+    await expect(
+      normaliseProviderJob(source, {
+        ...baseJob,
+        title: "US Engineer",
+        location: "&lt;video&gt;London,&lt;/video&gt;Remote",
+        descriptionHtml: "<p>Visible engineering role.</p>",
+      }),
+    ).resolves.toEqual({
+      outcome: "quarantined",
+      reason: "ambiguous_uk_eligibility",
+      providerJobId: baseJob.providerJobId,
+    });
+  });
+
+  it("ignores nested-encoded audio fallback text in descriptions", async () => {
+    await expect(
+      normaliseProviderJob(source, {
+        ...baseJob,
+        title: "US Engineer",
+        location: "Remote",
+        descriptionHtml:
+          "<p>Visible engineering role.</p>&amp;lt;audio&amp;gt;role is based in UK&amp;lt;/audio&amp;gt;",
+      }),
+    ).resolves.toEqual({
+      outcome: "quarantined",
+      reason: "ambiguous_uk_eligibility",
+      providerJobId: baseJob.providerJobId,
+    });
+  });
+
+  it("ignores decoded video fallback text in metadata", async () => {
+    await expect(
+      normaliseProviderJob(source, {
+        ...baseJob,
+        title: "US Engineer",
+        location: "Remote",
+        descriptionHtml: "<p>Visible engineering role.</p>",
+        metadataText: ["<video>role is based in UK</video>"],
+      }),
+    ).resolves.toEqual({
+      outcome: "quarantined",
+      reason: "ambiguous_uk_eligibility",
+      providerJobId: baseJob.providerJobId,
+    });
+  });
+
+  it("does not let decoded or nested media fallback text alter classifications", async () => {
+    const job = await eligibleJob({
+      ...baseJob,
+      title: "Delivery Specialist",
+      location: "London, England",
+      descriptionHtml:
+        "<p>Visible opportunity.</p><video>Contract outside IR35 remote role.</video>",
+      metadataText: [
+        "&amp;lt;audio&amp;gt;Hybrid role paying £800 per day&amp;lt;/audio&amp;gt;",
+        "Visible team: Delivery",
+      ],
+    });
+
+    expect(job).toMatchObject({
+      descriptionText: "Visible opportunity.",
+      employmentType: "unknown",
+      workplaceType: "unknown",
+      ir35Status: "unknown",
+      compensationRaw: null,
+      compensationMinimum: null,
+      compensationMaximum: null,
+      compensationCurrency: null,
+      compensationPeriod: "unknown",
+    });
+  });
+
   it.each([
     "javascript:alert(1)",
     "http://boards.greenhouse.io/acme/jobs/1",

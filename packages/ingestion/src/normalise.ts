@@ -20,6 +20,12 @@ const nonTextTags = [
   "svg",
   "math",
   "canvas",
+  "audio",
+  "video",
+  "picture",
+  "datalist",
+  "meter",
+  "progress",
   "script",
   "style",
   "noscript",
@@ -30,6 +36,7 @@ const nonTextTags = [
   "noembed",
   "noframes",
 ] as const;
+const nonTextTagSet: ReadonlySet<string> = new Set(nonTextTags);
 const maximumEntityNormalisationPasses = 8;
 
 const blockTagPattern =
@@ -98,26 +105,70 @@ function styleHidesSubtree(style: string | undefined): boolean {
 }
 
 function explicitlyHidesSubtree(
+  tagName: string,
   attributes: Readonly<Record<string, string>>,
 ): boolean {
   return (
     Object.hasOwn(attributes, "hidden") ||
     Object.hasOwn(attributes, "inert") ||
+    Object.hasOwn(attributes, "popover") ||
+    (tagName === "dialog" && !Object.hasOwn(attributes, "open")) ||
     attributes["aria-hidden"]?.trim().toLowerCase() === "true" ||
     styleHidesSubtree(attributes.style)
   );
 }
 
 function sanitiseMarkup(value: string): string {
+  type VisibilityFrame = {
+    tagName: string;
+    suppressSubtree: boolean;
+    closedDetails: boolean;
+    hasSummary: boolean;
+  };
+
+  const visibilityStack: VisibilityFrame[] = [];
   const withBlockBoundaries = value.replace(blockTagPattern, " $& ");
   return sanitizeHtml(withBlockBoundaries, {
     allowedTags: [],
     allowedAttributes: {},
     nonTextTags: [...nonTextTags],
     parser: { decodeEntities: true },
+    onOpenTag: (tagName, attributes) => {
+      const parent = visibilityStack.at(-1);
+      let suppressSubtree = parent?.suppressSubtree ?? false;
+
+      if (parent?.closedDetails) {
+        if (tagName === "summary" && !parent.hasSummary) {
+          parent.hasSummary = true;
+        } else {
+          suppressSubtree = true;
+        }
+      }
+
+      suppressSubtree ||=
+        nonTextTagSet.has(tagName) ||
+        explicitlyHidesSubtree(tagName, attributes);
+
+      visibilityStack.push({
+        tagName,
+        suppressSubtree,
+        closedDetails:
+          !suppressSubtree &&
+          tagName === "details" &&
+          !Object.hasOwn(attributes, "open"),
+        hasSummary: false,
+      });
+    },
+    onCloseTag: (tagName) => {
+      const matchingIndex = visibilityStack.findLastIndex(
+        (frame) => frame.tagName === tagName,
+      );
+      if (matchingIndex >= 0) visibilityStack.length = matchingIndex;
+    },
+    textFilter: (text) => (visibilityStack.at(-1)?.closedDetails ? "" : text),
     transformTags: {
       "*": (tagName, attributes) =>
-        explicitlyHidesSubtree(attributes)
+        visibilityStack.at(-1)?.suppressSubtree
           ? { tagName: "template", attribs: {} }
           : { tagName, attribs: attributes },
     },
