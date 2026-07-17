@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "vitest-axe";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "@/components/app-shell";
 import { JobsErrorView } from "@/components/jobs/jobs-error-view";
@@ -81,6 +81,16 @@ const detail: JobDetail = {
   sourceLabel: "Fictional local fixture",
   lastSeenAt: "2026-07-17T08:30:00.000Z",
 };
+
+beforeEach(() => {
+  vi.spyOn(Date, "now").mockReturnValue(
+    new Date("2026-07-17T12:00:00.000Z").getTime(),
+  );
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("jobs workspace", () => {
   it("renders one semantic feed with labelled GET filters and stable job metadata", () => {
@@ -212,6 +222,45 @@ describe("jobs workspace", () => {
     expect(
       screen.getAllByRole("link", { name: "Clear all filters" })[0],
     ).toHaveAttribute("href", "/jobs");
+
+    rerender(
+      <JobsFeedView
+        filters={{ ...defaultFilters, page: 2 }}
+        result={createResult({ items: [], total: 6, page: 2 })}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "No jobs on this page" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/permitted sources have not produced/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("preserves fractional and one-sided compensation semantics", () => {
+    const hourly = {
+      ...populatedJob,
+      id: "d10b4459-e154-41ed-8bce-dac32eb9c5e0",
+      compensationMinimum: 1_250,
+      compensationMaximum: 1_475,
+      compensationPeriod: "hour" as const,
+    };
+    const oneSided = {
+      ...hourly,
+      id: "2dff65c2-c153-43db-befc-f3bb66210458",
+      title: "Support Engineer",
+      compensationMaximum: null,
+    };
+
+    render(
+      <JobsFeedView
+        filters={defaultFilters}
+        result={createResult({ items: [hourly, oneSided] })}
+      />,
+    );
+
+    expect(screen.getByText("£12.50–£14.75 per hour")).toBeInTheDocument();
+    expect(screen.getByText("From £12.50 per hour")).toBeInTheDocument();
   });
 
   it("uses designed generic loading and error states", async () => {
@@ -244,6 +293,11 @@ describe("jobs workspace", () => {
       screen.getByText(detail.ukEligibilityEvidence[0]),
     ).toBeInTheDocument();
     expect(screen.getByText(detail.sourceLabel)).toBeInTheDocument();
+    expect(screen.getByText("Hybrid")).toBeInTheDocument();
+    expect(screen.getByText("Contract")).toBeInTheDocument();
+    expect(screen.getByText("Full time")).toBeInTheDocument();
+    expect(screen.getByText("£72,000–£84,000 per year")).toBeInTheDocument();
+    expect(screen.getByText("Posted 2 days ago")).toBeInTheDocument();
 
     const applyLink = screen.getByRole("link", {
       name: "Apply on employer website",
@@ -254,6 +308,18 @@ describe("jobs workspace", () => {
     expect(
       screen.queryByRole("form", { name: /application/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("never infers outside IR35 from a not-applicable detail value", () => {
+    render(
+      <JobDetailView
+        dataMode="fixtures"
+        job={{ ...detail, ir35Status: "not_applicable" }}
+      />,
+    );
+
+    expect(screen.getByText("IR35 not applicable")).toBeInTheDocument();
+    expect(screen.queryByText("Outside IR35")).not.toBeInTheDocument();
   });
 
   it("contains none of the deferred or prohibited product language", () => {

@@ -25,6 +25,7 @@ export function JobsFeedView({
   const active = hasActiveFilters(filters);
   const hasPreviousPage = result.page > 1;
   const hasNextPage = result.page * result.pageSize < result.total;
+  const isOutOfRange = result.items.length === 0 && result.total > 0;
   const pageHref = (page: number) => {
     const query = createJobFiltersQueryString({ ...filters, page });
     return query ? `/jobs?${query}` : "/jobs";
@@ -74,14 +75,18 @@ export function JobsFeedView({
           ) : (
             <div className="px-5 py-16 sm:px-8">
               <h2 className="text-2xl font-semibold tracking-[-0.025em]">
-                {active
-                  ? "No jobs match these filters"
-                  : "Listings are not available yet"}
+                {isOutOfRange
+                  ? "No jobs on this page"
+                  : active
+                    ? "No jobs match these filters"
+                    : "Listings are not available yet"}
               </h2>
               <p className="mt-3 max-w-xl text-sm leading-6 text-[#596173]">
-                {active
-                  ? "Adjust or clear the filters to see other UK roles."
-                  : "Permitted sources have not produced active listings yet. Check back after the next listing update."}
+                {isOutOfRange
+                  ? "Return to the previous page to continue browsing these UK roles."
+                  : active
+                    ? "Adjust or clear the filters to see other UK roles."
+                    : "Permitted sources have not produced active listings yet. Check back after the next listing update."}
               </p>
               {active && (
                 <Link

@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
+import {
+  formatCompensation,
+  formatIr35,
+  formatJobLabel,
+  formatPostedAge,
+} from "@/components/jobs/job-format";
 import type { JobDetail } from "@/lib/jobs/types";
 
 export function JobDetailView({
@@ -10,6 +16,8 @@ export function JobDetailView({
   job: JobDetail;
   dataMode: "supabase" | "fixtures";
 }) {
+  const compensation = formatCompensation(job);
+  const ir35 = formatIr35(job);
   return (
     <article className="mx-auto max-w-4xl bg-white px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
       <Link
@@ -27,14 +35,30 @@ export function JobDetailView({
       <p className="mt-3 text-lg text-[#4e5768]">
         {job.employer} · {job.location}
       </p>
-      <div className="mt-8 border-y border-[#dedbd2] py-6 text-sm text-[#596173]">
-        <p>
-          {job.employmentType === "contract" && job.ir35Status === "unknown"
-            ? "IR35 status not stated"
-            : job.employmentType === "contract"
-              ? `${job.ir35Status === "inside" ? "Inside" : "Outside"} IR35`
-              : "UK role"}
-        </p>
+      <div className="mt-8 flex flex-wrap gap-x-3 gap-y-2 border-y border-[#dedbd2] py-6 text-sm text-[#596173]">
+        <span>{formatJobLabel(job.workplaceType, "Workplace not stated")}</span>
+        <span aria-hidden="true">·</span>
+        <span>
+          {formatJobLabel(job.employmentType, "Employment not stated")}
+        </span>
+        <span aria-hidden="true">·</span>
+        <span>
+          {formatJobLabel(job.workingTime, "Working time not stated")}
+        </span>
+        {compensation && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span>{compensation}</span>
+          </>
+        )}
+        {ir35 && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span>{ir35}</span>
+          </>
+        )}
+        <span aria-hidden="true">·</span>
+        <span>{formatPostedAge(job.postedAt)}</span>
       </div>
       <section className="mt-10" aria-labelledby="description-heading">
         <h2 id="description-heading" className="text-xl font-semibold">
