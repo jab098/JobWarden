@@ -1,0 +1,2 @@
+-- The foundation migration creates the private app-settings singleton.
+-- Product fixtures are intentionally kept in pgTAP transactions, not local seed data.

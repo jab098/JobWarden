@@ -567,7 +567,7 @@ git commit -m "feat: add Greenhouse ingestion pipeline"
 - Create: `scripts/bootstrap-admin.mjs`
 - Create: `scripts/bootstrap-admin.test.ts`
 
-- [ ] **Step 1: Initialise local Supabase and write failing pgTAP tests**
+- [x] **Step 1: Initialise local Supabase and write failing pgTAP tests**
 
 Run:
 
@@ -594,7 +594,7 @@ pnpm dlx supabase@latest db test
 
 Expected: failure because schema objects are absent. If Docker is not available, record that prerequisite in the task handoff, continue with SQL lint/static checks, and run the pgTAP suite before declaring the foundation deployable.
 
-- [ ] **Step 2: Create constrained tables and indexes**
+- [x] **Step 2: Create constrained tables and indexes**
 
 Use UUID primary keys, `timestamptz`, `check` constraints matching the domain constants, foreign keys, and indexes supporting the feed filters. Required uniqueness and checks include:
 
@@ -613,13 +613,13 @@ create index ingestion_runs_started_idx on public.ingestion_runs (started_at des
 
 Keep `job_sources.board_token` readable only to administrators and the ingestion service. Do not put secrets in source rows; cron authentication belongs in Vault.
 
-- [ ] **Step 3: Add identity creation without automatic approval**
+- [x] **Step 3: Add identity creation without automatic approval**
 
 Create a private `app_settings` singleton with `allow_access_requests boolean not null default true`. Add an `auth.users` trigger that creates a profile and a pending access request only when requests are enabled. It must never insert `approved` or `admin`.
 
 Use `coalesce(new.raw_user_meta_data ->> 'full_name', 'JobWarden user')` only as display text; never use metadata for authorisation.
 
-- [ ] **Step 4: Add RLS helper functions and policies**
+- [x] **Step 4: Add RLS helper functions and policies**
 
 Implement `public.has_approved_access()` and `public.is_admin()` as stable `security definer` SQL functions with `set search_path = ''`, fully qualified table names, and execute permission only for `authenticated`. Enable and force RLS on every public table.
 
@@ -633,13 +633,13 @@ using (public.has_approved_access() and lifecycle_status = 'active');
 
 Use an additional administrator policy for closed/quarantined jobs. Never add direct browser mutation policies for jobs, roles, audit entries, or access decisions.
 
-- [ ] **Step 5: Add transactional access and source functions**
+- [x] **Step 5: Add transactional access and source functions**
 
 Implement `public.decide_access_request(target_user_id uuid, next_status text, decision_reason text)` as `security definer`, check `is_admin()`, lock the target row, validate the same transition matrix as the domain package, update the decision fields, and insert a redacted audit row in one transaction. Reject reasons outside 3–500 characters.
 
 Implement narrowly scoped `public.set_access_requests_enabled(enabled boolean)` and `public.upsert_job_source(...)` functions with the same administrator check and audit pattern. Revoke all function execution from `public` and `anon`; grant only the intended authenticated/admin or service path.
 
-- [ ] **Step 6: Add atomic ingestion functions**
+- [x] **Step 6: Add atomic ingestion functions**
 
 Implement database functions that:
 
@@ -655,13 +655,15 @@ Implement database functions that:
 
 Accept structured JSON only through a Zod-validated Edge Function and still enforce all database constraints.
 
-- [ ] **Step 7: Implement a safe one-time administrator bootstrap**
+- [x] **Step 7: Implement a safe one-time administrator bootstrap**
 
 `scripts/bootstrap-admin.mjs` must require `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `ADMIN_BOOTSTRAP_USER_ID`; validate the user ID as UUID; fetch that exact identity; require a confirmed email or confirmed external identity; insert the `admin` role idempotently; and write `admin.bootstrap` to the audit log. It must not accept an email address and must not print the service key or user details.
 
 Unit-test missing variables, invalid UUID, unverified identity, idempotent rerun, and redacted output by injecting a fake Supabase client into the script's exported function.
 
 - [ ] **Step 8: Verify and commit**
+
+Implementation, focused tests, static verification, PGlite fallback checks, independent review, and commits are complete. The checkbox remains open because Docker is unavailable and the required real Supabase reset, local lint, and pgTAP run have not executed. Do not describe Task 4 as deployable until they pass.
 
 Run:
 
