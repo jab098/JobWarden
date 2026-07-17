@@ -18,6 +18,7 @@ The first deliverable is a working vertical slice rather than a broad mock-up: o
 5. Only an administrator can approve, reject, suspend, or restore access. The initial administrator is the project owner.
 6. Job collection uses documented public endpoints or explicitly permitted pages. It never bypasses CAPTCHAs, access controls, paywalls, robots restrictions, or anti-bot systems.
 7. Pricing, subscriptions, Stripe, Gmail, Calendar, AI writing, and auto-apply are outside this scaffold.
+8. JobWarden has no pricing model. Payment providers, upgrade prompts, premium labels, plan entitlements, trials, quotas tied to plans, and billing settings must not be scaffolded or implied in the UI.
 
 ## Scope
 
@@ -108,6 +109,14 @@ The administrator can disable new requests by changing this database setting thr
 - `/settings/account`: profile display, data export, and account-deletion request.
 
 Every protected layout reads the verified server session and access state. Navigation visibility is a convenience only; route protection and RLS are the security boundaries.
+
+## UI Direction
+
+The supplied US-product screenshots are information-architecture references, not visual designs to copy. JobWarden adopts the functional strengths: persistent desktop navigation, a compact mobile drawer, a clear page title and status line, visible filters, compact summary counts, consistent job rows/cards, and a separated administrator area.
+
+The foundation deliberately avoids the reference product's rougher patterns: mixed card and table layouts on one feed, excessive counts competing for attention, wide CRM tables before they are needed, multiple view-mode controls, premium-account labels, upgrade banners, AI-writing actions, and dense analytics without a decision attached. The first jobs feed uses one consistent responsive list. Its most prominent metadata is employer, UK location, workplace type, employment type, working time, compensation, IR35 status where relevant, posting age, and the original application link.
+
+The visual language is restrained and functional: Geist typography, neutral surfaces, one blue action colour, semantic status colours used sparingly, keyboard-visible focus states, and designed loading, empty, error, pending-access, and no-results states. Desktop density must not compromise mobile usability or WCAG 2.2 AA contrast and interaction requirements.
 
 ## Data Model
 
