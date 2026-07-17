@@ -14,24 +14,24 @@ This file is the durable cross-session recovery map. Update task status to `revi
 ## Handoff
 
 - Current integration branch: `main`
-- Last independently reviewed task commit: `757d79361000f5ee7a32a53372e9509e69cfc3de`
+- Last independently reviewed task commit: `3d72405bda78bd15cb9ea7730045dacd27277f9e`
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
-- Next task: re-review the Task 5 authentication hardening remediation, then complete live Google OAuth verification after Supabase and Google are configured
+- Next task: complete the owner-run Supabase, Google OAuth, and Docker-backed database setup; verify the live access boundary; then begin Task 6
 
 ## Task progress
 
-| Task                                                                          | Status      | Notes                                                            |
-| ----------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------- |
-| 1. Monorepo, persistent standards, and invariant guardrails                   | reviewed    | Commits `5563920` and `dc021a6`; independent review clean        |
-| 2. UK job domain and access state machine                                     | reviewed    | Commits `4b3a221` through `b808ce6`; independent review clean    |
-| 3. Greenhouse adapter and normalisation pipeline                              | reviewed    | Commits `3ed0eb6` through `b570fab`; final full review clean     |
-| 4. Supabase schema, RLS, mutations, and database tests                        | reviewed    | Review clean; real Supabase reset/pgTAP pending Docker           |
-| 5. Supabase authentication and route gates                                    | implemented | Review remediation implemented; re-review and live OAuth pending |
-| 6. Responsive app shell and UK jobs feed                                      | pending     |                                                                  |
-| 7. Administrator access, sources, and ingestion screens                       | pending     |                                                                  |
-| 8. Ingestion Edge Function and schedule                                       | pending     |                                                                  |
-| 9. Observability, account controls, and health reporting                      | pending     |                                                                  |
-| 10. Cloudflare, CI security, architecture records, and full-path verification | pending     |                                                                  |
+| Task                                                                          | Status   | Notes                                                         |
+| ----------------------------------------------------------------------------- | -------- | ------------------------------------------------------------- |
+| 1. Monorepo, persistent standards, and invariant guardrails                   | reviewed | Commits `5563920` and `dc021a6`; independent review clean     |
+| 2. UK job domain and access state machine                                     | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean |
+| 3. Greenhouse adapter and normalisation pipeline                              | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean  |
+| 4. Supabase schema, RLS, mutations, and database tests                        | reviewed | Review clean; real Supabase reset/pgTAP pending Docker        |
+| 5. Supabase authentication and route gates                                    | reviewed | Final full review clean; live OAuth setup remains owner-run   |
+| 6. Responsive app shell and UK jobs feed                                      | pending  |                                                               |
+| 7. Administrator access, sources, and ingestion screens                       | pending  |                                                               |
+| 8. Ingestion Edge Function and schedule                                       | pending  |                                                               |
+| 9. Observability, account controls, and health reporting                      | pending  |                                                               |
+| 10. Cloudflare, CI security, architecture records, and full-path verification | pending  |                                                               |
 
 ## Last verification commands
 
@@ -60,7 +60,7 @@ Task 3 passed 56 focused ingestion tests and the workspace passed 177 tests. The
 
 Task 4 passed 13 focused bootstrap/static-foundation tests, the static Supabase verifier, a supplementary PGlite migration and behavioural run, and the 177-test workspace verification. The final independent review found no critical or important issues. Docker was unavailable, so `supabase db reset`, local database lint, and the 21-assertion pgTAP suite have not run. Treat the data model as reviewed but not deployable until those real Supabase checks pass.
 
-Task 5 passed 58 focused web tests and the 235-test workspace verification, including formatting, lint, typechecking, guardrails, and a production Next.js build. Independent-review remediation now preserves the real Supabase SSR cookie/header contract, protects callback responses from caching, rejects layered redirect-encoding attacks and C0/C1 controls, enforces same-origin callback destinations, and accepts only an exact configured HTTP(S) site origin. The Google PKCE callback, injected access resolver, protected and administrator layouts, public/access/loading/error states, sign-out, and protected `/jobs` holding destination remain implemented. Desktop and true 390 px browser captures passed for the unchanged public and sign-in UI. The production dependency audit and staged secret scan were clean. Live OAuth and deployed access-boundary checks remain pending user-supplied Supabase/Google configuration; Task 4's real Docker-backed database checks also remain pending.
+Task 5 passed 58 focused web tests and the 235-test workspace verification, including formatting, lint, typechecking, guardrails, and a production Next.js build. The final independent full-range review found no critical, important, or minor issues. Review remediation preserves the real Supabase SSR cookie/header contract, protects callback responses from caching, rejects layered redirect-encoding attacks and C0/C1 controls, enforces same-origin callback destinations, and accepts only an exact configured HTTP(S) site origin. The Google PKCE callback, injected access resolver, protected and administrator layouts, public/access/loading/error states, sign-out, and protected `/jobs` holding destination remain implemented. Desktop and true 390 px browser captures passed for the unchanged public and sign-in UI. The production dependency audit and staged secret scan were clean. Live OAuth and deployed access-boundary checks remain pending owner-configured Supabase/Google services; Task 4's real Docker-backed database checks also remain pending.
 
 ## Delivery rule
 

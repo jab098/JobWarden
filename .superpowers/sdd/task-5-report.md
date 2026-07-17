@@ -98,4 +98,4 @@ The public and sign-in pages preserve the approved warm-neutral, editorial direc
 - Live Google OAuth cannot be completed without a user-configured Supabase project, Google OAuth client, callback allowlist, migrations, and public local/deployment values. No credentials were requested or stored.
 - Task 4's Docker-backed `supabase db reset`, database lint, and pgTAP verification remain pending; the authentication UX does not make that database foundation deployable.
 - Next.js emits the existing worktree-only root-inference warning because both the main checkout and linked worktree contain workspace lockfiles; the build itself succeeds.
-- Task 5 is marked implemented, not reviewed. An independent review is still required before merge and before Task 6 starts under the delivery rule.
+- The final independent review of the complete Task 5 range found no critical, important, or minor issues. Task 5 is review-clean and ready for the required pull-request merge; live OAuth still requires the owner-run setup above before Task 6 starts.
