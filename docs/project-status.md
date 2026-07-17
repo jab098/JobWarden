@@ -16,8 +16,8 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - Current integration branch: `main`
 - Last independently reviewed task implementation commit: `8d2eaa1`
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
-- Active feature branch: none after Task 6 delivery
-- Next task: Task 7 administrator access, sources, and ingestion screens; authentication setup remains deferred by the owner
+- Active feature branch: `codex/task-6-uk-jobs-feed`
+- Next task: deliver Task 6, then begin Task 7 administrator access, sources, and ingestion screens; authentication setup remains deferred by the owner
 
 ## Task progress
 
@@ -28,7 +28,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 3. Greenhouse adapter and normalisation pipeline                              | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean  |
 | 4. Supabase schema, RLS, mutations, and database tests                        | reviewed | Review clean; real Supabase reset/pgTAP pending Docker        |
 | 5. Supabase authentication and route gates                                    | reviewed | Code retained; live OAuth and operational setup deferred      |
-| 6. Responsive app shell and UK jobs feed                                      | reviewed | Full-range review clean; delivered through local fixture mode |
+| 6. Responsive app shell and UK jobs feed                                      | reviewed | Full-range review clean; GitHub delivery in progress          |
 | 7. Administrator access, sources, and ingestion screens                       | pending  |                                                               |
 | 8. Ingestion Edge Function and schedule                                       | pending  |                                                               |
 | 9. Observability, account controls, and health reporting                      | pending  |                                                               |

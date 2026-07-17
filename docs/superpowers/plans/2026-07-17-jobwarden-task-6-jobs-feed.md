@@ -242,4 +242,4 @@ Record exact test counts, browser evidence, auth deferral, fixture boundary, and
 - [x] Independently review specification compliance, query safety, production fail-closed behaviour, RLS client use, UI accessibility, mobile layout, development-data honesty, and scope.
 - [x] Fix all Critical and Important findings test-first and re-review the complete range.
 - [x] Run `pnpm verify`, `pnpm audit --prod`, `git diff --check`, and a full-range gitleaks scan.
-- [x] Push `codex/task-6-uk-jobs-feed`, open a ready pull request, merge it to GitHub `main`, pull local `main`, reinstall frozen dependencies, and repeat full verification on the merge commit.
+- [ ] Push `codex/task-6-uk-jobs-feed`, open a ready pull request, merge it to GitHub `main`, pull local `main`, reinstall frozen dependencies, and repeat full verification on the merge commit.
