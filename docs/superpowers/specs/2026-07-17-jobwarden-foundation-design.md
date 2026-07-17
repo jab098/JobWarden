@@ -1,7 +1,7 @@
 # JobWarden Foundation and UK Job Ingestion Design
 
 **Date:** 17 July 2026
-**Status:** Approved direction, awaiting written-spec review
+**Status:** Approved for implementation
 
 ## Product Summary
 
