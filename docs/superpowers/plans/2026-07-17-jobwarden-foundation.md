@@ -307,7 +307,7 @@ git commit -m "chore: scaffold JobWarden workspace"
 - Create: `packages/domain/src/compensation.test.ts`
 - Create: `packages/domain/src/access.test.ts`
 
-- [ ] **Step 1: Create the package and write failing domain tests**
+- [x] **Step 1: Create the package and write failing domain tests**
 
 Set package name to `@jobwarden/domain`, publish no files, use ESM, and expose `./src/index.ts`. Add Zod 4 as its only runtime dependency.
 
@@ -344,7 +344,7 @@ pnpm --filter @jobwarden/domain test
 
 Expected: failure because the classifiers do not exist.
 
-- [ ] **Step 2: Add exact schemas and exported types**
+- [x] **Step 2: Add exact schemas and exported types**
 
 Implement the Zod constants in `job.ts`:
 
@@ -386,7 +386,7 @@ export const normalisedJobSchema = z.object({
 export type NormalisedJob = z.infer<typeof normalisedJobSchema>;
 ```
 
-- [ ] **Step 3: Implement evidence-based classifiers**
+- [x] **Step 3: Implement evidence-based classifiers**
 
 `classifyUkEligibility` returns `{ eligible, evidence, reason }`, where `reason` is one of `explicit_uk_location`, `explicit_uk_remote`, `non_uk`, or `ambiguous`. Use word-boundary patterns for all four nations, `United Kingdom`, `UK`, recognised UK regions, and UK-wide remote phrases. A bare `Remote` is ambiguous and rejected.
 
@@ -394,7 +394,7 @@ Run the false-positive cases `Ukraine`, `UK time preferred`, `Europe or UK time 
 
 Implement order-specific employment rules so `fixed-term contract` maps to `fixed_term` before the general `contract` rule. `inside IR35` and `outside IR35` are the only status-setting phrases; `IR35 status to be determined` remains `unknown`.
 
-- [ ] **Step 4: Implement the access transition state machine**
+- [x] **Step 4: Implement the access transition state machine**
 
 Create `access.ts`:
 
@@ -425,7 +425,7 @@ export const decideAccessInputSchema = z.object({
 
 Test every allowed transition and reject self-transitions plus all other combinations.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run:
 
