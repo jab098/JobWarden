@@ -12,24 +12,24 @@ This file is the durable cross-session recovery map. Update task status to `revi
 ## Handoff
 
 - Current branch: `codex/jobwarden-foundation`
-- Last independently reviewed task commit: none; Task 1 is awaiting independent review
+- Last independently reviewed task commit: `dc021a6eaeab0dba4a7ec5b20022d66549d036ee`
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
-- Next task after a clean Task 1 review: Task 2, implement the UK job domain and access state machine with tests
+- Next task: Task 2, implement the UK job domain and access state machine with tests
 
 ## Task progress
 
-| Task                                                                          | Status      | Notes                                                |
-| ----------------------------------------------------------------------------- | ----------- | ---------------------------------------------------- |
-| 1. Monorepo, persistent standards, and invariant guardrails                   | in progress | Implementation complete; awaiting independent review |
-| 2. UK job domain and access state machine                                     | pending     | Next after Task 1 review                             |
-| 3. Greenhouse adapter and normalisation pipeline                              | pending     |                                                      |
-| 4. Supabase schema, RLS, mutations, and database tests                        | pending     |                                                      |
-| 5. Supabase authentication and route gates                                    | pending     |                                                      |
-| 6. Responsive app shell and UK jobs feed                                      | pending     |                                                      |
-| 7. Administrator access, sources, and ingestion screens                       | pending     |                                                      |
-| 8. Ingestion Edge Function and schedule                                       | pending     |                                                      |
-| 9. Observability, account controls, and health reporting                      | pending     |                                                      |
-| 10. Cloudflare, CI security, architecture records, and full-path verification | pending     |                                                      |
+| Task                                                                          | Status   | Notes                                                     |
+| ----------------------------------------------------------------------------- | -------- | --------------------------------------------------------- |
+| 1. Monorepo, persistent standards, and invariant guardrails                   | reviewed | Commits `5563920` and `dc021a6`; independent review clean |
+| 2. UK job domain and access state machine                                     | pending  | Next task                                                 |
+| 3. Greenhouse adapter and normalisation pipeline                              | pending  |                                                           |
+| 4. Supabase schema, RLS, mutations, and database tests                        | pending  |                                                           |
+| 5. Supabase authentication and route gates                                    | pending  |                                                           |
+| 6. Responsive app shell and UK jobs feed                                      | pending  |                                                           |
+| 7. Administrator access, sources, and ingestion screens                       | pending  |                                                           |
+| 8. Ingestion Edge Function and schedule                                       | pending  |                                                           |
+| 9. Observability, account controls, and health reporting                      | pending  |                                                           |
+| 10. Cloudflare, CI security, architecture records, and full-path verification | pending  |                                                           |
 
 ## Last verification commands
 
@@ -45,4 +45,4 @@ git diff --check
 pnpm verify
 ```
 
-The focused guardrail test was also proven with a temporary regression: removing the required `UK-only` invariant made the exact Vitest command fail, and restoring it returned the suite to green.
+The focused guardrail suite passed 9/9 tests. RED/GREEN evidence covers both the required `UK-only` invariant and the root-manifest forbidden-dependency regression. Independent re-review found no critical, important, or minor issues.
