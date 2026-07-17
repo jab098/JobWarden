@@ -705,7 +705,7 @@ git commit -m "feat: secure JobWarden data model"
 - Create: `apps/web/src/components/auth/sign-out-button.tsx`
 - Modify: `apps/web/src/app/page.tsx`
 
-- [ ] **Step 1: Add server/client environment schemas and failing access tests**
+- [x] **Step 1: Add server/client environment schemas and failing access tests**
 
 Install `@supabase/supabase-js@2.110.7`, `@supabase/ssr@0.12.3`, `server-only`, and Zod 4 in `@jobwarden/web`. Add Vitest, jsdom, React Testing Library, `@testing-library/jest-dom`, and `@testing-library/user-event` as development dependencies, then configure `apps/web/vitest.config.ts` with the `@/` alias and a jsdom setup file.
 
@@ -724,27 +724,27 @@ const serverEnvSchema = publicEnvSchema.extend({
 
 Write access tests using an injected repository. Cover unauthenticated -> `/auth/sign-in`, pending/rejected/suspended -> `/access/pending`, approved -> allowed, and admin requirement -> `notFound()` or a safe 404 result.
 
-- [ ] **Step 2: Implement cookie-safe Supabase clients**
+- [x] **Step 2: Implement cookie-safe Supabase clients**
 
 Use `@supabase/ssr` and the Next.js async `cookies()` API. The browser client receives only URL and anon key. The server client forwards cookie reads/writes and never imports `SUPABASE_SERVICE_ROLE_KEY`.
 
 Create a separate, explicitly server-only service client only in ingestion/bootstrap code. Add `import "server-only"` to every module that can read server secrets.
 
-- [ ] **Step 3: Implement Google OAuth with PKCE and safe redirects**
+- [x] **Step 3: Implement Google OAuth with PKCE and safe redirects**
 
 The sign-in Server Action calls Google OAuth with a callback to `/auth/callback?next=/jobs`. The callback exchanges the code for a session and permits only relative `next` paths beginning with one `/` and not `//`; otherwise it uses `/jobs`. Show generic errors without tokens, provider payloads, or email addresses.
 
-- [ ] **Step 4: Implement access guards in the protected layout**
+- [x] **Step 4: Implement access guards in the protected layout**
 
 Fetch the authenticated user with the server client, then query only the caller's own access row. Redirect on the server before rendering protected content. The admin layout uses a separate `requireAdmin()` helper and does not rely on navigation visibility.
 
 Do not add Next.js middleware as the authorisation boundary. RLS remains authoritative, and layout guards provide navigation and UX protection.
 
-- [ ] **Step 5: Build designed public, pending, loading, and error states**
+- [x] **Step 5: Build designed public, pending, loading, and error states**
 
 Use Geist, neutral surfaces, one blue action colour, keyboard-visible focus, and semantic pending/rejected/suspended messages. The pending page must explain that the owner manually reviews requests and must not imply a subscription, purchase, priority queue, or automatic approval.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run:
 
