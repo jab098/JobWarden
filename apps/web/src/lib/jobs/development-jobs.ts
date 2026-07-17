@@ -162,13 +162,52 @@ function toListItem(job: JobDetail): JobListItem {
   };
 }
 
+function matchesFilters(job: JobDetail, filters: JobFilters): boolean {
+  const searchText = `${job.title} ${job.employer}`.toLocaleLowerCase("en-GB");
+  const query = filters.q.toLocaleLowerCase("en-GB");
+
+  return (
+    searchText.includes(query) &&
+    (filters.employment === "all" ||
+      job.employmentType === filters.employment) &&
+    (filters.workingTime === "all" ||
+      job.workingTime === filters.workingTime) &&
+    (filters.workplace === "all" || job.workplaceType === filters.workplace) &&
+    (filters.ir35 === "all" || job.ir35Status === filters.ir35)
+  );
+}
+
+function compareJobs(left: JobDetail, right: JobDetail): number {
+  if (left.postedAt === null && right.postedAt !== null) return 1;
+  if (left.postedAt !== null && right.postedAt === null) return -1;
+
+  const postedAtOrder = (right.postedAt ?? "").localeCompare(
+    left.postedAt ?? "",
+  );
+  if (postedAtOrder !== 0) return postedAtOrder;
+
+  return right.id.localeCompare(left.id);
+}
+
 export function createDevelopmentJobsRepository(): JobsRepository {
   return {
     async list(filters: JobFilters) {
+      const filteredJobs = developmentJobs.filter((job) =>
+        matchesFilters(job, filters),
+      );
+      const start = (filters.page - 1) * 25;
+      const visibleJobs = filteredJobs
+        .toSorted(compareJobs)
+        .slice(start, start + 25);
+
       return {
-        items: developmentJobs.map(toListItem),
-        total: developmentJobs.length,
-        latestListingUpdate: "2026-07-17T08:40:00.000Z",
+        items: visibleJobs.map(toListItem),
+        total: filteredJobs.length,
+        latestListingUpdate:
+          visibleJobs
+            .map((job) => job.lastSeenAt)
+            .toSorted()
+            .at(-1) ?? null,
         page: filters.page,
         pageSize: 25,
         dataMode: "fixtures",

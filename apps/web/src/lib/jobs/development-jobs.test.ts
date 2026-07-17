@@ -17,6 +17,81 @@ const allFilters = {
 };
 
 describe("fictional development jobs", () => {
+  it("applies text and category filters with AND semantics", async () => {
+    const repository = createDevelopmentJobsRepository();
+
+    await expect(
+      repository.list({
+        ...allFilters,
+        q: "north",
+        employment: "contract",
+        workplace: "hybrid",
+        ir35: "outside",
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [
+        expect.objectContaining({
+          title: "Platform Engineer",
+          employer: "Fictional North Coast Systems Ltd",
+        }),
+      ],
+      latestListingUpdate: "2026-07-17T08:00:00.000Z",
+    });
+
+    await expect(
+      repository.list({
+        ...allFilters,
+        q: "civic evidence",
+        workingTime: "full_time",
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [expect.objectContaining({ title: "Public Policy Researcher" })],
+    });
+  });
+
+  it("uses stable posted-at then id ordering and fixed page semantics", async () => {
+    const repository = createDevelopmentJobsRepository();
+
+    const pageOne = await repository.list(allFilters);
+    const pageTwo = await repository.list({ ...allFilters, page: 2 });
+
+    expect(pageOne.items.map((item) => item.title)).toEqual([
+      "Digital Delivery Lead",
+      "Senior Software Engineer",
+      "Public Policy Researcher",
+      "Customer Support Specialist",
+      "Platform Engineer",
+      "Data Migration Analyst",
+    ]);
+    expect(pageOne).toMatchObject({
+      total: 6,
+      page: 1,
+      pageSize: 25,
+      latestListingUpdate: "2026-07-17T08:40:00.000Z",
+    });
+    expect(pageTwo).toMatchObject({
+      items: [],
+      total: 6,
+      page: 2,
+      pageSize: 25,
+      latestListingUpdate: null,
+    });
+  });
+
+  it("returns an empty page and no listing update when filters match nothing", async () => {
+    const repository = createDevelopmentJobsRepository();
+
+    await expect(
+      repository.list({ ...allFilters, q: "no such fictional role" }),
+    ).resolves.toMatchObject({
+      items: [],
+      total: 0,
+      latestListingUpdate: null,
+    });
+  });
+
   it("covers the UK employment and contract states needed for local UI work", async () => {
     const repository = createDevelopmentJobsRepository();
     const result = await repository.list(allFilters);
