@@ -84,6 +84,9 @@ describe("compensation parsing", () => {
     "$100-£200 per day",
     "£100-$200 per day",
     "100 USD - 200 GBP per day",
+    "£100-₹200 per day",
+    "100 INR - 200 GBP per day",
+    "£100-200 SEK per day",
   ])("rejects mixed or unsupported currency input: %s", (raw) => {
     expect(parseCompensation(raw)).toEqual({
       currency: null,

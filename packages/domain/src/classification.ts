@@ -71,11 +71,32 @@ const nonLocationLabels = new Set([
 
 const ukAnchorSource = String.raw`(?:United Kingdom|UK|Northern Ireland|Scotland|Wales|England)`;
 const foreignAnchorSource = String.raw`(?:Europe|EU|EEA|USA|US|United States|Canada|Australia|New Zealand|Americas|APAC|EMEA)`;
-const personSource = String.raw`(?:applicants?|candidates?|workers?|employees?|residents?|you)`;
-const negationOrExclusion =
-  /\b(?:no|not|cannot|can't|must\s+not|unable|ineligible|excluding|except)\b/i;
+const permissionSubjectSource = String.raw`(?:applicants?|candidates?|you)`;
 const timeZoneReference =
   /\b(?:Europe|European|United Kingdom|UK)(?:\s+or\s+(?:Europe|European|United Kingdom|UK))*\s+time(?:\s+zones?)?\b/i;
+
+const ukExclusionRules = [
+  new RegExp(
+    `\\bno\\s+${ukAnchorSource}\\s+(?:applicants?|candidates?|residents?)\\b`,
+    "i",
+  ),
+  new RegExp(
+    `\\b(?:do|does)\\s+not\\s+(?:accept|consider)\\s+${ukAnchorSource}\\s+(?:applicants?|candidates?|residents?)\\b`,
+    "i",
+  ),
+  new RegExp(
+    `\\b${ukAnchorSource}\\s+(?:applicants?|candidates?|residents?)\\s+(?:are\\s+|is\\s+)?(?:excluded|not\\s+eligible|ineligible|not\\s+accepted|cannot\\s+apply|can't\\s+apply)\\b`,
+    "i",
+  ),
+  new RegExp(
+    `\\b${permissionSubjectSource}\\s+(?:are\\s+not|is\\s+not|cannot|can't|must\\s+not|may\\s+not)\\s+(?:be\\s+)?(?:based|reside|resident|live|located|work|apply)(?:\\s+remotely)?\\s+(?:in|from|within)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
+    "i",
+  ),
+  new RegExp(
+    `\\b(?:the\\s+|this\\s+|our\\s+)?(?:role|position|job|vacancy)\\s+(?:is\\s+not|will\\s+not\\s+be|cannot\\s+be|can't\\s+be|must\\s+not\\s+be|may\\s+not\\s+be)\\s+(?:based|located|available|remote)\\s+(?:in|from|within)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
+    "i",
+  ),
+] as const;
 
 const ukEligibilityRules: readonly {
   pattern: RegExp;
@@ -86,7 +107,7 @@ const ukEligibilityRules: readonly {
 }[] = [
   {
     pattern: new RegExp(
-      `\\b(?:the\\s+|this\\s+|our\\s+)?(?:role|position|job|vacancy)\\s+(?:is\\s+not|will\\s+not\\s+be|cannot\\s+be|must\\s+not\\s+be|is|will\\s+be|can\\s+be|may\\s+be|must\\s+be)?\\s*(?:based|located)\\s+(?:in|within)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
+      `\\b(?:the\\s+|this\\s+|our\\s+)?(?:role|position|job|vacancy)\\s+(?:(?:is|will\\s+be|can\\s+be|may\\s+be|must\\s+be)\\s+)?(?:based|located)\\s+(?:in|within)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
       "i",
     ),
     reason: "explicit_uk_location",
@@ -100,28 +121,21 @@ const ukEligibilityRules: readonly {
   },
   {
     pattern: new RegExp(
-      `\\b${personSource}\\s+(?:(?:are|is|must\\s+be|can\\s+be|may\\s+be|need\\s+to\\s+be|should\\s+be|cannot\\s+be|can't\\s+be|are\\s+not|must\\s+not\\s+be)\\s+)?(?:based|resident|located)\\s+(?:in|within|from)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
+      `\\b${permissionSubjectSource}\\s+(?:(?:are|is|must\\s+be|can\\s+be|may\\s+be|need\\s+to\\s+be|should\\s+be)\\s+)?(?:based|resident|located)\\s+(?:in|within|from)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
       "i",
     ),
     reason: "explicit_uk_remote",
   },
   {
     pattern: new RegExp(
-      `\\b${personSource}\\s+(?:(?:are|must\\s+be|can\\s+be|need\\s+to\\s+be|should\\s+be|are\\s+not)\\s+)?eligible\\s+to\\s+work\\s+(?:in|from|within)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
+      `\\b${permissionSubjectSource}\\s+(?:(?:are|must\\s+be|can\\s+be|need\\s+to\\s+be|should\\s+be)\\s+)?eligible\\s+to\\s+work\\s+(?:in|from|within)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
       "i",
     ),
     reason: "explicit_uk_remote",
   },
   {
     pattern: new RegExp(
-      `\\b(?:no\\s+${ukAnchorSource}\\s+(?:applicants?|candidates?|residents?)|${ukAnchorSource}\\s+(?:applicants?|candidates?|residents?)\\s+only)\\b`,
-      "i",
-    ),
-    reason: "explicit_uk_remote",
-  },
-  {
-    pattern: new RegExp(
-      `\\b${ukAnchorSource}\\s+(?:applicants?|candidates?|workers?|residents?)\\s+(?:are\\s+)?(?:not\\s+eligible|ineligible)\\b`,
+      `\\b${ukAnchorSource}\\s+(?:applicants?|candidates?|residents?)\\s+only\\b`,
       "i",
     ),
     reason: "explicit_uk_remote",
@@ -236,21 +250,20 @@ function assessDescription(description: string): DescriptionAssessment {
   let hasForeignEligibility = false;
 
   for (const clause of clausesFrom(description)) {
+    if (ukExclusionRules.some((pattern) => pattern.test(clause))) {
+      negativeEvidence ??= negativeEvidenceFor(clause);
+    }
+
     if (timeZoneReference.test(clause)) continue;
 
     const eligibilityRule = ukEligibilityRules.find(({ pattern }) =>
       pattern.test(clause),
     );
     if (eligibilityRule) {
-      if (negationOrExclusion.test(clause)) {
-        negativeEvidence ??= negativeEvidenceFor(clause);
-      } else {
-        positive ??= {
-          evidence: clause,
-          reason: eligibilityRule.reason,
-        };
-      }
-      continue;
+      positive ??= {
+        evidence: clause,
+        reason: eligibilityRule.reason,
+      };
     }
 
     if (foreignEligibilityRules.some((pattern) => pattern.test(clause))) {

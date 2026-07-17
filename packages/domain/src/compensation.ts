@@ -18,8 +18,6 @@ const periodPatterns: readonly [RegExp, CompensationPeriod][] = [
 ];
 
 const gbpCurrencyMarker = /(?:£|\bGBP\b)/i;
-const unsupportedCurrencyMarker =
-  /(?:[$€]|\b(?:USD|EUR|CAD|AUD|NZD|JPY|CHF)\b)/i;
 
 function classifyPeriod(raw: string): CompensationPeriod {
   for (const [pattern, period] of periodPatterns) {
@@ -34,6 +32,21 @@ const amountCandidateSource = String.raw`\d[\d.,]*[kK]?`;
 const amountStart = String.raw`(?<![\w.,])`;
 const amountEnd = String.raw`(?![\w.,])`;
 const rangeSeparator = String.raw`\s*(?:-|–|—|to)\s*`;
+
+const nonGbpCurrencySymbolAdjacentToAmount = new RegExp(
+  `(?:(?!£)\\p{Sc})\\s*${amountCandidateSource}${amountEnd}|${amountStart}${amountCandidateSource}\\s*(?!£)\\p{Sc}`,
+  "u",
+);
+const nonGbpCurrencyCodeAdjacentToAmount = new RegExp(
+  `\\b(?!GBP\\b)[A-Z]{3}\\s*${amountCandidateSource}${amountEnd}|${amountStart}${amountCandidateSource}\\s*(?!GBP\\b)[A-Z]{3}\\b`,
+);
+
+function hasUnsupportedCurrencyAdjacentToAmount(raw: string): boolean {
+  return (
+    nonGbpCurrencySymbolAdjacentToAmount.test(raw) ||
+    nonGbpCurrencyCodeAdjacentToAmount.test(raw)
+  );
+}
 
 const rangeCandidatePattern = new RegExp(
   `${amountStart}(?:(£|GBP)\\s*)?(${amountCandidateSource})(?:\\s*(GBP))?${rangeSeparator}(?:(£|GBP)\\s*)?(${amountCandidateSource})(?:\\s*(GBP))?${amountEnd}`,
@@ -106,7 +119,7 @@ function findAmounts(raw: string): readonly [number, number | null] | null {
 export function parseCompensation(raw: string): ParsedCompensation {
   const period = classifyPeriod(raw);
   const hasGbp = gbpCurrencyMarker.test(raw);
-  if (hasGbp && unsupportedCurrencyMarker.test(raw)) {
+  if (hasGbp && hasUnsupportedCurrencyAdjacentToAmount(raw)) {
     return {
       currency: null,
       minimum: null,

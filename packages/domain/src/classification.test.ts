@@ -111,8 +111,30 @@ describe("UK eligibility", () => {
   });
 
   it.each([
+    [
+      "UK applicants only; We do not accept UK applicants",
+      "Description: We do not accept UK applicants",
+    ],
+    [
+      "UK applicants only; UK applicants are excluded",
+      "Description: UK applicants are excluded",
+    ],
+  ])(
+    "lets an independently expressed UK exclusion outrank positive wording: %s",
+    (description, evidence) => {
+      expect(classifyUkEligibility("Remote", description)).toEqual({
+        eligible: false,
+        evidence: [evidence],
+        reason: "non_uk",
+      });
+    },
+  );
+
+  it.each([
     ["Candidates must work UK time zones"],
     ["Our headquarters are based in the UK"],
+    ["Our employees are based in the UK"],
+    ["Our workers are based in the UK"],
     ["Remote within commuting distance"],
     ["We spoke with UK applicants yesterday"],
   ])("keeps non-permission wording ambiguous: %s", (description) => {
@@ -122,6 +144,21 @@ describe("UK eligibility", () => {
       reason: "ambiguous",
     });
   });
+
+  it.each([
+    ["This role is based in the UK and is not remote"],
+    ["This role is based in the UK and offers no relocation assistance"],
+  ])(
+    "does not turn unrelated negative wording into UK exclusion: %s",
+    (description) => {
+      expect(
+        classifyUkEligibility("London, England", description),
+      ).toMatchObject({
+        eligible: true,
+        reason: "explicit_uk_location",
+      });
+    },
+  );
 
   it("does not treat a generic applicant modifier as foreign evidence", () => {
     expect(
