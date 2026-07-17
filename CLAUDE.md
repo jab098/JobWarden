@@ -1,3 +1,3 @@
 @AGENTS.md
 
-Read the approved specification and active implementation plan before changing code.
+Read `docs/project-status.md`, `docs/product/roadmap.md`, the approved specification, and the active implementation plan before changing code.

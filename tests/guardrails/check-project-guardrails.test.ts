@@ -88,3 +88,36 @@ it("rejects forbidden pricing copy outside tests", async () => {
     await rm(workspace, { recursive: true });
   }
 });
+
+it.each([
+  "Pricing",
+  "Payment",
+  "Subscribe",
+  "Subscription",
+  "Premium",
+  "Billing",
+  "Checkout",
+  "Trial",
+  "Upgrade",
+])("rejects plain %s product copy outside tests", async (forbiddenCopy) => {
+  const workspace = await mkdtemp(join(tmpdir(), "jobwarden-guardrails-"));
+
+  try {
+    const app = join(workspace, "apps/web");
+    await mkdir(app, { recursive: true });
+    await writeFile(
+      join(app, "page.tsx"),
+      `export const label = ${JSON.stringify(forbiddenCopy)};`,
+    );
+
+    await expect(
+      execFileAsync(process.execPath, [guardrailScript], { cwd: workspace }),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining(
+        "apps/web/page.tsx: forbidden pricing copy",
+      ),
+    });
+  } finally {
+    await rm(workspace, { recursive: true });
+  }
+});

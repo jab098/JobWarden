@@ -5,11 +5,15 @@ This file is the durable cross-session recovery map. Update task status to `revi
 ## Source of truth
 
 - [Approved foundation design](superpowers/specs/2026-07-17-jobwarden-foundation-design.md)
-- [Active implementation plan](superpowers/plans/2026-07-17-jobwarden-foundation.md)
+- [Historical Tasks 1–6 foundation plan](superpowers/plans/2026-07-17-jobwarden-foundation.md)
+- [Active Task 7 implementation plan](superpowers/plans/2026-07-18-task-7-administrator-operations.md)
 - [Shipping standard](standards/shipping-standards.md)
 - [UI direction](design/ui-direction.md)
 - [UK source coverage strategy](product/source-coverage.md)
-- [Current architecture record](superpowers/specs/2026-07-17-jobwarden-foundation-design.md#architecture); dedicated architecture decision records are scheduled for Task 10 under `architecture/decisions/`
+- [Approved personalised search design](superpowers/specs/2026-07-18-personalised-job-search-design.md)
+- [Canonical Tasks 7–16 roadmap](product/roadmap.md)
+- [Free-tier services and cost boundaries](architecture/free-tier-services.md)
+- [Current architecture record](superpowers/specs/2026-07-17-jobwarden-foundation-design.md#architecture); dedicated architecture decision records are scheduled for Task 16 under `architecture/decisions/`
 
 ## Handoff
 
@@ -17,22 +21,28 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - Last independently reviewed task implementation commit: `8d2eaa1`
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
 - Active feature branch: none
-- Next task: Task 7 administrator access, sources, and ingestion screens; authentication setup remains deferred by the owner
+- Next task: Task 7 administrator operations; authentication setup remains deferred by the owner
 
 ## Task progress
 
-| Task                                                                          | Status   | Notes                                                         |
-| ----------------------------------------------------------------------------- | -------- | ------------------------------------------------------------- |
-| 1. Monorepo, persistent standards, and invariant guardrails                   | reviewed | Commits `5563920` and `dc021a6`; independent review clean     |
-| 2. UK job domain and access state machine                                     | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean |
-| 3. Greenhouse adapter and normalisation pipeline                              | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean  |
-| 4. Supabase schema, RLS, mutations, and database tests                        | reviewed | Review clean; real Supabase reset/pgTAP pending Docker        |
-| 5. Supabase authentication and route gates                                    | reviewed | Code retained; live OAuth and operational setup deferred      |
-| 6. Responsive app shell and UK jobs feed                                      | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally   |
-| 7. Administrator access, sources, and ingestion screens                       | pending  |                                                               |
-| 8. Ingestion Edge Function and schedule                                       | pending  |                                                               |
-| 9. Observability, account controls, and health reporting                      | pending  |                                                               |
-| 10. Cloudflare, CI security, architecture records, and full-path verification | pending  |                                                               |
+| Task                                                                   | Status   | Notes                                                         |
+| ---------------------------------------------------------------------- | -------- | ------------------------------------------------------------- |
+| 1. Monorepo, persistent standards, and invariant guardrails            | reviewed | Commits `5563920` and `dc021a6`; independent review clean     |
+| 2. UK job domain and access state machine                              | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean |
+| 3. Greenhouse adapter and normalisation pipeline                       | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean  |
+| 4. Supabase schema, RLS, mutations, and database tests                 | reviewed | Review clean; real Supabase reset/pgTAP pending Docker        |
+| 5. Supabase authentication and route gates                             | reviewed | Code retained; live OAuth and operational setup deferred      |
+| 6. Responsive app shell and UK jobs feed                               | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally   |
+| 7. Administrator operations                                            | pending  | Plan: `2026-07-18-task-7-administrator-operations.md`         |
+| 8. Shared ingestion runtime                                            | pending  |                                                               |
+| 9. UK coverage and compensation                                        | pending  |                                                               |
+| 10. Career profile, onboarding, and CV extraction                      | pending  |                                                               |
+| 11. Target Feed and explainable fit scores                             | pending  |                                                               |
+| 12. Explore and career pathways                                        | pending  |                                                               |
+| 13. Application tracker and follow-ups                                 | pending  |                                                               |
+| 14. Scheduled updates and notifications                                | pending  |                                                               |
+| 15. Evidence-bound CV tailoring                                        | pending  |                                                               |
+| 16. Privacy, production access, deployment, and full-path verification | pending  |                                                               |
 
 ## Last verification commands
 
@@ -65,14 +75,18 @@ Task 5 passed 58 focused web tests and the 235-test workspace verification, incl
 
 Task 6 passed independent full-range review with no remaining critical, important, or minor findings and was delivered by PR #5 at merge commit `7878d47`. The fail-closed, server-only development mode uses explicitly fictional UK fixtures and cannot enable outside `NODE_ENV=development`; production continues to use the caller's cookie-bound Supabase client and existing RLS. URL-backed filters cover employment type, working time, workplace, IR35, literal title/employer search, and stable pagination. The responsive editorial workspace provides a desktop rail, accessible mobile navigation and filter sheets, one jobs list, manual employer-site applications, job detail, and designed loading, empty, no-results, error, and not-found states without pricing, payments, AI scoring, or auto-apply. Compensation preserves minor-unit precision without inventing range semantics, IR35 labels do not reinterpret `not_applicable`, and deep out-of-range pages return directly to the last available page. Small warm-surface text meets WCAG AA contrast and valid long source tokens cannot force mobile horizontal overflow. The web suite passed 128 tests across 15 files and the workspace passed 305 tests across 23 files; lint, typecheck, axe checks, the production build, dependency audit, exact-range secret scan, and production fail-closed probe passed. Hydrated browser verification passed `/`, `/jobs`, a filtered URL, and a detail route at 1440 px and true 390 px with meaningful content, no error overlays, no console errors, no horizontal overflow, working mobile sheets, visible keyboard focus, and a 1,000-character unbroken-token regression probe. The frozen install and complete verification were repeated successfully on the merge commit. Live Supabase queries and OAuth remain intentionally unverified until the deferred service setup is resumed.
 
+## Approved programme update
+
+On 2026-07-18 the owner approved the personalised-search design and canonical Tasks 7–16 roadmap. The programme adds reviewed CV-derived career profiles, named searches, the Target Feed, deterministic explainable scoring, opt-in high-overlap Explore pathways, compensation provenance, application tracking, bounded weekday digests, and conservative DOCX tailoring. Free-tier ceilings, privacy boundaries, and authentication-before-real-data are permanent constraints. All unimplemented Task 7–10 sections in the old foundation plan are superseded by the focused active plan and canonical roadmap; completed Tasks 1–6 remain unchanged.
+
 ## Delivery rule
 
 Each independently reviewed task is published by pull request, merged into GitHub `main`, and pulled into local `main` before the next task begins.
 
 ## UI workflow
 
-Real product UI begins with the authentication and pending-access experience in Task 5. Task 6 delivers the responsive app shell, jobs feed, filters, and job detail experience. Both tasks must follow `docs/design/ui-direction.md` and load the available design, shadcn, and React review skills recorded in `AGENTS.md`.
+Task 6 delivered the responsive shell, jobs feed, filters, and job detail experience. Tasks 7 and 10–15 extend that UI. Every UI task follows `docs/design/ui-direction.md` and loads the available design, shadcn, and React review skills recorded in `AGENTS.md`.
 
 ## Authentication deferral
 
-The owner explicitly deprioritised authentication setup on 2026-07-17. The reviewed Task 5 code remains intact, but Docker-backed database validation, Supabase/Google connection, administrator bootstrap, and live access-boundary verification no longer block Tasks 6–10. Local work uses the fail-closed design in `docs/superpowers/specs/2026-07-17-authentication-deferral-design.md`. No deployed environment may enable the local bypass, and no task may weaken RLS to compensate for deferred setup.
+The owner explicitly deprioritised authentication setup on 2026-07-17. The reviewed Task 5 code remains intact, but Docker-backed database validation, Supabase/Google connection, administrator bootstrap, and live access-boundary verification do not block fictional local delivery through Tasks 7–15. Any task that handles real user/CV data or claims a live integration must still stop at its documented setup gate; Task 16 activates and verifies production authentication before the private beta accepts real users. Local work uses the fail-closed design in `docs/superpowers/specs/2026-07-17-authentication-deferral-design.md`. No deployed environment may enable the local bypass, and no task may weaken RLS to compensate for deferred setup.
