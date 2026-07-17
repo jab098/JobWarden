@@ -19,6 +19,7 @@ const nonTextTags = [
   "textarea",
   "option",
 ] as const;
+const maximumEntityNormalisationPasses = 8;
 
 const blockTagPattern =
   /<\/?(?:address|article|aside|blockquote|br|dd|div|dl|dt|fieldset|figcaption|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|table|tbody|td|tfoot|th|thead|tr|ul)\b[^>]*>/gi;
@@ -32,18 +33,12 @@ const encodedCharacters: Readonly<Record<string, string>> = {
   quot: '"',
 };
 
-function decodeEntities(value: string, decodeAngleBrackets: boolean): string {
+function decodeEntities(value: string): string {
   return value.replace(
     /&(?:#(\d+)|#x([\da-f]+)|(amp|apos|gt|lt|nbsp|quot));/gi,
     (entity, decimal: string, hexadecimal: string, named: string) => {
       if (named) {
         const normalisedName = named.toLowerCase();
-        if (
-          !decodeAngleBrackets &&
-          (normalisedName === "lt" || normalisedName === "gt")
-        ) {
-          return entity;
-        }
         return encodedCharacters[normalisedName] ?? entity;
       }
 
@@ -59,28 +54,36 @@ function decodeEntities(value: string, decodeAngleBrackets: boolean): string {
       ) {
         return "�";
       }
-      if (!decodeAngleBrackets && (codePoint === 60 || codePoint === 62)) {
-        return entity;
-      }
       return String.fromCodePoint(codePoint);
     },
   );
 }
 
-export function htmlToPlainText(html: string): string {
-  const providerDecodedHtml = decodeEntities(html, true);
-  const withBlockBoundaries = providerDecodedHtml.replace(
-    blockTagPattern,
-    " $& ",
-  );
-  const text = sanitizeHtml(withBlockBoundaries, {
+function sanitiseMarkup(value: string): string {
+  const withBlockBoundaries = value.replace(blockTagPattern, " $& ");
+  return sanitizeHtml(withBlockBoundaries, {
     allowedTags: [],
     allowedAttributes: {},
     nonTextTags: [...nonTextTags],
     parser: { decodeEntities: true },
   });
+}
 
-  return decodeEntities(text, false).replace(/\s+/gu, " ").trim();
+export function htmlToPlainText(html: string): string {
+  let sanitisedText = sanitiseMarkup(decodeEntities(html));
+
+  for (let pass = 0; pass < maximumEntityNormalisationPasses; pass += 1) {
+    const decodedText = decodeEntities(sanitisedText);
+    const resanitisedText = sanitiseMarkup(decodedText);
+
+    if (decodeEntities(resanitisedText) === decodedText) {
+      return decodedText.replace(/\s+/gu, " ").trim();
+    }
+
+    sanitisedText = resanitisedText;
+  }
+
+  return "";
 }
 
 function compareText(left: string, right: string): number {
@@ -185,20 +188,17 @@ export async function normaliseProviderJob(
     };
   }
 
+  const titleText = htmlToPlainText(providerJob.title);
+  const locationText = htmlToPlainText(providerJob.location);
   const descriptionText = htmlToPlainText(providerJob.descriptionHtml);
   const metadataText = providerJob.metadataText
     .map(htmlToPlainText)
     .filter(Boolean)
     .sort(compareText);
-  const classificationText = [
-    providerJob.title,
-    descriptionText,
-    ...metadataText,
-  ].join(" ");
-  const ukEligibility = classifyUkEligibility(
-    providerJob.location,
-    classificationText,
+  const classificationText = [titleText, descriptionText, ...metadataText].join(
+    " ",
   );
+  const ukEligibility = classifyUkEligibility(locationText, classificationText);
 
   if (!ukEligibility.eligible) {
     return ukEligibility.reason === "non_uk"
@@ -219,7 +219,7 @@ export async function normaliseProviderJob(
   const content: Omit<NormalisedJob, "contentHash"> = {
     sourceId: source.id,
     providerJobId: providerJob.providerJobId,
-    title: htmlToPlainText(providerJob.title),
+    title: titleText,
     employer: htmlToPlainText(source.employerName),
     descriptionText,
     applicationUrl,
@@ -227,7 +227,7 @@ export async function normaliseProviderJob(
     ukEligibilityEvidence: ukEligibility.evidence,
     employmentType: classifyEmployment(classificationText),
     workingTime: classifyWorkingTime(classificationText),
-    workplaceType: classifyWorkplace(providerJob.location, classificationText),
+    workplaceType: classifyWorkplace(locationText, classificationText),
     ir35Status: classifyIr35(classificationText),
     compensationRaw,
     compensationMinimum: compensation.minimum,

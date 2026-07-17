@@ -137,6 +137,95 @@ describe("Greenhouse normalisation", () => {
   });
 
   it.each([
+    ["decoded", '<span title="role is based in UK">US Engineer</span>'],
+    [
+      "entity-encoded",
+      "&lt;span title=&quot;role is based in UK&quot;&gt;US Engineer&lt;/span&gt;",
+    ],
+  ])(
+    "does not classify invisible %s title attributes as UK evidence",
+    async (_encoding, title) => {
+      await expect(
+        normaliseProviderJob(source, {
+          ...baseJob,
+          title,
+          location: "Remote",
+          descriptionHtml: "<p>Permanent engineering role.</p>",
+        }),
+      ).resolves.toEqual({
+        outcome: "quarantined",
+        reason: "ambiguous_uk_eligibility",
+        providerJobId: baseJob.providerJobId,
+      });
+    },
+  );
+
+  it.each([
+    ["decoded", '<span data-eligibility="London, England">Remote</span>'],
+    [
+      "entity-encoded",
+      "&lt;span data-eligibility=&quot;London, England&quot;&gt;Remote&lt;/span&gt;",
+    ],
+  ])(
+    "uses only the visible %s location and ignores hidden UK attributes",
+    async (_encoding, location) => {
+      await expect(
+        normaliseProviderJob(source, {
+          ...baseJob,
+          title: "US Engineer",
+          location,
+          descriptionHtml: "<p>Permanent engineering role.</p>",
+        }),
+      ).resolves.toEqual({
+        outcome: "quarantined",
+        reason: "ambiguous_uk_eligibility",
+        providerJobId: baseJob.providerJobId,
+      });
+    },
+  );
+
+  it("stores and classifies only visible title and location text", async () => {
+    const job = await eligibleJob({
+      ...baseJob,
+      title:
+        "&lt;span data-hidden=&quot;US applicants only&quot;&gt;Platform Engineer&lt;/span&gt;",
+      location: '<span data-hidden="New York, NY">London, England</span>',
+      descriptionHtml: "<p>Permanent full-time role.</p>",
+    });
+
+    expect(job.title).toBe("Platform Engineer");
+    expect(job.ukEligibilityEvidence).toEqual(["Location: London, England"]);
+    expect(JSON.stringify(job.ukEligibilityEvidence)).not.toMatch(
+      /<[^>]*>|data-hidden|New York|US applicants/,
+    );
+  });
+
+  it("decodes literal angle entities as ordinary plain-text comparisons", async () => {
+    const job = await eligibleJob({
+      ...baseJob,
+      descriptionHtml:
+        "<p>Permanent role where 5 &lt; 10 and 10 &gt; 5 &amp; quality matters.</p>",
+    });
+
+    expect(job.descriptionText).toBe(
+      "Permanent role where 5 < 10 and 10 > 5 & quality matters.",
+    );
+  });
+
+  it("re-sanitises double-encoded tag-shaped content instead of persisting it", async () => {
+    const job = await eligibleJob({
+      ...baseJob,
+      descriptionHtml:
+        "<p>Permanent role.</p>&amp;lt;img src=&amp;quot;https://evil.example/pixel&amp;quot; onerror=&amp;quot;steal()&amp;quot;&amp;gt;&amp;lt;script src=&amp;quot;https://evil.example/code.js&amp;quot;&amp;gt;STEAL()&amp;lt;/script&amp;gt;",
+    });
+
+    expect(job.descriptionText).toBe("Permanent role.");
+    expect(job.descriptionText).not.toMatch(
+      /&(?:amp;)?lt;|<[^>]*>|img|script|src=|onerror|evil\.example|STEAL/,
+    );
+  });
+
+  it.each([
     "javascript:alert(1)",
     "http://boards.greenhouse.io/acme/jobs/1",
     "https://boards.greenhouse.io.evil.example/acme/jobs/1",
