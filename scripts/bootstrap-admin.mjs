@@ -69,30 +69,11 @@ export async function bootstrapAdmin({
     throw new Error("A verified Supabase identity is required");
   }
 
-  const roleResult = await supabase.from("user_roles").upsert(
-    {
-      user_id: userId,
-      role: "admin",
-      created_by: userId,
-    },
-    {
-      onConflict: "user_id,role",
-      ignoreDuplicates: true,
-    },
-  );
-  if (roleResult.error) {
-    throw new Error("Administrator role write failed");
-  }
-
-  const auditResult = await supabase.from("audit_log").insert({
-    actor_user_id: userId,
-    action: "admin.bootstrap",
-    resource_type: "user_role",
-    resource_id: userId,
-    metadata: { method: "local_service_role" },
+  const bootstrapResult = await supabase.rpc("bootstrap_admin", {
+    target_user_id: userId,
   });
-  if (auditResult.error) {
-    throw new Error("Administrator bootstrap audit write failed");
+  if (bootstrapResult.error) {
+    throw new Error("Atomic administrator bootstrap failed");
   }
 
   write("Administrator bootstrap complete.");

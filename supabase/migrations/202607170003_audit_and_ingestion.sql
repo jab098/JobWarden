@@ -16,6 +16,72 @@ create trigger audit_log_append_only
 before update or delete on public.audit_log
 for each row execute function private.prevent_audit_log_mutation();
 
+create or replace function public.bootstrap_admin(target_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  identity_exists boolean;
+  identity_verified boolean;
+begin
+  select exists (
+    select 1
+    from auth.users
+    where id = target_user_id
+  )
+  into identity_exists;
+
+  if not identity_exists then
+    raise exception using errcode = 'P0002', message = 'Supabase identity not found';
+  end if;
+
+  select exists (
+    select 1
+    from auth.users as target_user
+    where target_user.id = target_user_id
+      and (
+        target_user.email_confirmed_at is not null
+        or exists (
+          select 1
+          from auth.identities as external_identity
+          where external_identity.user_id = target_user_id
+            and external_identity.provider <> 'email'
+            and lower(external_identity.identity_data ->> 'email_verified') = 'true'
+        )
+      )
+  )
+  into identity_verified;
+
+  if not identity_verified then
+    raise exception using errcode = '22023', message = 'verified Supabase identity required';
+  end if;
+
+  insert into public.user_roles (user_id, role, created_by)
+  values (target_user_id, 'admin', target_user_id)
+  on conflict (user_id, role) do nothing;
+
+  insert into public.audit_log (
+    actor_user_id,
+    action,
+    resource_type,
+    resource_id,
+    metadata
+  )
+  values (
+    target_user_id,
+    'admin.bootstrap',
+    'user_role',
+    target_user_id::text,
+    jsonb_build_object('method', 'local_service_role')
+  );
+end;
+$$;
+
+revoke all on function public.bootstrap_admin(uuid) from public, anon, authenticated;
+grant execute on function public.bootstrap_admin(uuid) to service_role;
+
 create or replace function public.decide_access_request(
   target_user_id uuid,
   next_status text,
@@ -81,6 +147,26 @@ begin
     'access_request',
     target_user_id::text,
     jsonb_build_object('from_status', current_status, 'to_status', next_status)
+  );
+end;
+$$;
+
+create or replace function public.get_access_requests_enabled()
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null or not public.is_admin() then
+    raise exception using errcode = '42501', message = 'administrator required';
+  end if;
+
+  return (
+    select allow_access_requests
+    from private.app_settings
+    where singleton = true
   );
 end;
 $$;
@@ -187,6 +273,7 @@ begin
   end if;
 
   if cardinality(allowed_hosts_value) = 0
+    or array_position(allowed_hosts_value, null) is not null
     or exists (
       select 1
       from unnest(allowed_hosts_value) as allowed_host
@@ -274,9 +361,11 @@ end;
 $$;
 
 revoke all on function public.decide_access_request(uuid, text, text) from public, anon;
+revoke all on function public.get_access_requests_enabled() from public, anon;
 revoke all on function public.set_access_requests_enabled(boolean) from public, anon;
 revoke all on function public.upsert_job_source(uuid, text, text, text, boolean, integer, date, date, text, text, text[]) from public, anon;
 grant execute on function public.decide_access_request(uuid, text, text) to authenticated;
+grant execute on function public.get_access_requests_enabled() to authenticated;
 grant execute on function public.set_access_requests_enabled(boolean) to authenticated;
 grant execute on function public.upsert_job_source(uuid, text, text, text, boolean, integer, date, date, text, text, text[]) to authenticated;
 

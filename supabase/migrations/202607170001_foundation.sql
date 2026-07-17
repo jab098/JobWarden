@@ -79,7 +79,10 @@ create table public.job_sources (
   robots_reviewed_at date not null,
   allowed_method text not null default 'GET' check (allowed_method = 'GET'),
   compliance_notes text not null check (char_length(compliance_notes) between 3 and 5000),
-  allowed_hosts text[] not null check (cardinality(allowed_hosts) > 0),
+  allowed_hosts text[] not null check (
+    cardinality(allowed_hosts) > 0
+    and array_position(allowed_hosts, null) is null
+  ),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (provider, board_token)
@@ -207,6 +210,4 @@ grant select on public.profiles, public.access_requests, public.user_roles,
   public.audit_log, public.job_sources, public.jobs, public.job_locations,
   public.ingestion_runs, public.ingestion_source_runs to authenticated;
 
-grant select, insert on public.user_roles to service_role;
-grant insert on public.audit_log to service_role;
 grant select on public.job_sources to service_role;

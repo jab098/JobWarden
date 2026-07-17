@@ -140,6 +140,30 @@ export function verifyFoundationSql(files) {
       "if effective_status = 'succeeded' then",
       "omissions must be gated by a successful complete response",
     ],
+    [
+      "create or replace function public.bootstrap_admin(target_user_id uuid)",
+      "missing atomic service-role administrator bootstrap function",
+    ],
+    [
+      "create or replace function public.get_access_requests_enabled()",
+      "missing narrow administrator app-settings getter",
+    ],
+    [
+      "array_position(allowed_hosts, null) is null",
+      "job source host arrays must reject NULL entries",
+    ],
+    [
+      "array_position(allowed_hosts_value, null) is not null",
+      "source mutation must reject NULL host entries",
+    ],
+    [
+      "grant execute on function public.bootstrap_admin(uuid) to service_role",
+      "administrator bootstrap must be granted only to service_role",
+    ],
+    [
+      "grant execute on function public.get_access_requests_enabled() to authenticated",
+      "app-settings getter must have its narrow authenticated grant",
+    ],
   ];
 
   for (const [fragment, message] of requiredFragments) {
@@ -148,6 +172,33 @@ export function verifyFoundationSql(files) {
 
   if (!/pg_catalog\.pg_advisory_xact_lock\s*\(/i.test(sql)) {
     failures.push("missing transaction-scoped source advisory lock");
+  }
+
+  const bootstrapDefinition = securityDefinerFunctions(sql).find(
+    ({ name }) => name === "public.bootstrap_admin",
+  )?.definition;
+  if (
+    bootstrapDefinition &&
+    ![
+      "from auth.users",
+      "from auth.identities",
+      "insert into public.user_roles",
+      "insert into public.audit_log",
+    ].every((fragment) => compact(bootstrapDefinition).includes(fragment))
+  ) {
+    failures.push(
+      "administrator bootstrap must verify identity and atomically write role and audit",
+    );
+  }
+
+  if (
+    /grant\s+(?:select\s*,\s*)?insert\s+on\s+public\.(?:user_roles|audit_log)\s+to\s+service_role/i.test(
+      sql,
+    )
+  ) {
+    failures.push(
+      "service role must use the atomic bootstrap RPC instead of direct role or audit inserts",
+    );
   }
 
   if (

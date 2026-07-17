@@ -45,4 +45,18 @@ describe("Supabase foundation static verifier", () => {
       ]),
     );
   });
+
+  it("requires the reviewed bootstrap, settings-read, and host-array boundaries", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "missing atomic service-role administrator bootstrap function",
+        "missing narrow administrator app-settings getter",
+        "job source host arrays must reject NULL entries",
+      ]),
+    );
+  });
 });

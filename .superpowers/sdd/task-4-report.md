@@ -87,6 +87,7 @@ Every other `security definer` function also sets `search_path = ''`, uses schem
 
 Administrative authenticated functions:
 
+- `public.get_access_requests_enabled()` returns only the private-beta request flag, requires `is_admin()`, and exposes no direct private-schema table access.
 - `public.decide_access_request(uuid, text, text)` locks the request, requires `is_admin()`, enforces the exact domain transition matrix and a trimmed 3–500 character reason, updates decision fields, and writes a redacted audit event in the same transaction.
 - `public.set_access_requests_enabled(boolean)` locks and updates the private singleton and writes an audit event in the same transaction.
 - `public.upsert_job_source(...)` requires `is_admin()`, accepts only the implemented Greenhouse boundary, validates source safety/compliance inputs, upserts by provider/board identity, and writes an audit event without the board token.
@@ -109,12 +110,13 @@ Audit rows have no authenticated update/delete grants and also have a defensive 
 - fetches exactly that identity with `auth.admin.getUserById`;
 - requires a confirmed email or a non-email external identity with verified email evidence;
 - rejects an unexpected returned identity;
-- writes the `admin` role with conflict-ignore idempotency;
-- records `admin.bootstrap` with redacted metadata;
+- invokes only the service-role `public.bootstrap_admin(uuid)` RPC after the identity precheck;
 - prints only `Administrator bootstrap complete.`;
 - prints only a generic failure in CLI mode.
 
-Tests inject a fake Supabase client and cover all required missing variables, invalid UUIDs, exact lookup, unverified identity, confirmed external identity, idempotent reruns, audit writes, and output/metadata redaction.
+The database RPC independently verifies the exact `auth.users` UUID and a confirmed email or verified non-email `auth.identities` row, inserts the idempotent administrator role, and writes `admin.bootstrap` in one PostgreSQL transaction. It is a hardened `security definer` function with `search_path = ''`, revoked `public`/`anon`/`authenticated` execution, and an execute grant only to `service_role`. Direct service-role inserts into `user_roles` and `audit_log` are not granted.
+
+Tests inject a fake Supabase client and cover all required missing variables, invalid UUIDs, exact lookup, unverified identity, confirmed external identity, one-RPC idempotent reruns, atomic-RPC failure, audit writes, and output/metadata redaction. pgTAP and PGlite fallback coverage additionally force an audit insert failure and assert that the role insert rolls back.
 
 ## TDD evidence
 
@@ -273,3 +275,46 @@ The Next.js build also emits its existing worktree warning about multiple lockfi
 2. The PGlite fallback skipped the `pgcrypto` extension declaration and used minimal local `auth.users`/role stubs. It materially improves syntax/behavior confidence but is not parity evidence for Supabase Auth, PostgREST grants, or pgTAP.
 3. `pnpm audit` reports one pre-existing moderate PostCSS advisory through Next.js; it is not introduced by Task 4 but remains repository debt.
 4. The normal Next.js build succeeds with an existing workspace-root/multiple-lockfile warning in this linked worktree.
+
+## Review remediation follow-up
+
+The post-implementation review identified three concrete gaps, all addressed in the follow-up commit:
+
+1. Administrator bootstrap now uses one service-role-only transactional database function. The script keeps its exact identity/verification preflight, then calls only `rpc("bootstrap_admin", { target_user_id })`. The database repeats exact UUID and verified identity checks, performs role plus audit writes atomically, and has no browser execution grant.
+2. `job_sources.allowed_hosts` now rejects SQL `NULL` array elements at the table constraint and the administrator mutation function rejects them before writing. Empty arrays and invalid host syntax remain rejected.
+3. `public.get_access_requests_enabled()` is the narrow administrator-only getter for `private.app_settings`; non-administrators receive `42501 administrator required` and no private table is directly exposed.
+
+Review-fix TDD RED:
+
+```text
+$ pnpm vitest run scripts/bootstrap-admin.test.ts scripts/verify-supabase-foundation.test.ts
+Test Files  2 failed (2)
+Tests  5 failed | 8 passed (13)
+TypeError: supabase.from is not a function
+missing atomic service-role administrator bootstrap function
+
+$ pnpm dlx supabase@latest db test
+exit 1: local PostgreSQL connection refused because Docker is unavailable
+```
+
+Review-fix GREEN and final checks:
+
+```text
+$ pnpm vitest run scripts/bootstrap-admin.test.ts scripts/verify-supabase-foundation.test.ts
+Test Files  2 passed (2)
+Tests  13 passed (13)
+
+$ pnpm check:supabase
+Supabase foundation static verification passed (3 migrations, 9 forced-RLS tables).
+
+$ node /tmp/jobwarden-pglite.0ro6c0/verify-foundation.mjs
+PGlite fallback: migrations applied; RLS, atomic bootstrap rollback, settings, host, and ingestion assertions passed.
+
+$ pnpm verify
+exit 0; formatting, lint, typecheck, 177 workspace tests, guardrails, and production build passed
+
+$ git diff --check
+exit 0
+```
+
+The pgTAP access suite now plans 21 assertions, including bootstrap privilege isolation, verified/idempotent execution, forced audit failure rollback, administrator-only settings access, and `NULL` host rejection. Its runtime status is still blocked by the same absent Docker prerequisite and is not reported as passing.
