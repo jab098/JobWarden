@@ -1,0 +1,28 @@
+{
+  "jobs": [
+    {
+      "id": 1001,
+      "title": "Platform Engineer",
+      "location": { "name": "London, England" },
+      "content": "&lt;div class=&quot;job-description&quot; data-track=&quot;https://tracker.example/private&quot;&gt;&lt;p&gt;Permanent full-time hybrid role at AT&amp;amp;T.&lt;/p&gt;&lt;a href=&quot;https://tracker.example/apply&quot; onclick=&quot;steal()&quot;&gt;Build reliable platforms for our customers.&lt;/a&gt;&lt;script src=&quot;https://evil.example/payload.js&quot;&gt;STEAL()&lt;/script&gt;&lt;/div&gt;",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/1001",
+      "updated_at": "2026-07-16T09:30:00Z",
+      "metadata": [
+        { "name": "Employment Type", "value": "Permanent" },
+        { "name": "Salary", "value": "£60,000 per year" }
+      ]
+    },
+    {
+      "id": 1002,
+      "title": "Delivery Lead",
+      "location": { "name": "Remote" },
+      "content": "<p>This is a full-time contract role open to candidates in the UK.</p><p>The engagement is outside IR35.</p>",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/1002",
+      "updated_at": "2026-07-16T10:30:00Z",
+      "metadata": [
+        { "name": "Engagement", "value": ["Contract", "Outside IR35"] },
+        { "name": "Rate", "value": "£550 per day" }
+      ]
+    }
+  ]
+}
