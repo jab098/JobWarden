@@ -6,6 +6,7 @@ export const requiredMigrationFiles = [
   "202607170001_foundation.sql",
   "202607170002_rls_and_functions.sql",
   "202607170003_audit_and_ingestion.sql",
+  "202607180001_admin_operations.sql",
 ];
 
 const publicTables = [
@@ -18,6 +19,7 @@ const publicTables = [
   "job_locations",
   "ingestion_runs",
   "ingestion_source_runs",
+  "ingestion_requests",
 ];
 
 function compact(sql) {
@@ -163,6 +165,30 @@ export function verifyFoundationSql(files) {
     [
       "grant execute on function public.get_access_requests_enabled() to authenticated",
       "app-settings getter must have its narrow authenticated grant",
+    ],
+    [
+      "minimum_sync_interval >= interval '15 minutes'",
+      "job sources must enforce the 15-minute minimum interval",
+    ],
+    [
+      "minimum_sync_minutes < 15",
+      "source mutation must enforce the 15-minute minimum interval",
+    ],
+    [
+      "create or replace function public.request_source_ingestion(target_source_id uuid)",
+      "missing bounded administrator ingestion-request function",
+    ],
+    [
+      "create unique index ingestion_requests_one_active_per_source_idx",
+      "missing active ingestion-request coalescing index",
+    ],
+    [
+      "create policy \"administrators read ingestion requests\"",
+      "missing administrator-only ingestion-request read policy",
+    ],
+    [
+      "grant execute on function public.request_source_ingestion(uuid) to authenticated",
+      "ingestion-request function must have its narrow authenticated grant",
     ],
   ];
 

@@ -59,4 +59,20 @@ describe("Supabase foundation static verifier", () => {
       ]),
     );
   });
+
+  it("requires the hardened source interval and coalesced administrator queue", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "job sources must enforce the 15-minute minimum interval",
+        "source mutation must enforce the 15-minute minimum interval",
+        "missing bounded administrator ingestion-request function",
+        "missing active ingestion-request coalescing index",
+        "missing administrator-only ingestion-request read policy",
+      ]),
+    );
+  });
 });
