@@ -37,14 +37,27 @@ const nonGbpCurrencySymbolAdjacentToAmount = new RegExp(
   `(?:(?!£)\\p{Sc})\\s*${amountCandidateSource}${amountEnd}|${amountStart}${amountCandidateSource}\\s*(?!£)\\p{Sc}`,
   "u",
 );
-const nonGbpCurrencyCodeAdjacentToAmount = new RegExp(
-  `\\b(?!GBP\\b)[A-Z]{3}\\s*${amountCandidateSource}${amountEnd}|${amountStart}${amountCandidateSource}\\s*(?!GBP\\b)[A-Z]{3}\\b`,
+const currencyCodeAdjacentToAmountPattern = new RegExp(
+  `\\b([A-Za-z]{3})\\s*${amountCandidateSource}${amountEnd}|${amountStart}${amountCandidateSource}\\s*([A-Za-z]{3})\\b`,
+  "g",
 );
+const supportedCurrencyCodes = new Set(Intl.supportedValuesOf("currency"));
+
+function hasNonGbpCurrencyCodeAdjacentToAmount(raw: string): boolean {
+  for (const match of raw.matchAll(currencyCodeAdjacentToAmountPattern)) {
+    const currencyCode = (match[1] ?? match[2]).toUpperCase();
+    if (currencyCode !== "GBP" && supportedCurrencyCodes.has(currencyCode)) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 function hasUnsupportedCurrencyAdjacentToAmount(raw: string): boolean {
   return (
     nonGbpCurrencySymbolAdjacentToAmount.test(raw) ||
-    nonGbpCurrencyCodeAdjacentToAmount.test(raw)
+    hasNonGbpCurrencyCodeAdjacentToAmount(raw)
   );
 }
 

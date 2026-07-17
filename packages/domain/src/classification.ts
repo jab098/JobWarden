@@ -72,6 +72,8 @@ const nonLocationLabels = new Set([
 const ukAnchorSource = String.raw`(?:United Kingdom|UK|Northern Ireland|Scotland|Wales|England)`;
 const foreignAnchorSource = String.raw`(?:Europe|EU|EEA|USA|US|United States|Canada|Australia|New Zealand|Americas|APAC|EMEA)`;
 const permissionSubjectSource = String.raw`(?:applicants?|candidates?|you)`;
+const applicationSource = String.raw`(?:applications?|requests?)`;
+const ukApplicationTargetSource = String.raw`${ukAnchorSource}\s+(?:applicants?|candidates?|residents?|workers?)`;
 const timeZoneReference =
   /\b(?:Europe|European|United Kingdom|UK)(?:\s+or\s+(?:Europe|European|United Kingdom|UK))*\s+time(?:\s+zones?)?\b/i;
 
@@ -94,6 +96,14 @@ const ukExclusionRules = [
   ),
   new RegExp(
     `\\b(?:the\\s+|this\\s+|our\\s+)?(?:role|position|job|vacancy)\\s+(?:is\\s+not|will\\s+not\\s+be|cannot\\s+be|can't\\s+be|must\\s+not\\s+be|may\\s+not\\s+be)\\s+(?:based|located|available|remote)\\s+(?:in|from|within)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
+    "i",
+  ),
+  new RegExp(
+    `\\b${applicationSource}\\s+from\\s+(?:the\\s+)?${ukApplicationTargetSource}\\s+(?:(?:(?:will|shall)\\s+not\\s+be|(?:are|is)\\s+not)\\s+(?:accepted|considered)|(?:are|is)\\s+(?:rejected|excluded))\\b`,
+    "i",
+  ),
+  new RegExp(
+    `\\b(?:rejects?|do(?:es)?\\s+not\\s+accept)\\s+${applicationSource}\\s+from\\s+(?:the\\s+)?${ukApplicationTargetSource}\\b`,
     "i",
   ),
 ] as const;
@@ -135,7 +145,21 @@ const ukEligibilityRules: readonly {
   },
   {
     pattern: new RegExp(
-      `\\b${ukAnchorSource}\\s+(?:applicants?|candidates?|residents?)\\s+only\\b`,
+      `\\b${ukAnchorSource}\\s+(?:applicants?|candidates?|residents?|workers?)\\s+only\\b`,
+      "i",
+    ),
+    reason: "explicit_uk_remote",
+  },
+  {
+    pattern: new RegExp(
+      `\\b(?:open|available)\\s+to\\s+(?:applicants?|candidates?|residents?)\\s+(?:in|from|within)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
+      "i",
+    ),
+    reason: "explicit_uk_remote",
+  },
+  {
+    pattern: new RegExp(
+      `\\b(?:open|available)\\s+to\\s+(?:the\\s+)?${ukAnchorSource}\\s+(?:applicants?|candidates?|residents?)\\b`,
       "i",
     ),
     reason: "explicit_uk_remote",

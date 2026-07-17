@@ -21,6 +21,13 @@ describe("UK eligibility", () => {
     ],
     ["Remote", "This is a UK-wide remote role", "explicit_uk_remote"],
     ["Remote", "UK applicants only", "explicit_uk_remote"],
+    [
+      "Remote",
+      "This remote role is open to candidates in the UK",
+      "explicit_uk_remote",
+    ],
+    ["Remote", "Open to UK applicants", "explicit_uk_remote"],
+    ["Remote", "UK workers only", "explicit_uk_remote"],
     ["Remote", "Remote — UK residents only", "explicit_uk_remote"],
     [
       "Remote",
@@ -118,6 +125,10 @@ describe("UK eligibility", () => {
     [
       "UK applicants only; UK applicants are excluded",
       "Description: UK applicants are excluded",
+    ],
+    [
+      "UK applicants only; Applications from UK candidates will not be accepted",
+      "Description: Applications from UK candidates will not be accepted",
     ],
   ])(
     "lets an independently expressed UK exclusion outrank positive wording: %s",

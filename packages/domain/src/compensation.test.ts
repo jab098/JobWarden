@@ -23,6 +23,24 @@ describe("compensation parsing", () => {
       },
     ],
     [
+      "£50k OTE per year",
+      {
+        currency: "GBP",
+        minimum: 5_000_000,
+        maximum: null,
+        period: "year",
+      },
+    ],
+    [
+      "£50k DOE per year",
+      {
+        currency: "GBP",
+        minimum: 5_000_000,
+        maximum: null,
+        period: "year",
+      },
+    ],
+    [
       "£450-550 per day",
       {
         currency: "GBP",
@@ -87,6 +105,8 @@ describe("compensation parsing", () => {
     "£100-₹200 per day",
     "100 INR - 200 GBP per day",
     "£100-200 SEK per day",
+    "£100-200 sek per day",
+    "100 inr - 200 GBP per day",
   ])("rejects mixed or unsupported currency input: %s", (raw) => {
     expect(parseCompensation(raw)).toEqual({
       currency: null,
