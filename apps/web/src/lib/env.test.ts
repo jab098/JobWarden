@@ -35,4 +35,31 @@ describe("public environment", () => {
       }),
     ).toThrow();
   });
+
+  it.each([
+    "ftp://jobwarden.example",
+    "https://user:password@jobwarden.example",
+    "https://jobwarden.example/private",
+    "https://jobwarden.example?preview=true",
+    "https://jobwarden.example#fragment",
+  ])(
+    "rejects a site URL that is not an exact HTTP(S) origin: %s",
+    (siteUrl) => {
+      expect(() =>
+        parsePublicEnv({
+          ...validPublicEnv,
+          NEXT_PUBLIC_SITE_URL: siteUrl,
+        }),
+      ).toThrow(/origin/i);
+    },
+  );
+
+  it("normalises an origin-only URL", () => {
+    expect(
+      parsePublicEnv({
+        ...validPublicEnv,
+        NEXT_PUBLIC_SITE_URL: "http://localhost:3000/",
+      }).NEXT_PUBLIC_SITE_URL,
+    ).toBe("http://localhost:3000");
+  });
 });

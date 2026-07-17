@@ -61,7 +61,12 @@ describe("OAuth callback completion", () => {
     const client = oauthClient({});
 
     await expect(
-      completeOAuthCallback(client, "one-time-code", "/admin/access"),
+      completeOAuthCallback(
+        client,
+        "one-time-code",
+        "/admin/access",
+        "https://jobwarden.example",
+      ),
     ).resolves.toEqual({
       kind: "redirect",
       destination: "/admin/access",
@@ -77,19 +82,26 @@ describe("OAuth callback completion", () => {
         oauthClient({}),
         "one-time-code",
         "//attacker.example",
+        "https://jobwarden.example",
       ),
     ).resolves.toEqual({ kind: "redirect", destination: "/jobs" });
   });
 
   it("returns the same generic error for missing and failed codes", async () => {
     await expect(
-      completeOAuthCallback(oauthClient({}), null, "/jobs"),
+      completeOAuthCallback(
+        oauthClient({}),
+        null,
+        "/jobs",
+        "https://jobwarden.example",
+      ),
     ).resolves.toEqual({ kind: "error" });
     await expect(
       completeOAuthCallback(
         oauthClient({ exchangeError: new Error("sensitive provider detail") }),
         "expired-code",
         "/jobs",
+        "https://jobwarden.example",
       ),
     ).resolves.toEqual({ kind: "error" });
   });

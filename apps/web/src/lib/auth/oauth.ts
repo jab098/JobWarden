@@ -36,6 +36,7 @@ export async function completeOAuthCallback(
   client: OAuthClient,
   code: string | null,
   next: string | null,
+  siteOrigin: string,
 ): Promise<{ kind: "redirect"; destination: string } | { kind: "error" }> {
   if (!code) {
     return { kind: "error" };
@@ -47,5 +48,8 @@ export async function completeOAuthCallback(
     return { kind: "error" };
   }
 
-  return { kind: "redirect", destination: getSafeRedirectPath(next) };
+  return {
+    kind: "redirect",
+    destination: getSafeRedirectPath(next, siteOrigin),
+  };
 }

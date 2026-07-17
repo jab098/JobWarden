@@ -29,9 +29,12 @@ Each new behavior began with a focused failing test before the smallest implemen
 | Authentication/access UI | Six state tests failed while components returned no UI | Public, sign-in, pending, rejected, suspended, and closed states passed |
 | Protected UI | Three loading/error/holding tests failed before components existed | All three passed with semantic recovery/status text and no fake job data |
 | Supabase access repository | Three repository tests failed with `Not implemented` | Verified-user, own-row, status validation, RPC, and generic error behavior passed |
-| Real SSR `setAll` contract regression | `TypeError: Cannot convert undefined or null to object` when the factory invoked `setAll(cookies)` | Focused proxy test and TypeScript check passed after matching the one-argument SSR API |
+| SSR cookie/header contract remediation | Independent review identified that `@supabase/ssr@0.12.3` uses `setAll(cookies, headers)` and the implementation had dropped the second argument | Regression coverage passes for Cache-Control/Expires/Pragma and every Next.js-supported cookie option, including `priority` |
+| Callback cache protection | The new response test failed because no no-store response helper existed | Callback redirect response now carries private no-cache/no-store, Expires, and Pragma headers |
+| Redirect canonicalisation | Nine C1, malformed, encoded, double-encoded, and over-depth probes failed | Bounded decoding, C0/C1 rejection, exact-leading-slash checks, configured-origin resolution, and same-origin enforcement pass |
+| Exact public site origin | Six protocol, credential, path/query/fragment, and normalisation cases failed | Only exact HTTP(S) origins pass and the value is normalised to `URL.origin` |
 
-Final focused web result: 7 files, 41 tests passed.
+Initial Task 5 focused web result: 7 files, 41 tests passed. Independent-review remediation added 17 tests and one test file. Final focused result: 8 files, 58 tests passed.
 
 ## Verification evidence
 
@@ -49,17 +52,19 @@ Result:
 - Prettier: passed
 - ESLint: passed
 - workspace TypeScript: passed
-- workspace Vitest: 15 files, 218 tests passed
+- workspace Vitest: 16 files, 235 tests passed
 - project guardrails: passed
 - Next.js production build: passed for `/`, `/access/pending`, `/admin`, `/auth/callback`, `/auth/sign-in`, and `/jobs`
 
 Additional checks:
 
-- `pnpm --filter @jobwarden/web test`: 7 files, 41 tests passed
-- focused proxy regression test plus web typecheck: passed
+- `pnpm --filter @jobwarden/web test`: 8 files, 58 tests passed
+- remediation focus (`env`, `redirects`, `oauth`, auth response, and proxy): 5 files, 37 tests passed
+- focused remediation plus web typecheck: passed
+- production-server callback probe: `307` to the generic failure route with `Cache-Control: private, no-cache, no-store, must-revalidate, max-age=0`, `Expires: 0`, and `Pragma: no-cache`
 - `git diff --check`: passed
 - `pnpm audit --prod`: no known vulnerabilities after pinning the transitive PostCSS resolution to `8.5.19`
-- `gitleaks git --staged --no-banner --redact`: no leaks in 88.78 KB of staged changes
+- `gitleaks git --staged --no-banner --redact`: no leaks in the staged remediation
 - lockfile supply-chain policy: passed; the explicitly required Supabase `2.110.7` family is allowlisted from the minimum-release-age hold
 
 ## Browser verification
@@ -76,11 +81,12 @@ The public and sign-in pages preserve the approved warm-neutral, editorial direc
 
 ## Security and boundary review
 
-- The browser client imports only URL and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+- The browser client imports only the exact configured HTTP(S) site origin, Supabase URL, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 - No legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` is accepted.
 - `SUPABASE_SERVICE_ROLE_KEY` remains a bootstrap compatibility name and is explicitly prohibited from `apps/web/.env.local`.
 - OAuth callback origins come from validated configuration, never request `Host` headers.
-- Callback destinations reject protocol-relative paths, backslashes, control characters, and non-relative URLs.
+- Callback destinations use bounded decode validation and reject malformed encoding, raw/encoded/double-encoded slash or backslash tricks, C0/C1 controls, protocol-relative paths, and cross-origin URLs.
+- Session refresh and callback responses propagate explicit no-cache/no-store headers alongside auth cookies.
 - Session proxy work is cookie refresh only; server layouts and RLS enforce access.
 - Access lookup begins with `auth.getUser()`, scopes the row query to the verified user ID, and checks administrator state through the server-controlled database RPC.
 - Authentication alone grants no protected product data.

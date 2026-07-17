@@ -1,13 +1,7 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import type { PublicEnv } from "@/lib/env";
-
-type CookieToSet = {
-  name: string;
-  value: string;
-  options: CookieOptions;
-};
 
 export type ServerClientFactory = (
   url: string,
@@ -15,7 +9,7 @@ export type ServerClientFactory = (
   options: {
     cookies: {
       getAll(): { name: string; value: string }[];
-      setAll(cookies: CookieToSet[]): void;
+      setAll: SetAllCookies;
     };
   },
 ) => { auth: { getClaims(): Promise<unknown> } };
@@ -32,19 +26,12 @@ export async function refreshSession(
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet, headers) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) => {
-            const sameSite =
-              options.sameSite === true
-                ? "strict"
-                : options.sameSite === false
-                  ? undefined
-                  : options.sameSite;
-
             response.cookies.set(name, value, {
               domain: options.domain,
               expires: options.expires,
@@ -52,9 +39,13 @@ export async function refreshSession(
               maxAge: options.maxAge,
               partitioned: options.partitioned,
               path: options.path,
-              sameSite,
+              priority: options.priority,
+              sameSite: options.sameSite,
               secure: options.secure,
             });
+          });
+          Object.entries(headers).forEach(([name, value]) => {
+            response.headers.set(name, value);
           });
         },
       },

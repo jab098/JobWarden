@@ -251,11 +251,12 @@ Change the generated package name to `@jobwarden/web`; add `typecheck: "tsc --no
 
 - [x] **Step 6: Create safe environment documentation**
 
-Create `.env.example` containing names and descriptions but no values:
+Create `.env.example` containing names and descriptions, with only the safe localhost site-origin default populated:
 
 ```dotenv
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 SUPABASE_PROJECT_REF=
 INGESTION_CRON_SECRET=
@@ -266,7 +267,7 @@ SENTRY_PROJECT=
 ADMIN_BOOTSTRAP_USER_ID=
 ```
 
-Document in `README.md` that `SUPABASE_SERVICE_ROLE_KEY`, `INGESTION_CRON_SECRET`, `SENTRY_AUTH_TOKEN`, and `ADMIN_BOOTSTRAP_USER_ID` are server-only. Add `.env*` exclusions while retaining `.env.example` in `.gitignore`.
+Document in `README.md` that `SUPABASE_SERVICE_ROLE_KEY`, `INGESTION_CRON_SECRET`, `SENTRY_AUTH_TOKEN`, and `ADMIN_BOOTSTRAP_USER_ID` are server-only. `apps/web/.env.local` receives only `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; it never receives a legacy anon key, secret key, or service-role credential. The existing bootstrap command may retain the `SUPABASE_SERVICE_ROLE_KEY` compatibility name but should prefer an `sb_secret_...` value. Add `.env*` exclusions while retaining `.env.example` in `.gitignore`.
 
 - [x] **Step 7: Verify and commit**
 
@@ -709,42 +710,49 @@ git commit -m "feat: secure JobWarden data model"
 
 Install `@supabase/supabase-js@2.110.7`, `@supabase/ssr@0.12.3`, `server-only`, and Zod 4 in `@jobwarden/web`. Add Vitest, jsdom, React Testing Library, `@testing-library/jest-dom`, and `@testing-library/user-event` as development dependencies, then configure `apps/web/vitest.config.ts` with the `@/` alias and a jsdom setup file.
 
-Use separate schemas so importing the client schema cannot expose server values:
+Use one public-only web schema so importing it cannot expose server values:
 
 ```ts
 const publicEnvSchema = z.object({
+  NEXT_PUBLIC_SITE_URL: exactHttpOriginSchema,
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20),
-});
-
-const serverEnvSchema = publicEnvSchema.extend({
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z
+    .string()
+    .regex(/^sb_publishable_[A-Za-z0-9_-]{20,}$/),
 });
 ```
+
+`NEXT_PUBLIC_SITE_URL` must parse to an exact `http:` or `https:` origin with no credentials, non-root path, query, or fragment. Normalise it to `URL.origin`. Do not add a server environment schema to `apps/web`; server-only bootstrap and ingestion credentials stay outside the web application.
 
 Write access tests using an injected repository. Cover unauthenticated -> `/auth/sign-in`, pending/rejected/suspended -> `/access/pending`, approved -> allowed, and admin requirement -> `notFound()` or a safe 404 result.
 
 - [x] **Step 2: Implement cookie-safe Supabase clients**
 
-Use `@supabase/ssr` and the Next.js async `cookies()` API. The browser client receives only URL and anon key. The server client forwards cookie reads/writes and never imports `SUPABASE_SERVICE_ROLE_KEY`.
+Use current `@supabase/ssr` and the Next.js async `cookies()` API. The browser client receives only URL and publishable key. The server client forwards cookie reads/writes and never imports `SUPABASE_SERVICE_ROLE_KEY`.
+
+Add the official session-refresh proxy. Its `setAll(cookies, headers)` implementation must preserve every cookie option supported by Next.js, including `priority`, and must copy Supabase's `Cache-Control`, `Expires`, and `Pragma` headers after recreating `NextResponse`. The proxy refreshes cookies only; it is never an authorisation boundary. Callback responses that can set session cookies must also carry equivalent no-store headers.
 
 Create a separate, explicitly server-only service client only in ingestion/bootstrap code. Add `import "server-only"` to every module that can read server secrets.
 
 - [x] **Step 3: Implement Google OAuth with PKCE and safe redirects**
 
-The sign-in Server Action calls Google OAuth with a callback to `/auth/callback?next=/jobs`. The callback exchanges the code for a session and permits only relative `next` paths beginning with one `/` and not `//`; otherwise it uses `/jobs`. Show generic errors without tokens, provider payloads, or email addresses.
+The sign-in Server Action calls Google OAuth with a callback to `/auth/callback?next=/jobs`, built from `NEXT_PUBLIC_SITE_URL` rather than request `Host` or `X-Forwarded-Host`. The callback exchanges the code for a session. Validate redirect paths across at most two decode layers: require exactly one leading slash; reject malformed encoding, raw/encoded/double-encoded slash or backslash tricks, C0/C1 controls, protocol-relative paths, and external targets; resolve against the configured HTTP(S) origin and enforce the same origin. Invalid values use `/jobs`. Show generic errors without tokens, provider payloads, or email addresses.
 
 - [x] **Step 4: Implement access guards in the protected layout**
 
 Fetch the authenticated user with the server client, then query only the caller's own access row. Redirect on the server before rendering protected content. The admin layout uses a separate `requireAdmin()` helper and does not rely on navigation visibility.
 
-Do not add Next.js middleware as the authorisation boundary. RLS remains authoritative, and layout guards provide navigation and UX protection.
+Do not add Next.js middleware as the authorisation boundary. RLS remains authoritative, and layout guards provide navigation and UX protection. Add a minimal protected `/jobs` destination so the OAuth callback never lands on a 404 before Task 6. Add a separate protected `/admin` layout using `requireAdmin()` before Task 7 supplies the full administrator screens.
 
 - [x] **Step 5: Build designed public, pending, loading, and error states**
 
-Use Geist, neutral surfaces, one blue action colour, keyboard-visible focus, and semantic pending/rejected/suspended messages. The pending page must explain that the owner manually reviews requests and must not imply a subscription, purchase, priority queue, or automatic approval.
+Use Geist, light-first warm-neutral surfaces, dark ink, one restrained blue action colour, asymmetric responsive composition, modest radii, keyboard-visible focus, and semantic public, sign-in, pending, rejected, suspended, closed-beta, loading, error, and protected holding states. Avoid dashboard-card soup, gradients, glass, decorative UK motifs, pricing or premium language, fake job data, and automatic approval claims. The pending page must explain that the owner manually reviews requests and must not imply a subscription, purchase, priority queue, or automatic approval. Keep Geist variables on the root element and use literal Geist family names in the Tailwind v4 theme mapping.
 
 - [x] **Step 6: Verify and commit**
+
+Add `docs/setup/supabase-google-auth.md` with current Supabase project, Google provider, exact callback allowlist, public local environment, migration, first-sign-in, and atomic administrator-bootstrap instructions. Never request secrets in chat. State that live OAuth needs user configuration and that Task 4 remains undeployable until the Docker-backed reset, lint, and pgTAP checks pass.
+
+Update `docs/product/source-coverage.md` without implementing adapters: Reed is a documented API candidate; LinkedIn must not be crawled without express permission; Indeed requires an authorised feed or written permission; Glassdoor requires confirmed access and display/attribution terms.
 
 Run:
 
