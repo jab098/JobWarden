@@ -27,4 +27,40 @@ describe("project guardrails", () => {
     expect(agents).toContain("evidence-bound");
     expect(agents).toContain("advertised, estimated, and unknown");
   });
+
+  it("keeps Resend deferred until the server-only Task 14 boundary", async () => {
+    const guardrail = await readFile(
+      "scripts/check-project-guardrails.mjs",
+      "utf8",
+    );
+    expect(guardrail).toContain('const deferredDependencies = ["resend"]');
+    expect(guardrail).toContain("Task 14");
+    expect(guardrail).toContain("server-only notifications");
+  });
+
+  it("pins the approved matching, scheduling, cost, and preview boundaries", async () => {
+    const [design, roadmap, agents] = await Promise.all([
+      readFile(
+        "docs/superpowers/specs/2026-07-18-personalised-job-search-design.md",
+        "utf8",
+      ),
+      readFile("docs/product/roadmap.md", "utf8"),
+      readFile("AGENTS.md", "utf8"),
+    ]);
+
+    expect(design).toContain("| Demonstrated skills and tools | 45");
+    expect(design).toContain("| Responsibilities and work patterns | 20");
+    expect(design).toContain("| Seniority and experience | 15");
+    expect(design).toContain("| Industry and domain | 10");
+    expect(design).toContain(
+      "| Location, employment, workplace, and IR35 preference fit | 10",
+    );
+    expect(design).toContain("at least 70% weighted overlap");
+    expect(design).toContain("no more than two significant trainable gaps");
+    expect(design).toContain("09:00, 12:00, 15:00, and 18:00 Europe/London");
+    expect(design).toContain("no automatic paid fallback");
+    expect(roadmap).toContain("globally coalesced");
+    expect(agents).toContain("development administrator preview is read-only");
+    expect(agents).toContain("never grants administrator access");
+  });
 });

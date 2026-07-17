@@ -1,18 +1,24 @@
 import { readFile, readdir } from "node:fs/promises";
 import { extname, join } from "node:path";
 
-const forbiddenDependencies = [
+const permanentlyForbiddenDependencies = [
   "@clerk/nextjs",
   "@pinecone-database/pinecone",
   "@stripe/stripe-js",
   "@upstash/redis",
   "clerk",
   "pinecone",
-  "resend",
   "stripe",
 ];
+// Resend remains forbidden until Task 14 delivers server-only notifications,
+// hard daily/monthly free-tier ceilings, and a path-scoped import guard.
+const deferredDependencies = ["resend"];
+const forbiddenDependencies = [
+  ...permanentlyForbiddenDependencies,
+  ...deferredDependencies,
+];
 const forbiddenProductCopy =
-  /\b(billing|checkout|premium account|pricing plan|start trial|upgrade plan)\b/i;
+  /\b(billing|checkout|payments?|premium|pricing|subscribe|subscriptions?|trial|upgrade)\b/i;
 
 async function walk(path) {
   let entries;
@@ -66,7 +72,9 @@ for (const path of dependencyFiles) {
       source.includes(`\"${dependency}\"`) ||
       source.includes(`'${dependency}'`)
     ) {
-      violations.push(`${path}: forbidden dependency ${dependency}`);
+      violations.push(
+        `${path}: ${deferredDependencies.includes(dependency) ? "deferred" : "forbidden"} dependency ${dependency}`,
+      );
     }
   }
   if (

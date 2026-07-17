@@ -5,7 +5,8 @@ This file is the durable cross-session recovery map. Update task status to `revi
 ## Source of truth
 
 - [Approved foundation design](superpowers/specs/2026-07-17-jobwarden-foundation-design.md)
-- [Active implementation plan](superpowers/plans/2026-07-17-jobwarden-foundation.md)
+- [Historical Tasks 1–6 foundation plan](superpowers/plans/2026-07-17-jobwarden-foundation.md)
+- [Active Task 7 implementation plan](superpowers/plans/2026-07-18-task-7-administrator-operations.md)
 - [Shipping standard](standards/shipping-standards.md)
 - [UI direction](design/ui-direction.md)
 - [UK source coverage strategy](product/source-coverage.md)
@@ -76,7 +77,7 @@ Task 6 passed independent full-range review with no remaining critical, importan
 
 ## Approved programme update
 
-On 2026-07-18 the owner approved the personalised-search design and canonical Tasks 7–16 roadmap. The programme adds reviewed CV-derived career profiles, named searches, the Target Feed, deterministic explainable scoring, opt-in high-overlap Explore pathways, compensation provenance, application tracking, bounded weekday digests, and conservative DOCX tailoring. Free-tier ceilings, privacy boundaries, and authentication-before-real-data are permanent constraints. The former foundation Tasks 9–10 are superseded by the more explicit Tasks 9–16 sequence; completed Tasks 1–6 remain unchanged.
+On 2026-07-18 the owner approved the personalised-search design and canonical Tasks 7–16 roadmap. The programme adds reviewed CV-derived career profiles, named searches, the Target Feed, deterministic explainable scoring, opt-in high-overlap Explore pathways, compensation provenance, application tracking, bounded weekday digests, and conservative DOCX tailoring. Free-tier ceilings, privacy boundaries, and authentication-before-real-data are permanent constraints. All unimplemented Task 7–10 sections in the old foundation plan are superseded by the focused active plan and canonical roadmap; completed Tasks 1–6 remain unchanged.
 
 ## Delivery rule
 
@@ -88,4 +89,4 @@ Task 6 delivered the responsive shell, jobs feed, filters, and job detail experi
 
 ## Authentication deferral
 
-The owner explicitly deprioritised authentication setup on 2026-07-17. The reviewed Task 5 code remains intact, but Docker-backed database validation, Supabase/Google connection, administrator bootstrap, and live access-boundary verification no longer block Tasks 6–10. Local work uses the fail-closed design in `docs/superpowers/specs/2026-07-17-authentication-deferral-design.md`. No deployed environment may enable the local bypass, and no task may weaken RLS to compensate for deferred setup.
+The owner explicitly deprioritised authentication setup on 2026-07-17. The reviewed Task 5 code remains intact, but Docker-backed database validation, Supabase/Google connection, administrator bootstrap, and live access-boundary verification do not block fictional local delivery through Tasks 7–15. Any task that handles real user/CV data or claims a live integration must still stop at its documented setup gate; Task 16 activates and verifies production authentication before the private beta accepts real users. Local work uses the fail-closed design in `docs/superpowers/specs/2026-07-17-authentication-deferral-design.md`. No deployed environment may enable the local bypass, and no task may weaken RLS to compensate for deferred setup.

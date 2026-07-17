@@ -1,5 +1,7 @@
 # JobWarden Foundation Implementation Plan
 
+**Status after Task 6:** historical delivery record. Tasks 1–6 are complete. Do not implement the remaining Task 7–10 sections; use `docs/project-status.md`, the canonical product roadmap, and its linked active task plan.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Deliver a GitHub-ready, private-beta vertical slice in which an allowlisted Greenhouse board ingests UK-only jobs into a secured Supabase schema and only administrator-approved users can browse and filter them.
@@ -856,7 +858,7 @@ git commit -m "feat: add approved user jobs feed"
 
 ## Roadmap supersession after Task 6
 
-Tasks 1–6 in this foundation plan are the reviewed historical foundation. On 2026-07-18 the owner approved the expanded [personalised search design](../specs/2026-07-18-personalised-job-search-design.md) and [canonical product roadmap](../../product/roadmap.md). The summaries below remain useful foundation context, but their former Tasks 9–10 sequence is superseded by canonical Tasks 9–16. Create and follow a focused task plan from the canonical roadmap before changing further code.
+Tasks 1–6 in this foundation plan are the reviewed historical foundation. On 2026-07-18 the owner approved the expanded [personalised search design](../specs/2026-07-18-personalised-job-search-design.md) and [canonical product roadmap](../../product/roadmap.md). Every unimplemented Task 7–10 section below is superseded and remains only as historical context. Do not execute those sections. Create and follow the focused active task plan linked from `docs/project-status.md` before changing further code.
 
 ## Task 7: Add audited administrator access, sources, and ingestion screens
 

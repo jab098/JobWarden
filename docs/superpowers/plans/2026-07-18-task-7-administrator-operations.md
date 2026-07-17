@@ -128,7 +128,8 @@ Mutation use cases accept a `MutationContext` with `requestOrigin`, `requestHost
 - Create: `packages/domain/src/admin.test.ts`
 - Modify: `packages/domain/src/index.ts`
 
-**Consumes:** `decideAccessInputSchema` from `packages/domain/src/access.ts`.  
+**Consumes:** `decideAccessInputSchema` from `packages/domain/src/access.ts`.
+
 **Produces:** `saveJobSourceInputSchema`, `requestSourceIngestionInputSchema`, and `getComplianceReviewState` as specified above.
 
 - [ ] **Step 1: Write failing domain tests**
@@ -147,7 +148,7 @@ Expected: FAIL because `./admin` does not exist.
 
 - [ ] **Step 3: Implement the exact schemas and helper**
 
-Use Zod transforms only for trimming and deduplicating already valid values. `allowedHosts` accepts bare lowercase DNS hostnames matching `^[a-z0-9]+([.-][a-z0-9]+)*\.[a-z]{2,}$`; do not accept a URL and strip it. Dates use strict `YYYY-MM-DD`, are real calendar dates, and are not after the injected/current calendar day used during parsing. If deterministic current-date injection is required, expose `createSaveJobSourceInputSchema(today: string)` and export `saveJobSourceInputSchema` using the current UTC date.
+Use Zod transforms only for trimming fields whose surrounding whitespace is not meaningful. Reject duplicate hosts rather than silently deduplicating them. `allowedHosts` accepts bare lowercase DNS hostnames matching `^[a-z0-9]+([.-][a-z0-9]+)*\.[a-z]{2,}$`; do not accept a URL and strip it. Dates use strict `YYYY-MM-DD`, are real calendar dates, and are not after the injected/current calendar day used during parsing. Expose `createSaveJobSourceInputSchema(today: string)` for deterministic parsing and have the Server Action construct it from the server's current UTC calendar date; do not capture the date once at module load.
 
 - [ ] **Step 4: Run focused and package verification**
 
@@ -167,7 +168,7 @@ git commit -m "feat: define administrator operation inputs"
 
 ---
 
-## Task 7.2: Add the audited, coalesced ingestion request queue
+## Task 7.2: Harden the source boundary and add the audited request queue
 
 **Files:**
 
@@ -176,12 +177,13 @@ git commit -m "feat: define administrator operation inputs"
 - Modify if required: `scripts/verify-supabase-foundation.mjs`
 - Modify if required: `scripts/verify-supabase-foundation.test.ts`
 
-**Consumes:** `public.is_admin()`, `job_sources`, `ingestion_source_runs`, and append-only `audit_log`.  
-**Produces:** administrator-readable `ingestion_requests` and `public.request_source_ingestion(uuid)`.
+**Consumes:** `public.is_admin()`, `job_sources`, `ingestion_source_runs`, append-only `audit_log`, and the existing `public.upsert_job_source(...)` RPC.
+
+**Produces:** a database-enforced 15-minute minimum source interval, administrator-readable `ingestion_requests`, and `public.request_source_ingestion(uuid)`.
 
 - [ ] **Step 1: Write the failing pgTAP and static-foundation expectations**
 
-Assert that anon and approved non-admin callers cannot select requests or execute the RPC; administrators can; disabled/missing sources fail; two requests inside the interval return the same request/correlation IDs with states `queued` then `coalesced`; a coalesced request creates no second audit row; and a request after the prior row is completed and the interval has elapsed receives a new ID.
+Assert that a direct administrator call to `upsert_job_source` rejects 14 minutes and accepts 15; existing rows below 15 minutes cannot be stored after migration; anon and approved non-admin callers cannot select requests or execute the request RPC; administrators can; disabled/missing sources fail; two requests inside the interval return the same request/correlation IDs with states `queued` then `coalesced`; a coalesced request creates no second audit row; and a request after the prior row is completed and the interval has elapsed receives a new ID.
 
 - [ ] **Step 2: Run available verification and observe failure**
 
@@ -194,7 +196,9 @@ Expected: the new static expectation fails before the migration exists. If Docke
 
 - [ ] **Step 3: Implement the queue and function**
 
-Use statuses `pending`, `claimed`, `completed`, and `cancelled`; a partial unique index permits one `pending` or `claimed` row per source. Store UUID `correlation_id`, `requested_by`, `requested_at`, optional claim/completion timestamps, and no payload. Acquire a source-scoped advisory transaction lock. Return the active request as `coalesced`; otherwise calculate `eligible_after` from the most recent successful sync/request and insert only when the current time is eligible. If it is too early with no active request, raise SQLSTATE `P0001` and fixed message `source cooldown active`.
+First replace the existing `job_sources_minimum_sync_interval_check` constraint so it requires `minimum_sync_interval >= interval '15 minutes'`, and recreate `public.upsert_job_source(...)` with the same signature/permissions/audit behaviour while changing its integer validation to `minimum_sync_minutes between 15 and 10080`. Do not rely on the web schema as the authoritative interval boundary.
+
+Then use request statuses `pending`, `claimed`, `completed`, and `cancelled`; a partial unique index permits one `pending` or `claimed` row per source. Store UUID `correlation_id`, `requested_by`, `requested_at`, optional claim/completion timestamps, and no payload. Acquire a source-scoped advisory transaction lock. Return the active request as `coalesced`; otherwise calculate `eligible_after` from the most recent successful sync/request and insert only when the current time is eligible. If it is too early with no active request, raise SQLSTATE `P0001` and fixed message `source cooldown active`.
 
 - [ ] **Step 4: Run database-oriented verification**
 
@@ -231,7 +235,8 @@ git commit -m "feat: queue bounded administrator ingestion requests"
 - Create: `apps/web/src/lib/admin/origin.ts`
 - Create: `apps/web/src/lib/admin/origin.test.ts`
 
-**Consumes:** domain inputs and the `AdminRepository` contract.  
+**Consumes:** domain inputs and the `AdminRepository` contract.
+
 **Produces:** `decideAccessRequest`, `changeAccessRequestSetting`, `saveJobSource`, and `queueSourceIngestion` pure async functions for Server Action wrappers.
 
 - [ ] **Step 1: Write failing same-origin tests**
@@ -291,7 +296,8 @@ git commit -m "feat: add trusted administrator action layer"
 - Create: `apps/web/src/lib/admin/development-admin.ts`
 - Create: `apps/web/src/lib/admin/development-admin.test.ts`
 
-**Consumes:** `AdminRepository` and the caller's cookie-bound `createClient()`.  
+**Consumes:** `AdminRepository` and the caller's cookie-bound `createClient()`.
+
 **Produces:** `getAdminRepository()` for production routes and `getDevelopmentAdminSnapshot()` for preview rendering.
 
 - [ ] **Step 1: Write failing Supabase contract tests**
@@ -342,7 +348,8 @@ git commit -m "feat: add administrator data repositories"
 - Create: `apps/web/src/app/(protected)/admin/error.tsx`
 - Create: `apps/web/src/app/(protected)/admin/admin-routes.test.tsx`
 
-**Consumes:** production repository, pure action functions, `requireAdmin()`, and Next `headers/revalidatePath/redirect`.  
+**Consumes:** production repository, pure action functions, `requireAdmin()`, and Next `headers/revalidatePath/redirect`.
+
 **Produces:** protected routes with server-side reads and narrow action wrappers.
 
 - [ ] **Step 1: Write failing route-boundary tests**
@@ -386,7 +393,8 @@ git commit -m "feat: wire protected administrator routes"
 - Create: `apps/web/src/app/development/admin-preview/page.tsx`
 - Create: `apps/web/src/app/development/admin-preview/development-admin-preview.test.tsx`
 
-**Consumes:** view models/actions and fictional preview snapshot.  
+**Consumes:** view models/actions and fictional preview snapshot.
+
 **Produces:** accessible responsive admin UI and an immutable, read-only local visual target.
 
 - [ ] **Step 1: Generate only required shadcn primitives**
@@ -440,7 +448,8 @@ git commit -m "feat: add administrator operations workspace"
 - Create: `docs/reviews/task-7-administrator-operations.md`
 - Modify: `README.md` only if the preview command needs clarification.
 
-**Consumes:** the complete Task 7 implementation.  
+**Consumes:** the complete Task 7 implementation.
+
 **Produces:** reviewable evidence and an accurate handoff.
 
 - [ ] **Step 1: Run focused and complete automated verification**
@@ -496,4 +505,3 @@ git commit -m "docs: record Task 7 delivery"
 - [ ] **Step 7: Publish through a pull request and merge**
 
 Push the feature branch, create a focused pull request, ensure checks pass, merge to GitHub `main`, then fetch and fast-forward the local main checkout. Verify `git rev-parse main` equals `git rev-parse origin/main` before starting Task 8.
-

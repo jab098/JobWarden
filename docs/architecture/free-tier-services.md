@@ -1,6 +1,6 @@
 # Free-Tier Services and Cost Boundaries
 
-**Reviewed:** 2026-07-18  
+**Reviewed:** 2026-07-18
 **Rule:** verify provider limits and data terms again immediately before each live integration. Provider allowances can change.
 
 JobWarden is designed to operate as close to free as practical during private beta. Free-tier-first does not mean “call until a bill appears”: metered paths fail closed at an owner-configured ceiling, preserve deterministic product behaviour, and never opt into paid overage automatically.
@@ -34,6 +34,8 @@ JobWarden is designed to operate as close to free as practical during private be
 - **Pinecone:** unnecessary while Supabase pgvector can serve the product's limited private-beta retrieval needs.
 - **Upstash Redis:** unnecessary until measured workload demonstrates a cache, rate-limit, or queue problem that Postgres and platform primitives cannot responsibly handle.
 - **Clerk/Auth0:** unnecessary because the reviewed architecture already uses Supabase Auth and RLS. Authentication remains deferred locally, not redesigned.
+
+Resend is an approved future exception, not a current dependency. The executable repository guardrail continues to reject it until Task 14 replaces the global ban with a server-only import allowlist limited to the notification adapter and proves daily/monthly ceilings, deduplication, and no client-bundle import.
 
 ## Cost-control pattern
 

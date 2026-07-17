@@ -127,6 +127,8 @@ Acceptance:
 
 Compute new matches after shared weekday runs and send at most one useful digest per enabled slot when new Target Feed matches exist.
 
+Task 14 owns the deliberate Resend guardrail transition. Its first failing tests must prove the existing global dependency ban, then replace it with a server-only path allowlist for the notification adapter; imports from client components, unrelated server modules, or packages remain forbidden.
+
 Acceptance:
 
 - no-match slots send no email;
@@ -134,6 +136,7 @@ Acceptance:
 - unsubscribe, per-profile controls, quiet failure, and delivery status are available;
 - email payloads contain no CV text;
 - daily/monthly delivery guardrails keep the owner below the configured free allowance; and
+- the executable dependency guard rejects Resend everywhere except the reviewed server-only notification adapter; and
 - on-demand refresh cannot create per-user source costs.
 
 ## Task 15 — Evidence-bound CV tailoring

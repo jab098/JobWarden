@@ -1,7 +1,9 @@
 # Personalised UK Job Search Design
 
-**Status:** approved by the owner on 2026-07-18  
-**Product:** JobWarden  
+**Status:** approved by the owner on 2026-07-18
+
+**Product:** JobWarden
+
 **Delivery model:** private beta, administrator-approved access, no pricing or payments
 
 ## Purpose
@@ -205,4 +207,3 @@ The programme is complete when an approved UK user can:
 6. receive bounded weekday digests only for genuinely new matches;
 7. request a truthful, layout-preserving tailored DOCX and approve its changes; and
 8. delete their stored CV and derived personal data through a documented, verified path.
-
