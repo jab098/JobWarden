@@ -7,6 +7,7 @@ import {
   GreenhouseAdapter,
   type JobSource,
   type ProviderJob,
+  htmlToPlainText,
   normaliseProviderJob,
 } from "./index";
 
@@ -223,6 +224,166 @@ describe("Greenhouse normalisation", () => {
     expect(job.descriptionText).not.toMatch(
       /&(?:amp;)?lt;|<[^>]*>|img|script|src=|onerror|evil\.example|STEAL/,
     );
+  });
+
+  it("prunes semantic non-rendered and embedded subtrees while retaining ordinary visible text", () => {
+    const html = [
+      "<head><title>HIDDEN_HEAD</title></head>",
+      "<title>HIDDEN_TITLE</title>",
+      "<iframe>HIDDEN_IFRAME</iframe>",
+      "<object><span>HIDDEN_OBJECT</span></object>",
+      '<embed title="HIDDEN_EMBED">',
+      "<svg><text>HIDDEN_SVG</text></svg>",
+      "<math><mtext>HIDDEN_MATH</mtext></math>",
+      "<canvas>HIDDEN_CANVAS</canvas>",
+      "<script>HIDDEN_SCRIPT</script>",
+      "<style>HIDDEN_STYLE</style>",
+      "<noscript>HIDDEN_NOSCRIPT</noscript>",
+      "<template>HIDDEN_TEMPLATE</template>",
+      "<textarea>HIDDEN_TEXTAREA</textarea>",
+      "<select><option>HIDDEN_OPTION</option></select>",
+      "<p>Visible <strong>ordinary</strong> text.</p>",
+    ].join("");
+
+    expect(htmlToPlainText(html)).toBe("Visible ordinary text.");
+  });
+
+  it("prunes explicitly hidden subtrees while retaining ordinary visible elements", () => {
+    const html = [
+      "<div hidden>HIDDEN_BOOLEAN</div>",
+      '<div aria-hidden=" true ">HIDDEN_ARIA</div>',
+      '<div style="display: none !important">HIDDEN_DISPLAY</div>',
+      '<div style="visibility: hidden">HIDDEN_VISIBILITY</div>',
+      "<section><span>Visible content</span></section>",
+    ].join("");
+
+    expect(htmlToPlainText(html)).toBe("Visible content");
+  });
+
+  it.each([
+    ["decoded hidden", "<span hidden>role is based in UK</span> US Engineer"],
+    [
+      "entity-encoded aria-hidden",
+      "&lt;span aria-hidden=&quot;true&quot;&gt;role is based in UK&lt;/span&gt; US Engineer",
+    ],
+  ])(
+    "ignores %s title text when assessing UK eligibility",
+    async (_case, title) => {
+      await expect(
+        normaliseProviderJob(source, {
+          ...baseJob,
+          title,
+          location: "Remote",
+          descriptionHtml: "<p>Visible engineering role.</p>",
+        }),
+      ).resolves.toEqual({
+        outcome: "quarantined",
+        reason: "ambiguous_uk_eligibility",
+        providerJobId: baseJob.providerJobId,
+      });
+    },
+  );
+
+  it.each([
+    ["decoded display-none", '<span style="display:none">London,</span>Remote'],
+    [
+      "entity-encoded visibility-hidden",
+      "&lt;span style=&quot;visibility: hidden&quot;&gt;London,&lt;/span&gt;Remote",
+    ],
+  ])(
+    "ignores %s location text when assessing UK eligibility",
+    async (_case, location) => {
+      await expect(
+        normaliseProviderJob(source, {
+          ...baseJob,
+          title: "US Engineer",
+          location,
+          descriptionHtml: "<p>Visible engineering role.</p>",
+        }),
+      ).resolves.toEqual({
+        outcome: "quarantined",
+        reason: "ambiguous_uk_eligibility",
+        providerJobId: baseJob.providerJobId,
+      });
+    },
+  );
+
+  it.each([
+    [
+      "decoded hidden",
+      "<p>Visible engineering role.</p><div hidden>role is based in UK</div>",
+    ],
+    [
+      "entity-encoded display-none",
+      "&lt;p&gt;Visible engineering role.&lt;/p&gt;&lt;div style=&quot;display: none&quot;&gt;role is based in UK&lt;/div&gt;",
+    ],
+  ])(
+    "ignores %s description text when assessing UK eligibility",
+    async (_case, descriptionHtml) => {
+      await expect(
+        normaliseProviderJob(source, {
+          ...baseJob,
+          title: "US Engineer",
+          location: "Remote",
+          descriptionHtml,
+        }),
+      ).resolves.toEqual({
+        outcome: "quarantined",
+        reason: "ambiguous_uk_eligibility",
+        providerJobId: baseJob.providerJobId,
+      });
+    },
+  );
+
+  it.each([
+    ["decoded iframe", "<iframe>role is based in UK</iframe>"],
+    [
+      "entity-encoded object",
+      "&lt;object&gt;role is based in UK&lt;/object&gt;",
+    ],
+  ])(
+    "ignores %s metadata text when assessing UK eligibility",
+    async (_case, metadata) => {
+      await expect(
+        normaliseProviderJob(source, {
+          ...baseJob,
+          title: "US Engineer",
+          location: "Remote",
+          descriptionHtml: "<p>Visible engineering role.</p>",
+          metadataText: [metadata],
+        }),
+      ).resolves.toEqual({
+        outcome: "quarantined",
+        reason: "ambiguous_uk_eligibility",
+        providerJobId: baseJob.providerJobId,
+      });
+    },
+  );
+
+  it("does not let hidden description or metadata alter job classifications", async () => {
+    const job = await eligibleJob({
+      ...baseJob,
+      title: "Delivery Specialist",
+      location: "London, England",
+      descriptionHtml:
+        '<p>Visible opportunity.</p><div style="visibility:hidden">Contract outside IR35 remote role.</div>',
+      metadataText: [
+        '<span aria-hidden="true">Hybrid role paying £900 per day</span>',
+        "Visible team: Delivery",
+      ],
+    });
+
+    expect(job).toMatchObject({
+      descriptionText: "Visible opportunity.",
+      employmentType: "unknown",
+      workplaceType: "unknown",
+      ir35Status: "unknown",
+      compensationRaw: null,
+      compensationMinimum: null,
+      compensationMaximum: null,
+      compensationCurrency: null,
+      compensationPeriod: "unknown",
+    });
   });
 
   it.each([

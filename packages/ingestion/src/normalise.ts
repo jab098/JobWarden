@@ -12,12 +12,23 @@ import { hashNormalisedJobContent } from "./hash";
 import type { JobSource, NormalisationResult, ProviderJob } from "./types";
 
 const nonTextTags = [
+  "head",
+  "title",
+  "iframe",
+  "object",
+  "embed",
+  "svg",
+  "math",
+  "canvas",
   "script",
   "style",
   "noscript",
   "template",
   "textarea",
   "option",
+  "xmp",
+  "noembed",
+  "noframes",
 ] as const;
 const maximumEntityNormalisationPasses = 8;
 
@@ -59,6 +70,44 @@ function decodeEntities(value: string): string {
   );
 }
 
+function styleHidesSubtree(style: string | undefined): boolean {
+  if (!style) return false;
+
+  const declarations = style
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .toLowerCase()
+    .split(";");
+
+  return declarations.some((declaration) => {
+    const separator = declaration.indexOf(":");
+    if (separator === -1) return false;
+
+    const property = declaration.slice(0, separator).trim();
+    const value = declaration
+      .slice(separator + 1)
+      .replace(/\s*!important\s*$/u, "")
+      .trim();
+
+    return (
+      (property === "display" && value === "none") ||
+      (property === "visibility" &&
+        (value === "hidden" || value === "collapse")) ||
+      (property === "content-visibility" && value === "hidden")
+    );
+  });
+}
+
+function explicitlyHidesSubtree(
+  attributes: Readonly<Record<string, string>>,
+): boolean {
+  return (
+    Object.hasOwn(attributes, "hidden") ||
+    Object.hasOwn(attributes, "inert") ||
+    attributes["aria-hidden"]?.trim().toLowerCase() === "true" ||
+    styleHidesSubtree(attributes.style)
+  );
+}
+
 function sanitiseMarkup(value: string): string {
   const withBlockBoundaries = value.replace(blockTagPattern, " $& ");
   return sanitizeHtml(withBlockBoundaries, {
@@ -66,6 +115,12 @@ function sanitiseMarkup(value: string): string {
     allowedAttributes: {},
     nonTextTags: [...nonTextTags],
     parser: { decodeEntities: true },
+    transformTags: {
+      "*": (tagName, attributes) =>
+        explicitlyHidesSubtree(attributes)
+          ? { tagName: "template", attribs: {} }
+          : { tagName, attribs: attributes },
+    },
   });
 }
 
