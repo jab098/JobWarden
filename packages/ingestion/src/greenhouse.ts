@@ -61,6 +61,7 @@ export type GreenhouseAdapterOptions = {
   fetch?: typeof fetch;
   sleep?: Sleep;
   random?: () => number;
+  now?: () => number;
   createTimeoutSignal?: (milliseconds: number) => AbortSignal;
   timeoutMs?: number;
   maxRetryAfterMs?: number;
@@ -100,6 +101,7 @@ export class GreenhouseAdapter implements ProviderAdapter {
   readonly #fetch: typeof fetch;
   readonly #sleep: Sleep;
   readonly #random: () => number;
+  readonly #now: () => number;
   readonly #createTimeoutSignal: (milliseconds: number) => AbortSignal;
   readonly #timeoutMs: number;
   readonly #maxRetryAfterMs: number;
@@ -108,6 +110,7 @@ export class GreenhouseAdapter implements ProviderAdapter {
     this.#fetch = options.fetch ?? globalThis.fetch;
     this.#sleep = options.sleep ?? sleep;
     this.#random = options.random ?? Math.random;
+    this.#now = options.now ?? Date.now;
     this.#createTimeoutSignal =
       options.createTimeoutSignal ??
       ((milliseconds) => AbortSignal.timeout(milliseconds));
@@ -127,6 +130,7 @@ export class GreenhouseAdapter implements ProviderAdapter {
       retryAfter,
       maximumRetryAfterMilliseconds: this.#maxRetryAfterMs,
       random: this.#random,
+      now: this.#now,
     });
 
     try {
@@ -139,6 +143,25 @@ export class GreenhouseAdapter implements ProviderAdapter {
         attempts,
       );
     }
+  }
+
+  async #retryTransportFailure(
+    code: "timeout" | "network_error",
+    retryNumber: number,
+    attempts: number,
+    callerSignal?: AbortSignal,
+  ): Promise<void> {
+    if (attempts === MAX_ATTEMPTS) {
+      throw new AdapterError(
+        code,
+        code === "timeout"
+          ? "Greenhouse request timed out after bounded retries."
+          : "Greenhouse request failed after bounded retries.",
+        attempts,
+      );
+    }
+
+    await this.#waitBeforeRetry(retryNumber, null, attempts, callerSignal);
   }
 
   async fetchJobs(
@@ -175,17 +198,12 @@ export class GreenhouseAdapter implements ProviderAdapter {
         if (callerSignal?.aborted) throw callerAborted(attempts);
 
         const code = timeoutSignal.aborted ? "timeout" : "network_error";
-        if (attempts === MAX_ATTEMPTS) {
-          throw new AdapterError(
-            code,
-            code === "timeout"
-              ? "Greenhouse request timed out after bounded retries."
-              : "Greenhouse request failed after bounded retries.",
-            attempts,
-          );
-        }
-
-        await this.#waitBeforeRetry(retryNumber, null, attempts, callerSignal);
+        await this.#retryTransportFailure(
+          code,
+          retryNumber,
+          attempts,
+          callerSignal,
+        );
         continue;
       }
 
@@ -210,19 +228,43 @@ export class GreenhouseAdapter implements ProviderAdapter {
         );
       }
 
-      let untrustedPayload: unknown;
+      let responseBody: string;
       try {
-        untrustedPayload = await response.json();
+        responseBody = await response.text();
       } catch {
         if (callerSignal?.aborted) throw callerAborted(attempts);
-        throw new AdapterError(
-          "invalid_response",
-          "Greenhouse returned an invalid JSON response.",
+
+        const code = timeoutSignal.aborted ? "timeout" : "network_error";
+        await this.#retryTransportFailure(
+          code,
+          retryNumber,
           attempts,
+          callerSignal,
         );
+        continue;
       }
 
       if (callerSignal?.aborted) throw callerAborted(attempts);
+      if (timeoutSignal.aborted) {
+        await this.#retryTransportFailure(
+          "timeout",
+          retryNumber,
+          attempts,
+          callerSignal,
+        );
+        continue;
+      }
+
+      let untrustedPayload: unknown;
+      try {
+        untrustedPayload = JSON.parse(responseBody) as unknown;
+      } catch {
+        throw new AdapterError(
+          "invalid_response",
+          "Greenhouse returned invalid JSON syntax.",
+          attempts,
+        );
+      }
 
       const result = greenhouseResponseSchema.safeParse(untrustedPayload);
       if (!result.success) {

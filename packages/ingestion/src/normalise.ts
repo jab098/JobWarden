@@ -32,11 +32,20 @@ const encodedCharacters: Readonly<Record<string, string>> = {
   quot: '"',
 };
 
-function decodeSanitizerEntities(value: string): string {
+function decodeEntities(value: string, decodeAngleBrackets: boolean): string {
   return value.replace(
     /&(?:#(\d+)|#x([\da-f]+)|(amp|apos|gt|lt|nbsp|quot));/gi,
     (entity, decimal: string, hexadecimal: string, named: string) => {
-      if (named) return encodedCharacters[named.toLowerCase()] ?? entity;
+      if (named) {
+        const normalisedName = named.toLowerCase();
+        if (
+          !decodeAngleBrackets &&
+          (normalisedName === "lt" || normalisedName === "gt")
+        ) {
+          return entity;
+        }
+        return encodedCharacters[normalisedName] ?? entity;
+      }
 
       const codePoint = Number.parseInt(
         decimal || hexadecimal,
@@ -50,13 +59,20 @@ function decodeSanitizerEntities(value: string): string {
       ) {
         return "�";
       }
+      if (!decodeAngleBrackets && (codePoint === 60 || codePoint === 62)) {
+        return entity;
+      }
       return String.fromCodePoint(codePoint);
     },
   );
 }
 
 export function htmlToPlainText(html: string): string {
-  const withBlockBoundaries = html.replace(blockTagPattern, " $& ");
+  const providerDecodedHtml = decodeEntities(html, true);
+  const withBlockBoundaries = providerDecodedHtml.replace(
+    blockTagPattern,
+    " $& ",
+  );
   const text = sanitizeHtml(withBlockBoundaries, {
     allowedTags: [],
     allowedAttributes: {},
@@ -64,7 +80,7 @@ export function htmlToPlainText(html: string): string {
     parser: { decodeEntities: true },
   });
 
-  return decodeSanitizerEntities(text).replace(/\s+/gu, " ").trim();
+  return decodeEntities(text, false).replace(/\s+/gu, " ").trim();
 }
 
 function compareText(left: string, right: string): number {

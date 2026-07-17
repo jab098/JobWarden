@@ -153,6 +153,45 @@ describe("Greenhouse read-only adapter", () => {
     expect(sleeps).toEqual([2_000]);
   });
 
+  it.each([
+    ["delay-seconds", "12", 30_000, 12_000],
+    ["a future HTTP-date", "Fri, 17 Jul 2026 12:00:05 GMT", 30_000, 5_000],
+    ["a past HTTP-date", "Fri, 17 Jul 2026 11:59:55 GMT", 30_000, 0],
+    [
+      "a capped far-future HTTP-date",
+      "Sat, 17 Jul 2027 12:00:00 GMT",
+      2_000,
+      2_000,
+    ],
+    ["an invalid value", "Friday soon", 30_000, 125],
+  ] as const)(
+    "interprets Retry-After from %s deterministically",
+    async (_case, retryAfter, maximum, expectedDelay) => {
+      const sleeps: number[] = [];
+      let attempts = 0;
+      const fetchImplementation: typeof fetch = async () => {
+        attempts += 1;
+        if (attempts === 1) {
+          return new Response("rate limited private body", {
+            status: 429,
+            headers: { "retry-after": retryAfter },
+          });
+        }
+        return response({ jobs: [] });
+      };
+
+      await adapterWith(fetchImplementation, {
+        now: () => Date.UTC(2026, 6, 17, 12, 0, 0),
+        maxRetryAfterMs: maximum,
+        sleep: async (milliseconds) => {
+          sleeps.push(milliseconds);
+        },
+      }).fetchJobs(source);
+
+      expect(sleeps).toEqual([expectedDelay]);
+    },
+  );
+
   it("does not retry a non-transient 403 or expose its body", async () => {
     let attempts = 0;
     const privateBody = "AUTHORIZATION=private-value";
@@ -219,6 +258,116 @@ describe("Greenhouse read-only adapter", () => {
     expect(timeoutDurations).toEqual([8_000, 8_000, 8_000]);
     expect(error).toMatchObject({ code: "timeout", attempts: 3 });
     expect((error as Error).message).not.toContain("private timeout details");
+  });
+
+  it("retries an internal timeout while reading the response body", async () => {
+    const privateDetails = "PRIVATE_POST_HEADERS_TIMEOUT";
+    let attempts = 0;
+    let timeoutController: AbortController | undefined;
+    const failBodyRead = async (): Promise<never> => {
+      timeoutController?.abort(
+        new DOMException(privateDetails, "TimeoutError"),
+      );
+      throw new DOMException(privateDetails, "AbortError");
+    };
+    const responseAfterHeaders = {
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: failBodyRead,
+      text: failBodyRead,
+    } as unknown as Response;
+
+    const error = await adapterWith(
+      async () => {
+        attempts += 1;
+        return responseAfterHeaders;
+      },
+      {
+        createTimeoutSignal: () => {
+          timeoutController = new AbortController();
+          return timeoutController.signal;
+        },
+      },
+    )
+      .fetchJobs(source)
+      .catch((caught: unknown) => caught);
+
+    expect(attempts).toBe(3);
+    expect(error).toMatchObject({ code: "timeout", attempts: 3 });
+    expect(JSON.stringify(error)).not.toContain(privateDetails);
+    expect((error as Error).message).not.toContain(privateDetails);
+  });
+
+  it("retries response-body stream failures as network errors", async () => {
+    const privateDetails = "PRIVATE_STREAM_CONNECTION_FAILURE";
+    let attempts = 0;
+    const failBodyRead = async (): Promise<never> => {
+      throw new TypeError(privateDetails);
+    };
+    const responseAfterHeaders = {
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: failBodyRead,
+      text: failBodyRead,
+    } as unknown as Response;
+
+    const error = await adapterWith(async () => {
+      attempts += 1;
+      return responseAfterHeaders;
+    })
+      .fetchJobs(source)
+      .catch((caught: unknown) => caught);
+
+    expect(attempts).toBe(3);
+    expect(error).toMatchObject({ code: "network_error", attempts: 3 });
+    expect(JSON.stringify(error)).not.toContain(privateDetails);
+    expect((error as Error).message).not.toContain(privateDetails);
+  });
+
+  it("does not retry malformed JSON after a successful body read", async () => {
+    let attempts = 0;
+    const error = await adapterWith(async () => {
+      attempts += 1;
+      return new Response('{"jobs": invalid}', {
+        headers: { "content-type": "application/json" },
+      });
+    })
+      .fetchJobs(source)
+      .catch((caught: unknown) => caught);
+
+    expect(attempts).toBe(1);
+    expect(error).toMatchObject({ code: "invalid_response", attempts: 1 });
+  });
+
+  it("lets caller abort win during response-body reading without retry", async () => {
+    const privateDetails = "PRIVATE_CALLER_BODY_ABORT";
+    const caller = new AbortController();
+    let attempts = 0;
+    const failBodyRead = async (): Promise<never> => {
+      caller.abort(new Error(privateDetails));
+      throw new TypeError(privateDetails);
+    };
+    const responseAfterHeaders = {
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: failBodyRead,
+      text: failBodyRead,
+    } as unknown as Response;
+
+    const error = await adapterWith(async () => {
+      attempts += 1;
+      return responseAfterHeaders;
+    })
+      .fetchJobs(source, caller.signal)
+      .catch((caught: unknown) => caught);
+
+    expect(attempts).toBe(1);
+    expect(error).toMatchObject({ code: "aborted", attempts: 1 });
+    expect(JSON.stringify(error)).not.toContain(privateDetails);
+    expect((error as Error).message).not.toContain(privateDetails);
   });
 
   it("stops immediately without retrying when the caller has aborted", async () => {
