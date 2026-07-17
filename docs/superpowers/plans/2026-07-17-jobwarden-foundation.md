@@ -49,11 +49,11 @@
 - Create: `tests/guardrails/vitest.config.ts`
 - Generate: `apps/web/**`
 
-- [ ] **Step 1: Copy the persistent source material before generating code**
+- [x] **Step 1: Copy the persistent source material before generating code**
 
 Use `apply_patch` to create `docs/standards/shipping-standards.md` with the exact contents of `/Users/jabed/Documents/Main Notes/Personal/Development/shipping-standards-prompt.md`. Create `docs/product/vision.md` as a short pointer to the approved product summary and invariants in the design spec. Do not paraphrase or shorten the shipping standard.
 
-- [ ] **Step 2: Write the failing repository guardrail test**
+- [x] **Step 2: Write the failing repository guardrail test**
 
 Create `tests/guardrails/project-guardrails.test.ts`:
 
@@ -83,7 +83,7 @@ describe("project guardrails", () => {
 });
 ```
 
-- [ ] **Step 3: Add the root workspace configuration and run the test to prove it fails**
+- [x] **Step 3: Add the root workspace configuration and run the test to prove it fails**
 
 Create `package.json`:
 
@@ -154,7 +154,7 @@ pnpm vitest run --config tests/guardrails/vitest.config.ts
 
 Expected: failure because `AGENTS.md` and `CLAUDE.md` do not exist yet.
 
-- [ ] **Step 4: Add agent instructions and the executable guardrail**
+- [x] **Step 4: Add agent instructions and the executable guardrail**
 
 Create `AGENTS.md` with these exact mandatory statements:
 
@@ -235,7 +235,7 @@ console.log("Project guardrails passed");
 
 Create `docs/project-status.md` as the durable cross-session handoff. It must link the approved specification, active implementation plan, shipping standard, and architecture records; list Tasks 1–10 with `pending`, `in progress`, or `reviewed` status; record the current branch and last reviewed commit; name the next task; and record the exact verification commands last run. Update this file only after a task's independent review is clean so future agents can trust it as the repository recovery map.
 
-- [ ] **Step 5: Generate the Next.js application without replacing repository documents**
+- [x] **Step 5: Generate the Next.js application without replacing repository documents**
 
 Run:
 
@@ -249,7 +249,7 @@ pnpm install
 
 Change the generated package name to `@jobwarden/web`; add `typecheck: "tsc --noEmit"` and `lint: "eslint ."`; keep Next.js at `16.2.10` and React at `19.2.7`. Extend `tsconfig.base.json` from each package rather than duplicating strict settings. Keep Geist variables on the root `<html>` element and map Tailwind's `--font-sans` and `--font-mono` to literal `var(--font-geist-sans)` and `var(--font-geist-mono)` values in `@theme inline` so the generated shadcn theme does not override them.
 
-- [ ] **Step 6: Create safe environment documentation**
+- [x] **Step 6: Create safe environment documentation**
 
 Create `.env.example` containing names and descriptions but no values:
 
@@ -268,7 +268,7 @@ ADMIN_BOOTSTRAP_USER_ID=
 
 Document in `README.md` that `SUPABASE_SERVICE_ROLE_KEY`, `INGESTION_CRON_SECRET`, `SENTRY_AUTH_TOKEN`, and `ADMIN_BOOTSTRAP_USER_ID` are server-only. Add `.env*` exclusions while retaining `.env.example` in `.gitignore`.
 
-- [ ] **Step 7: Verify and commit**
+- [x] **Step 7: Verify and commit**
 
 Run:
 
@@ -307,7 +307,7 @@ git commit -m "chore: scaffold JobWarden workspace"
 - Create: `packages/domain/src/compensation.test.ts`
 - Create: `packages/domain/src/access.test.ts`
 
-- [ ] **Step 1: Create the package and write failing domain tests**
+- [x] **Step 1: Create the package and write failing domain tests**
 
 Set package name to `@jobwarden/domain`, publish no files, use ESM, and expose `./src/index.ts`. Add Zod 4 as its only runtime dependency.
 
@@ -344,7 +344,7 @@ pnpm --filter @jobwarden/domain test
 
 Expected: failure because the classifiers do not exist.
 
-- [ ] **Step 2: Add exact schemas and exported types**
+- [x] **Step 2: Add exact schemas and exported types**
 
 Implement the Zod constants in `job.ts`:
 
@@ -386,7 +386,7 @@ export const normalisedJobSchema = z.object({
 export type NormalisedJob = z.infer<typeof normalisedJobSchema>;
 ```
 
-- [ ] **Step 3: Implement evidence-based classifiers**
+- [x] **Step 3: Implement evidence-based classifiers**
 
 `classifyUkEligibility` returns `{ eligible, evidence, reason }`, where `reason` is one of `explicit_uk_location`, `explicit_uk_remote`, `non_uk`, or `ambiguous`. Use word-boundary patterns for all four nations, `United Kingdom`, `UK`, recognised UK regions, and UK-wide remote phrases. A bare `Remote` is ambiguous and rejected.
 
@@ -394,7 +394,7 @@ Run the false-positive cases `Ukraine`, `UK time preferred`, `Europe or UK time 
 
 Implement order-specific employment rules so `fixed-term contract` maps to `fixed_term` before the general `contract` rule. `inside IR35` and `outside IR35` are the only status-setting phrases; `IR35 status to be determined` remains `unknown`.
 
-- [ ] **Step 4: Implement the access transition state machine**
+- [x] **Step 4: Implement the access transition state machine**
 
 Create `access.ts`:
 
@@ -425,7 +425,7 @@ export const decideAccessInputSchema = z.object({
 
 Test every allowed transition and reject self-transitions plus all other combinations.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run:
 
