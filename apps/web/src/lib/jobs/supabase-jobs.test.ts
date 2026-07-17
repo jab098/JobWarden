@@ -135,7 +135,68 @@ describe("RLS-bound Supabase jobs list", () => {
     expect(builder.range).toHaveBeenCalledWith(25, 49);
   });
 
-  it("keeps adversarial search text literal inside raw PostgREST or syntax", async () => {
+  it.each([
+    {
+      label: "comma",
+      input: ",",
+      expected: `title.ilike."%,%",employer.ilike."%,%"`,
+    },
+    {
+      label: "parentheses",
+      input: "()",
+      expected: `title.ilike."%()%",employer.ilike."%()%"`,
+    },
+    {
+      label: "colon",
+      input: ":",
+      expected: `title.ilike."%:%",employer.ilike."%:%"`,
+    },
+    {
+      label: "dot",
+      input: ".",
+      expected: `title.ilike."%.%",employer.ilike."%.%"`,
+    },
+    {
+      label: "double quote",
+      input: `"`,
+      expected: String.raw`title.ilike."%\"%",employer.ilike."%\"%"`,
+    },
+    {
+      label: "backslash",
+      input: "\\",
+      expected: String.raw`title.ilike."%\\\\%",employer.ilike."%\\\\%"`,
+    },
+    {
+      label: "percent",
+      input: "%",
+      expected: String.raw`title.ilike."%\\%%",employer.ilike."%\\%%"`,
+    },
+    {
+      label: "underscore",
+      input: "_",
+      expected: String.raw`title.ilike."%\\_%",employer.ilike."%\\_%"`,
+    },
+    {
+      label: "combined backslash, percent, and underscore",
+      input: String.raw`\%_`,
+      expected: String.raw`title.ilike."%\\\\\\%\\_%",employer.ilike."%\\\\\\%\\_%"`,
+    },
+  ])(
+    "keeps $label literal inside raw PostgREST or syntax",
+    async ({ input, expected }) => {
+      const builder = createBuilder({ data: [], error: null, count: 0 });
+      const client = { from: vi.fn().mockReturnValue(builder) };
+
+      await createSupabaseJobsRepository(client).list({
+        ...allFilters,
+        q: input,
+      });
+
+      expect(builder.or).toHaveBeenCalledWith(expected);
+    },
+  );
+
+  it("keeps a combined hostile search literal inside raw PostgREST or syntax", async () => {
     const builder = createBuilder({ data: [], error: null, count: 0 });
     const client = { from: vi.fn().mockReturnValue(builder) };
     const hostileSearch = String.raw`50%_ "platform"\,(or.id.eq.00000000-0000-0000-0000-000000000000)`;
@@ -145,7 +206,7 @@ describe("RLS-bound Supabase jobs list", () => {
       q: hostileSearch,
     });
 
-    const escapedPattern = String.raw`%50\%\_ \"platform\"\\,(or.id.eq.00000000-0000-0000-0000-000000000000)%`;
+    const escapedPattern = String.raw`%50\\%\\_ \"platform\"\\\\,(or.id.eq.00000000-0000-0000-0000-000000000000)%`;
     expect(builder.or).toHaveBeenCalledWith(
       `title.ilike."${escapedPattern}",employer.ilike."${escapedPattern}"`,
     );
@@ -174,6 +235,35 @@ describe("RLS-bound Supabase jobs list", () => {
       "UK location not specified",
     ]);
     expect(result.latestListingUpdate).toBe("2026-07-17T09:00:00.000Z");
+  });
+
+  it("ignores whitespace-only locations before deterministic selection", async () => {
+    const builder = createBuilder({
+      data: [
+        {
+          ...listRow,
+          job_locations: [
+            { raw_location: "   " },
+            { raw_location: "Edinburgh, Scotland" },
+          ],
+        },
+        {
+          ...listRow,
+          id: "d10b4459-e154-41ed-8bce-dac32eb9c5e0",
+          job_locations: [{ raw_location: "\t" }],
+        },
+      ],
+      error: null,
+      count: 2,
+    });
+    const client = { from: vi.fn().mockReturnValue(builder) };
+
+    const result = await createSupabaseJobsRepository(client).list(allFilters);
+
+    expect(result.items.map((item) => item.location)).toEqual([
+      "Edinburgh, Scotland",
+      "UK location not specified",
+    ]);
   });
 
   it.each([

@@ -92,6 +92,20 @@ describe("fictional development jobs", () => {
     });
   });
 
+  it.each(["north%", "north_", "north\\"])(
+    "treats search punctuation literally for fixture parity: %s",
+    async (q) => {
+      const repository = createDevelopmentJobsRepository();
+
+      await expect(
+        repository.list({ ...allFilters, q }),
+      ).resolves.toMatchObject({
+        items: [],
+        total: 0,
+      });
+    },
+  );
+
   it("covers the UK employment and contract states needed for local UI work", async () => {
     const repository = createDevelopmentJobsRepository();
     const result = await repository.list(allFilters);

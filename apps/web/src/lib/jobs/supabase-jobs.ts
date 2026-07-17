@@ -98,6 +98,7 @@ function selectLocation(
   return (
     locations
       ?.map((location) => location.raw_location.trim())
+      .filter((location) => location.length > 0)
       .toSorted((left, right) => left.localeCompare(right, "en-GB"))[0] ??
     "UK location not specified"
   );
@@ -132,16 +133,20 @@ function toDetail(row: DetailRow): JobDetail {
   };
 }
 
-function escapePostgrestLikePattern(value: string): string {
+function escapeSqlLikeLiteral(value: string): string {
   return value
     .replaceAll("\\", "\\\\")
     .replaceAll("%", "\\%")
-    .replaceAll("_", "\\_")
-    .replaceAll('"', '\\"');
+    .replaceAll("_", "\\_");
+}
+
+function escapePostgrestQuotedValue(value: string): string {
+  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
 function createSearchFilter(value: string): string {
-  const pattern = `%${escapePostgrestLikePattern(value)}%`;
+  const sqlLikePattern = `%${escapeSqlLikeLiteral(value)}%`;
+  const pattern = escapePostgrestQuotedValue(sqlLikePattern);
   return `title.ilike."${pattern}",employer.ilike."${pattern}"`;
 }
 
