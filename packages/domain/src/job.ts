@@ -11,6 +11,8 @@ export const employmentTypes = [
   "zero_hours",
   "unknown",
 ] as const;
+export type EmploymentType = (typeof employmentTypes)[number];
+
 export const workingTimes = [
   "full_time",
   "part_time",

@@ -20,6 +20,8 @@ describe("UK eligibility", () => {
       "explicit_uk_remote",
     ],
     ["Remote", "This is a UK-wide remote role", "explicit_uk_remote"],
+    ["Remote", "UK applicants only", "explicit_uk_remote"],
+    ["Remote", "Remote — UK residents only", "explicit_uk_remote"],
   ] as const)(
     "accepts explicit UK employment evidence from %s",
     (location, description, reason) => {
@@ -37,6 +39,8 @@ describe("UK eligibility", () => {
     ["Remote", "Remote within Europe", "non_uk"],
     ["Remote", "Remote role", "ambiguous"],
     ["New York, NY", "US applicants only", "non_uk"],
+    ["London, Ontario", "Office based", "non_uk"],
+    ["North West, USA", "Office based", "non_uk"],
   ] as const)(
     "rejects a listing without UK employment evidence from %s",
     (location, description, reason) => {
@@ -44,6 +48,26 @@ describe("UK eligibility", () => {
         eligible: false,
         evidence: [],
         reason,
+      });
+    },
+  );
+
+  it.each([
+    [
+      "This role is not remote within the UK",
+      "Description: not remote within the UK",
+    ],
+    [
+      "Applicants cannot be based in the UK",
+      "Description: Applicants cannot be based in the UK",
+    ],
+  ])(
+    "keeps explicit UK exclusion ineligible with evidence: %s",
+    (description, evidence) => {
+      expect(classifyUkEligibility("Remote", description)).toEqual({
+        eligible: false,
+        evidence: [evidence],
+        reason: "non_uk",
       });
     },
   );

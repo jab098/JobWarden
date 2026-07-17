@@ -25,8 +25,63 @@ function classifyPeriod(raw: string): CompensationPeriod {
   return "unknown";
 }
 
-function toMinorUnits(rawAmount: string): number {
-  return Math.round(Number(rawAmount.replaceAll(",", "")) * 100);
+const amountSource = String.raw`(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?[kK]?`;
+const amountStart = String.raw`(?<![\w.,])`;
+const amountEnd = String.raw`(?![\w.,])`;
+const rangeSeparator = String.raw`\s*(?:-|–|—|to)\s*`;
+
+const rangePatterns = [
+  new RegExp(
+    `£\\s*(${amountSource})${amountEnd}${rangeSeparator}(?:£\\s*)?(${amountSource})${amountEnd}`,
+    "i",
+  ),
+  new RegExp(
+    `\\bGBP\\s*(${amountSource})${amountEnd}${rangeSeparator}(?:GBP\\s*)?(${amountSource})${amountEnd}`,
+    "i",
+  ),
+  new RegExp(
+    `${amountStart}(${amountSource})${amountEnd}${rangeSeparator}(${amountSource})${amountEnd}\\s+GBP\\b`,
+    "i",
+  ),
+] as const;
+
+const singleAmountPatterns = [
+  new RegExp(`£\\s*(${amountSource})${amountEnd}`, "i"),
+  new RegExp(`\\bGBP\\s*(${amountSource})${amountEnd}`, "i"),
+  new RegExp(`${amountStart}(${amountSource})${amountEnd}\\s+GBP\\b`, "i"),
+] as const;
+
+function toMinorUnits(rawAmount: string): number | null {
+  const usesThousandsSuffix = /k$/i.test(rawAmount);
+  const majorUnits = Number(rawAmount.replaceAll(",", "").replace(/k$/i, ""));
+  const minorUnits = Math.round(
+    majorUnits * (usesThousandsSuffix ? 1_000 : 1) * 100,
+  );
+
+  return Number.isSafeInteger(minorUnits) && minorUnits >= 0
+    ? minorUnits
+    : null;
+}
+
+function findAmounts(raw: string): readonly [number, number | null] | null {
+  for (const pattern of rangePatterns) {
+    const match = raw.match(pattern);
+    if (!match) continue;
+
+    const minimum = toMinorUnits(match[1]);
+    const maximum = toMinorUnits(match[2]);
+    return minimum === null || maximum === null ? null : [minimum, maximum];
+  }
+
+  for (const pattern of singleAmountPatterns) {
+    const match = raw.match(pattern);
+    if (!match) continue;
+
+    const minimum = toMinorUnits(match[1]);
+    return minimum === null ? null : [minimum, null];
+  }
+
+  return null;
 }
 
 export function parseCompensation(raw: string): ParsedCompensation {
@@ -40,15 +95,12 @@ export function parseCompensation(raw: string): ParsedCompensation {
     };
   }
 
-  const amounts = Array.from(
-    raw.matchAll(/(?:£\s*|\bGBP\s*)(\d[\d,]*(?:\.\d{1,2})?)/gi),
-    (match) => toMinorUnits(match[1]),
-  );
+  const amounts = findAmounts(raw);
 
   return {
     currency: "GBP",
-    minimum: amounts[0] ?? null,
-    maximum: amounts[1] ?? null,
+    minimum: amounts?.[0] ?? null,
+    maximum: amounts?.[1] ?? null,
     period,
   };
 }

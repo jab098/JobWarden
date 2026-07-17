@@ -13,6 +13,47 @@ describe("compensation parsing", () => {
   });
 
   it.each([
+    [
+      "£50k per year",
+      {
+        currency: "GBP",
+        minimum: 5_000_000,
+        maximum: null,
+        period: "year",
+      },
+    ],
+    [
+      "£450-550 per day",
+      {
+        currency: "GBP",
+        minimum: 45_000,
+        maximum: 55_000,
+        period: "day",
+      },
+    ],
+    [
+      "450-550 GBP per day",
+      {
+        currency: "GBP",
+        minimum: 45_000,
+        maximum: 55_000,
+        period: "day",
+      },
+    ],
+  ] as const)("parses the deliberate GBP format %s", (raw, expected) => {
+    expect(parseCompensation(raw)).toEqual(expected);
+  });
+
+  it("rejects an amount with more than two decimal places without prefix truncation", () => {
+    expect(parseCompensation("£12.345 per hour")).toEqual({
+      currency: "GBP",
+      minimum: null,
+      maximum: null,
+      period: "hour",
+    });
+  });
+
+  it.each([
     ["50,000 per year", "year"],
     ["$100 per hour", "hour"],
     ["Competitive compensation", "unknown"],

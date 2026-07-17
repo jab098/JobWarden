@@ -1,3 +1,5 @@
+import type { EmploymentType } from "./job";
+
 export type UkEligibilityReason =
   "explicit_uk_location" | "explicit_uk_remote" | "non_uk" | "ambiguous";
 
@@ -23,7 +25,13 @@ const remoteUkPatterns = [
   /\b(?:work(?:ing)?\s+)?remote(?:ly)?\s+(?:from|within|anywhere\s+in|across)\s+(?:the\s+)?(?:United Kingdom|UK)\b/i,
   /\b(?:United Kingdom|UK)[ -]wide\s+remote\b/i,
   /\b(?:United Kingdom|UK)[ -](?:based[ -])?remote\b/i,
+  /\b(?:United Kingdom|UK)\s+(?:applicants?|residents?|candidates?)\s+only\b/i,
   /\bremote(?:ly)?\s+(?:role\s+)?(?:open|available)\s+to\s+(?:candidates|people|workers)\s+in\s+(?:the\s+)?(?:United Kingdom|UK)\b/i,
+] as const;
+
+const explicitUkExclusionPatterns = [
+  /\bnot\s+remote(?:ly)?\s+(?:from|within|anywhere\s+in|across)\s+(?:the\s+)?(?:United Kingdom|UK)\b/i,
+  /\b(?:applicants?|candidates?|workers?)\s+(?:cannot|can't|may not|must not)\s+be\s+based\s+in\s+(?:the\s+)?(?:United Kingdom|UK)\b/i,
 ] as const;
 
 const explicitDescriptionLocationPatterns = ukLocationPatterns.flatMap(
@@ -40,7 +48,7 @@ const explicitDescriptionLocationPatterns = ukLocationPatterns.flatMap(
 );
 
 const nonUkPatterns = [
-  /\b(?:New York|United States|USA|US applicants? only)\b/i,
+  /\b(?:New York|Ontario|Canada|United States|USA|US applicants? only)\b/i,
   /\b(?:Ukraine|New England)\b/i,
   /\bremote(?:ly)?\s+(?:from|within|anywhere\s+in|across)\s+(?:the\s+)?Europe\b/i,
 ] as const;
@@ -61,6 +69,22 @@ export function classifyUkEligibility(
   location: string,
   description: string,
 ): UkEligibilityResult {
+  const exclusionEvidence = findMatch(description, explicitUkExclusionPatterns);
+  if (exclusionEvidence) {
+    return {
+      eligible: false,
+      evidence: [`Description: ${exclusionEvidence}`],
+      reason: "non_uk",
+    };
+  }
+
+  if (
+    findMatch(location, nonUkPatterns) ||
+    findMatch(description, nonUkPatterns)
+  ) {
+    return { eligible: false, evidence: [], reason: "non_uk" };
+  }
+
   const remoteEvidence = findMatch(description, remoteUkPatterns);
   if (remoteEvidence) {
     return {
@@ -68,10 +92,6 @@ export function classifyUkEligibility(
       evidence: [`Description: ${remoteEvidence}`],
       reason: "explicit_uk_remote",
     };
-  }
-
-  if (findMatch(location, [/\b(?:Ukraine|New England)\b/i])) {
-    return { eligible: false, evidence: [], reason: "non_uk" };
   }
 
   if (!timeZoneReference.test(location)) {
@@ -97,26 +117,8 @@ export function classifyUkEligibility(
     };
   }
 
-  if (
-    findMatch(location, nonUkPatterns) ||
-    findMatch(description, nonUkPatterns)
-  ) {
-    return { eligible: false, evidence: [], reason: "non_uk" };
-  }
-
   return { eligible: false, evidence: [], reason: "ambiguous" };
 }
-
-export type EmploymentType =
-  | "permanent"
-  | "fixed_term"
-  | "contract"
-  | "temporary"
-  | "apprenticeship"
-  | "internship"
-  | "casual"
-  | "zero_hours"
-  | "unknown";
 
 const employmentRules: readonly [RegExp, EmploymentType][] = [
   [/\bzero[-\s]hours?\b/i, "zero_hours"],
