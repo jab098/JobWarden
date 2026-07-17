@@ -776,6 +776,8 @@ git commit -m "feat: enforce private beta access"
 
 ## Task 6: Build the responsive app shell and UK jobs feed vertical slice
 
+**Execution note (owner-approved, 2026-07-17):** Authentication operation is deferred. Execute this task from `docs/superpowers/plans/2026-07-17-jobwarden-task-6-jobs-feed.md`, which adds the fail-closed local development mode and fixture-backed repository seam without changing production auth or RLS.
+
 **Files:**
 
 - Create: `apps/web/src/components/app-shell.tsx`

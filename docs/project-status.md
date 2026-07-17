@@ -16,7 +16,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - Current integration branch: `main`
 - Last independently reviewed task commit: `3d72405bda78bd15cb9ea7730045dacd27277f9e`
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
-- Next task: complete the owner-run Supabase, Google OAuth, and Docker-backed database setup; verify the live access boundary; then begin Task 6
+- Next task: execute Task 6 through the approved fail-closed local development mode; authentication setup is deferred by the owner
 
 ## Task progress
 
@@ -26,8 +26,8 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 2. UK job domain and access state machine                                     | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean |
 | 3. Greenhouse adapter and normalisation pipeline                              | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean  |
 | 4. Supabase schema, RLS, mutations, and database tests                        | reviewed | Review clean; real Supabase reset/pgTAP pending Docker        |
-| 5. Supabase authentication and route gates                                    | reviewed | Final full review clean; live OAuth setup remains owner-run   |
-| 6. Responsive app shell and UK jobs feed                                      | pending  |                                                               |
+| 5. Supabase authentication and route gates                                    | reviewed | Code retained; live OAuth and operational setup deferred      |
+| 6. Responsive app shell and UK jobs feed                                      | pending  | Active through local-only development mode                    |
 | 7. Administrator access, sources, and ingestion screens                       | pending  |                                                               |
 | 8. Ingestion Edge Function and schedule                                       | pending  |                                                               |
 | 9. Observability, account controls, and health reporting                      | pending  |                                                               |
@@ -69,3 +69,7 @@ Each independently reviewed task is published by pull request, merged into GitHu
 ## UI workflow
 
 Real product UI begins with the authentication and pending-access experience in Task 5. Task 6 delivers the responsive app shell, jobs feed, filters, and job detail experience. Both tasks must follow `docs/design/ui-direction.md` and load the available design, shadcn, and React review skills recorded in `AGENTS.md`.
+
+## Authentication deferral
+
+The owner explicitly deprioritised authentication setup on 2026-07-17. The reviewed Task 5 code remains intact, but Docker-backed database validation, Supabase/Google connection, administrator bootstrap, and live access-boundary verification no longer block Tasks 6–10. Local work uses the fail-closed design in `docs/superpowers/specs/2026-07-17-authentication-deferral-design.md`. No deployed environment may enable the local bypass, and no task may weaken RLS to compensate for deferred setup.
