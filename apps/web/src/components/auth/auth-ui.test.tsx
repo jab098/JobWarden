@@ -25,6 +25,18 @@ describe("public private-beta entry", () => {
       /premium|upgrade|subscription/i,
     );
   });
+
+  it("opens the jobs workspace directly for local fixture development", () => {
+    render(<PublicHome dataMode="fixtures" />);
+
+    expect(
+      screen.getByRole("link", { name: /open jobs workspace/i }),
+    ).toHaveAttribute("href", "/jobs");
+    expect(screen.getByText(/development data/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /request access/i }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe("sign-in state", () => {

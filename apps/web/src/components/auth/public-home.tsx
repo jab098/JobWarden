@@ -4,7 +4,13 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export function PublicHome() {
+type PublicHomeProps = {
+  dataMode?: "fixtures";
+};
+
+export function PublicHome({ dataMode }: PublicHomeProps) {
+  const isDevelopment = dataMode === "fixtures";
+
   return (
     <main className="min-h-screen overflow-x-clip bg-[#f4f1ea] text-[#172033]">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-5 py-6 sm:px-8 lg:px-12 lg:py-8">
@@ -16,7 +22,7 @@ export function PublicHome() {
             JobWarden
           </Link>
           <span className="font-mono text-[0.7rem] uppercase tracking-[0.14em] text-[#596173]">
-            UK private beta
+            {isDevelopment ? "Development data" : "UK private beta"}
           </span>
         </header>
 
@@ -41,17 +47,19 @@ export function PublicHome() {
             </p>
             <div className="mt-9 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
               <Link
-                href="/auth/sign-in"
+                href={isDevelopment ? "/jobs" : "/auth/sign-in"}
                 className={cn(
                   buttonVariants({ size: "lg" }),
                   "h-11 rounded-md bg-[#2458a6] px-5 text-white hover:bg-[#1d477f] focus-visible:ring-[#2458a6]/40",
                 )}
               >
-                Request access
+                {isDevelopment ? "Open jobs workspace" : "Request access"}
                 <ArrowRight aria-hidden="true" />
               </Link>
               <span className="text-sm text-[#707786]">
-                Every request is reviewed by the owner.
+                {isDevelopment
+                  ? "Explicitly fictional fixtures are enabled locally."
+                  : "Every request is reviewed by the owner."}
               </span>
             </div>
           </section>
