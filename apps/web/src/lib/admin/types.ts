@@ -71,3 +71,8 @@ export type AdminActionState =
       kind: "conflict" | "cooldown" | "unavailable";
       message: string;
     };
+
+export type AdminFormAction = (
+  previousState: AdminActionState,
+  formData: FormData,
+) => Promise<AdminActionState>;
