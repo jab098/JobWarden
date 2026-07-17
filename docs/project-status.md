@@ -7,6 +7,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - [Approved foundation design](superpowers/specs/2026-07-17-jobwarden-foundation-design.md)
 - [Active implementation plan](superpowers/plans/2026-07-17-jobwarden-foundation.md)
 - [Shipping standard](standards/shipping-standards.md)
+- [UI direction](design/ui-direction.md)
 - [Current architecture record](superpowers/specs/2026-07-17-jobwarden-foundation-design.md#architecture); dedicated architecture decision records are scheduled for Task 10 under `architecture/decisions/`
 
 ## Handoff
@@ -48,3 +49,11 @@ pnpm verify
 ```
 
 Task 2 passed 112 focused domain tests and the workspace passed 121 tests. The reviewed rules require explicit UK work eligibility, resolve contradictory evidence fail-closed, keep IR35 unknown without explicit wording, parse compensation atomically in minor units, reject mixed currencies, and enforce the complete private-access transition matrix. Independent review found no critical, important, or minor issues.
+
+## Delivery rule
+
+Each independently reviewed task is published by pull request, merged into GitHub `main`, and pulled into local `main` before the next task begins.
+
+## UI workflow
+
+Real product UI begins with the authentication and pending-access experience in Task 5. Task 6 delivers the responsive app shell, jobs feed, filters, and job detail experience. Both tasks must follow `docs/design/ui-direction.md` and load the available design, shadcn, and React review skills recorded in `AGENTS.md`.
