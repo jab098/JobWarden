@@ -45,6 +45,27 @@ it("rejects a forbidden dependency", async () => {
   }
 });
 
+it("rejects a forbidden dependency in the root manifest", async () => {
+  const workspace = await mkdtemp(join(tmpdir(), "jobwarden-guardrails-"));
+
+  try {
+    await writeFile(
+      join(workspace, "package.json"),
+      '{"dependencies":{"stripe":"latest"}}',
+    );
+
+    await expect(
+      execFileAsync(process.execPath, [guardrailScript], { cwd: workspace }),
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining(
+        "package.json: forbidden dependency stripe",
+      ),
+    });
+  } finally {
+    await rm(workspace, { recursive: true });
+  }
+});
+
 it("rejects forbidden pricing copy outside tests", async () => {
   const workspace = await mkdtemp(join(tmpdir(), "jobwarden-guardrails-"));
 
