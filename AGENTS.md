@@ -6,6 +6,8 @@ JobWarden is UK-only. Publish a job only with explicit UK eligibility evidence, 
 
 JobWarden is a private beta. Product data is available only to administrator-approved users, with RLS as the final boundary. Authentication alone never grants access. Administrator status is server-controlled.
 
+Owner decision, 2026-07-17: connecting and operating authentication is deferred while the remaining product is built. Retain the reviewed auth and RLS implementation. Local product work may use only the documented `JOBWARDEN_DEV_ACCESS_BYPASS=true` mode, which must fail closed outside `NODE_ENV=development`, must stay server-only, and must never grant administrator access. Do not make authentication setup a prerequisite for the next product task unless the owner explicitly reactivates it.
+
 JobWarden has no pricing model. Never add payments, subscriptions, plans, trials, premium or upgrade UI, billing settings, or plan-based quotas.
 
 Applications use manual application links only. Never submit applications or bypass source access controls.
