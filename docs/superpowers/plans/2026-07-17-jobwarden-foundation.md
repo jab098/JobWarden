@@ -43,6 +43,7 @@
 - Create: `README.md`
 - Create: `docs/standards/shipping-standards.md`
 - Create: `docs/product/vision.md`
+- Create: `docs/project-status.md`
 - Create: `scripts/check-project-guardrails.mjs`
 - Create: `tests/guardrails/project-guardrails.test.ts`
 - Create: `tests/guardrails/vitest.config.ts`
@@ -160,7 +161,7 @@ Create `AGENTS.md` with these exact mandatory statements:
 ```md
 # JobWarden Agent Instructions
 
-Read `docs/standards/shipping-standards.md` and the active specification or plan before changing code.
+Read `docs/project-status.md`, `docs/standards/shipping-standards.md`, and the active specification or plan before changing code.
 
 JobWarden is UK-only. Publish a job only with explicit UK eligibility evidence, including explicit UK permission for remote work. Do not infer IR35 status from contract status.
 
@@ -231,6 +232,8 @@ if (violations.length) {
 
 console.log("Project guardrails passed");
 ```
+
+Create `docs/project-status.md` as the durable cross-session handoff. It must link the approved specification, active implementation plan, shipping standard, and architecture records; list Tasks 1–10 with `pending`, `in progress`, or `reviewed` status; record the current branch and last reviewed commit; name the next task; and record the exact verification commands last run. Update this file only after a task's independent review is clean so future agents can trust it as the repository recovery map.
 
 - [ ] **Step 5: Generate the Next.js application without replacing repository documents**
 
