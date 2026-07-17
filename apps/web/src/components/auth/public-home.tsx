@@ -56,7 +56,7 @@ export function PublicHome({ dataMode }: PublicHomeProps) {
                 {isDevelopment ? "Open jobs workspace" : "Request access"}
                 <ArrowRight aria-hidden="true" />
               </Link>
-              <span className="text-sm text-[#707786]">
+              <span className="text-sm text-[#596173]">
                 {isDevelopment
                   ? "Explicitly fictional fixtures are enabled locally."
                   : "Every request is reviewed by the owner."}

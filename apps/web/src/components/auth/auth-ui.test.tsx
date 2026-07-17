@@ -21,6 +21,9 @@ describe("public private-beta entry", () => {
     expect(
       screen.getByText(/applications stay in your hands/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("Every request is reviewed by the owner."),
+    ).toHaveClass("text-[#596173]");
     expect(document.body).not.toHaveTextContent(
       /premium|upgrade|subscription/i,
     );
@@ -33,6 +36,9 @@ describe("public private-beta entry", () => {
       screen.getByRole("link", { name: /open jobs workspace/i }),
     ).toHaveAttribute("href", "/jobs");
     expect(screen.getByText(/development data/i)).toBeInTheDocument();
+    expect(
+      screen.getByText("Explicitly fictional fixtures are enabled locally."),
+    ).toHaveClass("text-[#596173]");
     expect(
       screen.queryByRole("link", { name: /request access/i }),
     ).not.toBeInTheDocument();

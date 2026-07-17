@@ -12,7 +12,7 @@ export function JobCard({ job }: { job: JobListItem }) {
   const compensation = formatCompensation(job);
   const ir35 = formatIr35(job);
   return (
-    <article className="border-b border-[#dedbd2] px-5 py-6 transition-colors hover:bg-[#fbfaf7] sm:px-7">
+    <article className="border-b border-[#dedbd2] px-5 py-6 [overflow-wrap:anywhere] transition-colors hover:bg-[#fbfaf7] sm:px-7">
       <h2 className="text-xl font-semibold tracking-[-0.025em] text-[#172033]">
         {job.title}
       </h2>

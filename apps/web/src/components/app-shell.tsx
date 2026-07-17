@@ -25,7 +25,7 @@ export function AppShell({
           >
             JobWarden
           </Link>
-          <p className="mt-1 text-xs text-[#697181]">UK jobs workspace</p>
+          <p className="mt-1 text-xs text-[#596173]">UK jobs workspace</p>
         </div>
         <nav aria-label="Primary" className="p-3">
           <Link
@@ -35,7 +35,7 @@ export function AppShell({
             Jobs
           </Link>
         </nav>
-        <p className="mt-auto border-t border-[#d8d4cb] px-6 py-5 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#697181]">
+        <p className="mt-auto border-t border-[#d8d4cb] px-6 py-5 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#596173]">
           {dataMode === "fixtures" ? "Development data" : "Live UK listings"}
         </p>
       </aside>

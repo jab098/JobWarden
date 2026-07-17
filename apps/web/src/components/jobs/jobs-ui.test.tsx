@@ -130,6 +130,7 @@ describe("jobs workspace", () => {
       .getByRole("heading", { level: 2, name: populatedJob.title })
       .closest("article");
     expect(firstJob).not.toBeNull();
+    expect(firstJob).toHaveClass("[overflow-wrap:anywhere]");
     const copy = firstJob?.textContent ?? "";
     const expectedOrder = [
       populatedJob.title,
@@ -167,10 +168,15 @@ describe("jobs workspace", () => {
       </AppShell>,
     );
 
+    expect(screen.getByText("UK jobs workspace")).toHaveClass("text-[#596173]");
+
     await user.click(screen.getByRole("button", { name: "Open navigation" }));
     expect(
       screen.getByRole("dialog", { name: "JobWarden navigation" }),
     ).toBeInTheDocument();
+    for (const label of screen.getAllByText("UK jobs workspace")) {
+      expect(label).toHaveClass("text-[#596173]");
+    }
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(
       screen.queryByRole("dialog", { name: "JobWarden navigation" }),
@@ -299,6 +305,11 @@ describe("jobs workspace", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: detail.title }),
     ).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole("heading", { level: 1, name: detail.title })
+        .closest("article"),
+    ).toHaveClass("[overflow-wrap:anywhere]");
     expect(screen.getByText(detail.descriptionText)).toBeInTheDocument();
     expect(
       screen.getByText(detail.ukEligibilityEvidence[0]),

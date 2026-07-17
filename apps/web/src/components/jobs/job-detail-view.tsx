@@ -19,7 +19,7 @@ export function JobDetailView({
   const compensation = formatCompensation(job);
   const ir35 = formatIr35(job);
   return (
-    <article className="mx-auto max-w-4xl bg-white px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+    <article className="mx-auto max-w-4xl bg-white px-5 py-8 [overflow-wrap:anywhere] sm:px-8 lg:px-12 lg:py-12">
       <Link
         href="/jobs"
         className="rounded-sm text-sm text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"

@@ -42,7 +42,9 @@ export function MobileNavigation({
             <SheetTitle className="text-lg font-semibold text-[#172033]">
               JobWarden navigation
             </SheetTitle>
-            <SheetDescription>UK jobs workspace</SheetDescription>
+            <SheetDescription className="text-[#596173]">
+              UK jobs workspace
+            </SheetDescription>
           </SheetHeader>
           <nav aria-label="Primary" className="p-4">
             <Link
@@ -52,7 +54,7 @@ export function MobileNavigation({
               Jobs
             </Link>
           </nav>
-          <p className="mt-auto border-t border-[#d8d4cb] px-6 py-5 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#697181]">
+          <p className="mt-auto border-t border-[#d8d4cb] px-6 py-5 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#596173]">
             {dataMode === "fixtures" ? "Development data" : "Live UK listings"}
           </p>
         </SheetContent>
