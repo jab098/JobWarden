@@ -107,23 +107,23 @@ export interface JobsRepository {
 }
 ```
 
-- [ ] **Step 1: Write failing development-access tests**
+- [x] **Step 1: Write failing development-access tests**
 
 Cover absent/false flags, the exact true flag in development, production/test/undefined environments with the true flag, mixed case, and whitespace. Production-like environments with the flag must throw `Development access bypass is forbidden outside local development`. Extend the public-entry component test first so it fails until the component can render `Open jobs workspace` linking to `/jobs` in local mode while retaining `Request access` linking to `/auth/sign-in` otherwise.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run `pnpm --filter @jobwarden/web test -- src/lib/development/access-mode.test.ts` and confirm failure because the module does not exist.
 
-- [ ] **Step 3: Implement the minimal fail-closed resolver and wire it server-side**
+- [x] **Step 3: Implement the minimal fail-closed resolver and wire it server-side**
 
 Skip Supabase session refresh and the ordinary protected access guard only for the exact enabled result. Do not change the administrator layout. In local bypass mode, make `/` point to `/jobs`; otherwise retain the private-beta sign-in entry.
 
-- [ ] **Step 4: Add realistic, explicitly fictional UK development fixtures**
+- [x] **Step 4: Add realistic, explicitly fictional UK development fixtures**
 
 Include permanent, fixed-term, part-time, remote, hybrid, inside-IR35, outside-IR35, and unknown-IR35 contract examples. Use valid UUIDs and HTTPS application URLs on `example.test`. Keep fixture selection behind the development resolver and expose the `fixtures` mode to the UI.
 
-- [ ] **Step 5: Run GREEN and commit**
+- [x] **Step 5: Run GREEN and commit**
 
 Run the focused tests plus web typecheck, then commit as `feat: add safe local product mode`.
 
@@ -159,23 +159,23 @@ export function createSupabaseJobsRepository(client: object): JobsRepository;
 export async function getJobsRepository(): Promise<JobsRepository>;
 ```
 
-- [ ] **Step 1: Install `vitest-axe@0.1.0` and write failing filter tests**
+- [x] **Step 1: Install `vitest-axe@0.1.0` and write failing filter tests**
 
 Cover valid filters, arrays, unexpected values, trimmed search, over-100-character fallback, page zero/negative/over-1000/non-numeric fallback, and canonical query-string generation used by clear/pagination links.
 
-- [ ] **Step 2: Run filter RED, implement, and run GREEN**
+- [x] **Step 2: Run filter RED, implement, and run GREEN**
 
 Use Zod only. Do not mutate `searchParams` and do not accept unbounded arrays.
 
-- [ ] **Step 3: Write failing repository contract tests**
+- [x] **Step 3: Write failing repository contract tests**
 
 Assert `lifecycle_status = active`, exact count, filters only when selected, escaped title/employer search, stable two-column ordering, range `0..24` for page 1 and `25..49` for page 2, location selection, null-safe mapping, no service-role client, and generic `Unable to load jobs` errors. Detail lookup must validate UUID, require active status, use `maybeSingle`, and return null for no row.
 
-- [ ] **Step 4: Implement the Supabase repository and selector**
+- [x] **Step 4: Implement the Supabase repository and selector**
 
 Use only the caller's cookie-bound Supabase server client. Validate returned records before mapping. Quote and escape PostgREST search values so commas, parentheses, quotes, backslashes, `%`, and `_` cannot alter filter structure. `latestListingUpdate` is the newest visible `last_seen_at`; Task 8 replaces this with the completed ingestion timestamp once the ingestion service exists.
 
-- [ ] **Step 5: Run GREEN and commit**
+- [x] **Step 5: Run GREEN and commit**
 
 Run filter/repository tests and web typecheck, then commit as `feat: query the UK jobs feed`.
 
@@ -206,31 +206,31 @@ Run filter/repository tests and web typecheck, then commit as `feat: query the U
 - Create: `apps/web/src/app/(protected)/jobs/opengraph-image.tsx`
 - Modify: `apps/web/src/app/globals.css`
 
-- [ ] **Step 1: Add shadcn primitives non-interactively and write failing UI tests**
+- [x] **Step 1: Add shadcn primitives non-interactively and write failing UI tests**
 
 Use the existing Base UI configuration. Test semantic page/detail headings, labelled GET filters, a clear-all link, stable metadata order, omitted unknown compensation, explicit `IR35 status not stated` for contracts, application-link safety, development-data disclosure, empty/no-results/error/loading states, keyboard-visible actions, and absence of pricing, premium, upgrade, AI score, or auto-apply language. Run axe against populated feed, no-results, and detail variants.
 
-- [ ] **Step 2: Run UI RED and implement the app shell**
+- [x] **Step 2: Run UI RED and implement the app shell**
 
 Desktop uses a narrow persistent rail with JobWarden, Jobs, and a quiet data-mode status. Mobile uses a Sheet opened by a labelled button. Do not render dead navigation links or administrator navigation in development bypass mode.
 
-- [ ] **Step 3: Implement one responsive list and URL-backed filters**
+- [x] **Step 3: Implement one responsive list and URL-backed filters**
 
 The desktop filter area is visible beside the list. Mobile uses a filter Sheet while preserving active values. The form method is GET. Each row shows title, employer, UK location, workplace, employment, working time, explicit compensation, contract IR35, posting age, and a details link in that order. Show only result count and latest listing update as summary values.
 
-- [ ] **Step 4: Implement job detail and safe application**
+- [x] **Step 4: Implement job detail and safe application**
 
 Render plain text only, eligibility evidence, source label, last checked time, and the canonical application link. Use Next `notFound()` for invalid/missing IDs. Do not embed provider HTML or application forms.
 
-- [ ] **Step 5: Implement designed non-happy paths**
+- [x] **Step 5: Implement designed non-happy paths**
 
 Loading uses aligned list skeletons. Empty database explains that permitted sources have not produced listings. No-results preserves filters and offers clear-all. Error copy says the feed is temporarily unavailable without exposing provider payloads. Detail not-found gives a route back to `/jobs`.
 
-- [ ] **Step 6: Run GREEN, React review, and browser verification**
+- [x] **Step 6: Run GREEN, React review, and browser verification**
 
 Run component tests, lint, typecheck, and build. Review every changed TSX file against `vercel:react-best-practices`. Start with `JOBWARDEN_DEV_ACCESS_BYPASS=true`; verify `/`, `/jobs`, one filtered URL, and one detail at desktop and true 390 px widths. Confirm meaningful content, no overlay, no console errors, keyboard focus, mobile sheets, and no horizontal overflow.
 
-- [ ] **Step 7: Update durable status and commit**
+- [x] **Step 7: Update durable status and commit**
 
 Record exact test counts, browser evidence, auth deferral, fixture boundary, and remaining live-service limitations. Commit as `feat: add the UK jobs workspace`.
 
