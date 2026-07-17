@@ -48,6 +48,16 @@ export type IngestionRequestResult = {
   eligibleAfter: string;
 };
 
+export type IngestionRequestView = {
+  id: string;
+  correlationId: string;
+  sourceId: string;
+  employerName: string;
+  provider: "greenhouse";
+  status: "pending" | "claimed" | "completed" | "cancelled";
+  requestedAt: string;
+};
+
 export type AdminActionState =
   | { kind: "idle" }
   | { kind: "success"; message: string; correlationId?: string }

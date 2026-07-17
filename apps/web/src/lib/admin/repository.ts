@@ -12,6 +12,7 @@ import type {
   AccessRequestView,
   AdminActionState,
   IngestionRequestResult,
+  IngestionRequestView,
   IngestionRunView,
   JobSourceView,
 } from "./types";
@@ -36,6 +37,7 @@ export interface AdminRepository {
   getAccessRequestsEnabled(): Promise<boolean>;
   listSources(): Promise<JobSourceView[]>;
   listIngestionRuns(limit: number): Promise<IngestionRunView[]>;
+  listIngestionRequests(limit: number): Promise<IngestionRequestView[]>;
   decideAccess(input: {
     userId: string;
     nextStatus: "pending" | "approved" | "rejected" | "suspended";
