@@ -1,6 +1,8 @@
 # JobWarden
 
-JobWarden is a private-beta, UK-only job-search command centre. The approved product scope and invariants live in the [foundation design](docs/superpowers/specs/2026-07-17-jobwarden-foundation-design.md).
+JobWarden is a private-beta, UK-only job-search command centre. The approved foundation lives in the [foundation design](docs/superpowers/specs/2026-07-17-jobwarden-foundation-design.md); the approved personalisation experience lives in the [personalised search design](docs/superpowers/specs/2026-07-18-personalised-job-search-design.md).
+
+The durable recovery map is [project status](docs/project-status.md), Tasks 7–16 are defined in the [canonical product roadmap](docs/product/roadmap.md), and provider/cost decisions are maintained in [free-tier services](docs/architecture/free-tier-services.md). Future agents should read those files before choosing work.
 
 ## Local development
 
@@ -23,4 +25,4 @@ Run the complete repository verification with:
 pnpm verify
 ```
 
-The persistent shipping standard is in [docs/standards/shipping-standards.md](docs/standards/shipping-standards.md), and the current recovery map is in [docs/project-status.md](docs/project-status.md).
+The persistent shipping standard is in [docs/standards/shipping-standards.md](docs/standards/shipping-standards.md). The default architecture remains free-tier-first with hard cost ceilings and no automatic paid AI fallback; service-specific setup is documented only when its task reaches a live integration gate.

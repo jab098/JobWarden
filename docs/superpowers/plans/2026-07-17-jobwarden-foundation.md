@@ -854,6 +854,10 @@ git commit -m "feat: add approved user jobs feed"
 
 ---
 
+## Roadmap supersession after Task 6
+
+Tasks 1–6 in this foundation plan are the reviewed historical foundation. On 2026-07-18 the owner approved the expanded [personalised search design](../specs/2026-07-18-personalised-job-search-design.md) and [canonical product roadmap](../../product/roadmap.md). The summaries below remain useful foundation context, but their former Tasks 9–10 sequence is superseded by canonical Tasks 9–16. Create and follow a focused task plan from the canonical roadmap before changing further code.
+
 ## Task 7: Add audited administrator access, sources, and ingestion screens
 
 **Files:**

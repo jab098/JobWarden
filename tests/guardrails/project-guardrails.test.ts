@@ -6,6 +6,9 @@ const requiredFiles = [
   "CLAUDE.md",
   "docs/standards/shipping-standards.md",
   "docs/superpowers/specs/2026-07-17-jobwarden-foundation-design.md",
+  "docs/superpowers/specs/2026-07-18-personalised-job-search-design.md",
+  "docs/product/roadmap.md",
+  "docs/architecture/free-tier-services.md",
 ];
 
 describe("project guardrails", () => {
@@ -19,5 +22,9 @@ describe("project guardrails", () => {
     expect(agents).toContain("administrator-approved");
     expect(agents).toContain("no pricing model");
     expect(agents).toContain("manual application links");
+    expect(agents).toContain("hard free-tier ceiling");
+    expect(agents).toContain("Never commit a real CV");
+    expect(agents).toContain("evidence-bound");
+    expect(agents).toContain("advertised, estimated, and unknown");
   });
 });
