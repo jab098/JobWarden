@@ -7,8 +7,10 @@
     "node": ">=24.0.0"
   },
   "scripts": {
+    "bootstrap:admin": "node scripts/bootstrap-admin.mjs",
     "build": "pnpm --filter @jobwarden/web build",
     "check:guardrails": "node scripts/check-project-guardrails.mjs",
+    "check:supabase": "node scripts/verify-supabase-foundation.mjs",
     "format:check": "prettier --check .",
     "lint": "pnpm -r lint",
     "test": "vitest run --config vitest.workspace.ts",
@@ -17,6 +19,7 @@
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm check:guardrails && pnpm build"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "^2.110.6",
     "@types/node": "latest",
     "prettier": "latest",
     "typescript": "latest",
