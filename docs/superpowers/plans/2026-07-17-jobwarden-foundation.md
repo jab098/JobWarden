@@ -463,7 +463,7 @@ git commit -m "feat: add UK job domain rules"
 - Create: `packages/ingestion/src/fixtures/greenhouse-uk.json`
 - Create: `packages/ingestion/src/fixtures/greenhouse-mixed.json`
 
-- [ ] **Step 1: Define the adapter boundary and failing fixture tests**
+- [x] **Step 1: Define the adapter boundary and failing fixture tests**
 
 Create `@jobwarden/ingestion` as a private ESM package with `@jobwarden/domain`, Zod 4, and `sanitize-html` as runtime dependencies and Vitest plus `@types/sanitize-html` as development dependencies.
 
@@ -500,7 +500,7 @@ export type NormalisationResult =
 
 Fixtures must include a London permanent role, a UK-remote outside-IR35 role, a Europe-remote role, an ambiguous remote role, and a US role. Write tests expecting exactly two eligible jobs, one excluded Europe role, one excluded US role, and one quarantined ambiguous role.
 
-- [ ] **Step 2: Prove the tests fail**
+- [x] **Step 2: Prove the tests fail**
 
 Run:
 
@@ -510,7 +510,7 @@ pnpm --filter @jobwarden/ingestion test
 
 Expected: missing implementation failures.
 
-- [ ] **Step 3: Validate the Greenhouse response and enforce read-only network behaviour**
+- [x] **Step 3: Validate the Greenhouse response and enforce read-only network behaviour**
 
 Implement a Zod schema for `jobs[].id`, `title`, `location.name`, `content`, `absolute_url`, `updated_at`, and `metadata`. Construct only:
 
@@ -523,7 +523,7 @@ Call `fetch` with `method: "GET"`, `redirect: "error"`, `Accept: application/jso
 
 Test the method, endpoint, headers, timeout, response validation, transient retry count, no retry on `403`, and sanitised error objects that omit response bodies.
 
-- [ ] **Step 4: Normalise, sanitise, allowlist, and hash**
+- [x] **Step 4: Normalise, sanitise, allowlist, and hash**
 
 Use `sanitize-html` with no allowed tags or attributes to convert content to plain text, collapse whitespace, and decode entities. Validate `absoluteUrl` as HTTPS and require its hostname to equal or be a subdomain of an explicit source host. Do not accept a host because it merely ends with the same characters; compare `host === allowed` or `host.endsWith('.' + allowed)`.
 
@@ -531,7 +531,7 @@ Hash a canonical JSON object containing only normalised fields, with keys in fix
 
 Test malicious HTML, a `javascript:` URL, `boards.greenhouse.io.evil.example`, reordered metadata, unchanged content, explicit salary, and missing salary.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run:
 

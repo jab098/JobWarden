@@ -12,10 +12,10 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Handoff
 
-- Current branch: `codex/jobwarden-foundation`
-- Last independently reviewed task commit: `b808ce6d4cbb2489616129a8e5bba5b80115456c`
+- Current integration branch: `main`
+- Last independently reviewed task commit: `b570fab44a70618b03c4ec14d2ee132971321d16`
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
-- Next task: Task 3, implement the Greenhouse adapter and normalisation pipeline
+- Next task: Task 4, create the Supabase schema, RLS boundaries, transactional mutations, and database tests
 
 ## Task progress
 
@@ -23,7 +23,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | ----------------------------------------------------------------------------- | -------- | ------------------------------------------------------------- |
 | 1. Monorepo, persistent standards, and invariant guardrails                   | reviewed | Commits `5563920` and `dc021a6`; independent review clean     |
 | 2. UK job domain and access state machine                                     | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean |
-| 3. Greenhouse adapter and normalisation pipeline                              | pending  | Next task                                                     |
+| 3. Greenhouse adapter and normalisation pipeline                              | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean  |
 | 4. Supabase schema, RLS, mutations, and database tests                        | pending  |                                                               |
 | 5. Supabase authentication and route gates                                    | pending  |                                                               |
 | 6. Responsive app shell and UK jobs feed                                      | pending  |                                                               |
@@ -41,6 +41,8 @@ pnpm install
 pnpm vitest run --config tests/guardrails/vitest.config.ts
 pnpm --filter @jobwarden/domain test
 pnpm --filter @jobwarden/domain typecheck
+pnpm --filter @jobwarden/ingestion test
+pnpm --filter @jobwarden/ingestion typecheck
 pnpm check:guardrails
 pnpm --filter @jobwarden/web lint
 pnpm --filter @jobwarden/web typecheck
@@ -48,7 +50,7 @@ git diff --check
 pnpm verify
 ```
 
-Task 2 passed 112 focused domain tests and the workspace passed 121 tests. The reviewed rules require explicit UK work eligibility, resolve contradictory evidence fail-closed, keep IR35 unknown without explicit wording, parse compensation atomically in minor units, reject mixed currencies, and enforce the complete private-access transition matrix. Independent review found no critical, important, or minor issues.
+Task 3 passed 56 focused ingestion tests and the workspace passed 177 tests. The reviewed pipeline uses the documented read-only Greenhouse endpoint, validates the complete response before trust, retries only bounded transient failures, strips non-visible or unsafe provider content before every classifier, allowlists HTTPS application hosts, publishes only explicit UK eligibility, and hashes stable normalised content. The final independent full-diff review found no critical, important, or minor issues.
 
 ## Delivery rule
 
