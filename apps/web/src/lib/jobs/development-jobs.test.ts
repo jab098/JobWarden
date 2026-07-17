@@ -64,6 +64,26 @@ describe("fictional development jobs", () => {
       expect(detail!.ukEligibilityEvidence.length).toBeGreaterThan(0);
     }
   });
+
+  it("stores representative annual and day compensation in minor GBP units", async () => {
+    const repository = createDevelopmentJobsRepository();
+    const result = await repository.list(allFilters);
+
+    expect(
+      result.items.find((item) => item.title === "Senior Software Engineer"),
+    ).toMatchObject({
+      compensationMinimum: 7_200_000,
+      compensationMaximum: 8_400_000,
+      compensationPeriod: "year",
+    });
+    expect(
+      result.items.find((item) => item.title === "Digital Delivery Lead"),
+    ).toMatchObject({
+      compensationMinimum: 55_000,
+      compensationMaximum: 60_000,
+      compensationPeriod: "day",
+    });
+  });
 });
 
 describe("jobs repository selection", () => {
