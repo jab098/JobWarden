@@ -14,25 +14,25 @@ This file is the durable cross-session recovery map. Update task status to `revi
 ## Handoff
 
 - Current integration branch: `main`
-- Last independently reviewed task commit: `3d72405bda78bd15cb9ea7730045dacd27277f9e`
+- Last independently reviewed task implementation commit: `8d2eaa1`
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
-- Active feature branch: `codex/task-6-uk-jobs-feed`
-- Next task: independently review and deliver Task 6; authentication setup remains deferred by the owner
+- Active feature branch: none after Task 6 delivery
+- Next task: Task 7 administrator access, sources, and ingestion screens; authentication setup remains deferred by the owner
 
 ## Task progress
 
-| Task                                                                          | Status    | Notes                                                         |
-| ----------------------------------------------------------------------------- | --------- | ------------------------------------------------------------- |
-| 1. Monorepo, persistent standards, and invariant guardrails                   | reviewed  | Commits `5563920` and `dc021a6`; independent review clean     |
-| 2. UK job domain and access state machine                                     | reviewed  | Commits `4b3a221` through `b808ce6`; independent review clean |
-| 3. Greenhouse adapter and normalisation pipeline                              | reviewed  | Commits `3ed0eb6` through `b570fab`; final full review clean  |
-| 4. Supabase schema, RLS, mutations, and database tests                        | reviewed  | Review clean; real Supabase reset/pgTAP pending Docker        |
-| 5. Supabase authentication and route gates                                    | reviewed  | Code retained; live OAuth and operational setup deferred      |
-| 6. Responsive app shell and UK jobs feed                                      | in review | Implemented and browser-verified through local fixture mode   |
-| 7. Administrator access, sources, and ingestion screens                       | pending   |                                                               |
-| 8. Ingestion Edge Function and schedule                                       | pending   |                                                               |
-| 9. Observability, account controls, and health reporting                      | pending   |                                                               |
-| 10. Cloudflare, CI security, architecture records, and full-path verification | pending   |                                                               |
+| Task                                                                          | Status   | Notes                                                         |
+| ----------------------------------------------------------------------------- | -------- | ------------------------------------------------------------- |
+| 1. Monorepo, persistent standards, and invariant guardrails                   | reviewed | Commits `5563920` and `dc021a6`; independent review clean     |
+| 2. UK job domain and access state machine                                     | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean |
+| 3. Greenhouse adapter and normalisation pipeline                              | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean  |
+| 4. Supabase schema, RLS, mutations, and database tests                        | reviewed | Review clean; real Supabase reset/pgTAP pending Docker        |
+| 5. Supabase authentication and route gates                                    | reviewed | Code retained; live OAuth and operational setup deferred      |
+| 6. Responsive app shell and UK jobs feed                                      | reviewed | Full-range review clean; delivered through local fixture mode |
+| 7. Administrator access, sources, and ingestion screens                       | pending  |                                                               |
+| 8. Ingestion Edge Function and schedule                                       | pending  |                                                               |
+| 9. Observability, account controls, and health reporting                      | pending  |                                                               |
+| 10. Cloudflare, CI security, architecture records, and full-path verification | pending  |                                                               |
 
 ## Last verification commands
 
@@ -63,7 +63,7 @@ Task 4 passed 13 focused bootstrap/static-foundation tests, the static Supabase 
 
 Task 5 passed 58 focused web tests and the 235-test workspace verification, including formatting, lint, typechecking, guardrails, and a production Next.js build. The final independent full-range review found no critical, important, or minor issues. Review remediation preserves the real Supabase SSR cookie/header contract, protects callback responses from caching, rejects layered redirect-encoding attacks and C0/C1 controls, enforces same-origin callback destinations, and accepts only an exact configured HTTP(S) site origin. The Google PKCE callback, injected access resolver, protected and administrator layouts, public/access/loading/error states, sign-out, and protected `/jobs` holding destination remain implemented. Desktop and true 390 px browser captures passed for the unchanged public and sign-in UI. The production dependency audit and staged secret scan were clean. Live OAuth and deployed access-boundary checks remain pending owner-configured Supabase/Google services; Task 4's real Docker-backed database checks also remain pending.
 
-Task 6 is implemented on `codex/task-6-uk-jobs-feed` pending independent full-range review and delivery. The fail-closed, server-only development mode uses explicitly fictional UK fixtures and cannot enable outside `NODE_ENV=development`; production continues to use the caller's cookie-bound Supabase client and existing RLS. URL-backed filters cover employment type, working time, workplace, IR35, literal title/employer search, and stable pagination. The responsive editorial workspace provides a desktop rail, accessible mobile navigation and filter sheets, one jobs list, manual employer-site applications, job detail, and designed loading, empty, no-results, error, and not-found states without pricing, payments, AI scoring, or auto-apply. Compensation preserves minor-unit precision, IR35 labels do not reinterpret `not_applicable`, and out-of-range pages have a distinct truthful state. The web suite passed 128 tests across 15 files and the workspace passed 305 tests across 23 files; lint, typecheck, axe checks, and the production build passed. Browser verification passed `/`, `/jobs`, a filtered URL, and a detail route at 1440 px and true 390 px with meaningful content, no error overlays, no console errors, no horizontal overflow, working mobile sheets, and visible keyboard focus. Live Supabase queries and OAuth remain intentionally unverified until the deferred service setup is resumed.
+Task 6 passed independent full-range review with no remaining critical, important, or minor findings. The fail-closed, server-only development mode uses explicitly fictional UK fixtures and cannot enable outside `NODE_ENV=development`; production continues to use the caller's cookie-bound Supabase client and existing RLS. URL-backed filters cover employment type, working time, workplace, IR35, literal title/employer search, and stable pagination. The responsive editorial workspace provides a desktop rail, accessible mobile navigation and filter sheets, one jobs list, manual employer-site applications, job detail, and designed loading, empty, no-results, error, and not-found states without pricing, payments, AI scoring, or auto-apply. Compensation preserves minor-unit precision without inventing range semantics, IR35 labels do not reinterpret `not_applicable`, and deep out-of-range pages return directly to the last available page. Small warm-surface text meets WCAG AA contrast and valid long source tokens cannot force mobile horizontal overflow. The web suite passed 128 tests across 15 files and the workspace passed 305 tests across 23 files; lint, typecheck, axe checks, the production build, dependency audit, exact-range secret scan, and production fail-closed probe passed. Hydrated browser verification passed `/`, `/jobs`, a filtered URL, and a detail route at 1440 px and true 390 px with meaningful content, no error overlays, no console errors, no horizontal overflow, working mobile sheets, visible keyboard focus, and a 1,000-character unbroken-token regression probe. Live Supabase queries and OAuth remain intentionally unverified until the deferred service setup is resumed.
 
 ## Delivery rule
 
