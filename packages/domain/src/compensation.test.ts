@@ -81,6 +81,19 @@ describe("compensation parsing", () => {
   });
 
   it.each([
+    "$100-£200 per day",
+    "£100-$200 per day",
+    "100 USD - 200 GBP per day",
+  ])("rejects mixed or unsupported currency input: %s", (raw) => {
+    expect(parseCompensation(raw)).toEqual({
+      currency: null,
+      minimum: null,
+      maximum: null,
+      period: "day",
+    });
+  });
+
+  it.each([
     ["50,000 per year", "year"],
     ["$100 per hour", "hour"],
     ["Competitive compensation", "unknown"],

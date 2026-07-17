@@ -69,18 +69,89 @@ const nonLocationLabels = new Set([
   "remote role",
 ]);
 
-const ukDescriptionAnchor =
-  /\b(?:United Kingdom|UK|Northern Ireland|Scotland|Wales|England)\b/i;
-const eligibilityLanguage =
-  /\b(?:applicants?|based|candidates?|eligible|ineligible|located|remote(?:ly)?|residents?|work(?:ers?|ing)?)\b/i;
-const strongEligibilityLanguage =
-  /\b(?:applicants?|based|candidates?|eligible|ineligible|located|remote(?:ly)?|residents?|workers?)\b/i;
+const ukAnchorSource = String.raw`(?:United Kingdom|UK|Northern Ireland|Scotland|Wales|England)`;
+const foreignAnchorSource = String.raw`(?:Europe|EU|EEA|USA|US|United States|Canada|Australia|New Zealand|Americas|APAC|EMEA)`;
+const personSource = String.raw`(?:applicants?|candidates?|workers?|employees?|residents?|you)`;
 const negationOrExclusion =
-  /\b(?:not|cannot|can't|must\s+not|unable|ineligible|excluding|except)\b/i;
+  /\b(?:no|not|cannot|can't|must\s+not|unable|ineligible|excluding|except)\b/i;
 const timeZoneReference =
   /\b(?:Europe|European|United Kingdom|UK)(?:\s+or\s+(?:Europe|European|United Kingdom|UK))*\s+time(?:\s+zones?)?\b/i;
-const explicitForeignEligibility =
-  /\b(?:remote(?:ly)?\s+(?:from|within|anywhere\s+in|across)|\S+\s+applicants?\s+only)\b/i;
+
+const ukEligibilityRules: readonly {
+  pattern: RegExp;
+  reason: Extract<
+    UkEligibilityReason,
+    "explicit_uk_location" | "explicit_uk_remote"
+  >;
+}[] = [
+  {
+    pattern: new RegExp(
+      `\\b(?:the\\s+|this\\s+|our\\s+)?(?:role|position|job|vacancy)\\s+(?:is\\s+not|will\\s+not\\s+be|cannot\\s+be|must\\s+not\\s+be|is|will\\s+be|can\\s+be|may\\s+be|must\\s+be)?\\s*(?:based|located)\\s+(?:in|within)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
+      "i",
+    ),
+    reason: "explicit_uk_location",
+  },
+  {
+    pattern: new RegExp(
+      `\\b${ukAnchorSource}[- ]based\\s+(?:role|position|job|vacancy)\\b`,
+      "i",
+    ),
+    reason: "explicit_uk_location",
+  },
+  {
+    pattern: new RegExp(
+      `\\b${personSource}\\s+(?:(?:are|is|must\\s+be|can\\s+be|may\\s+be|need\\s+to\\s+be|should\\s+be|cannot\\s+be|can't\\s+be|are\\s+not|must\\s+not\\s+be)\\s+)?(?:based|resident|located)\\s+(?:in|within|from)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
+      "i",
+    ),
+    reason: "explicit_uk_remote",
+  },
+  {
+    pattern: new RegExp(
+      `\\b${personSource}\\s+(?:(?:are|must\\s+be|can\\s+be|need\\s+to\\s+be|should\\s+be|are\\s+not)\\s+)?eligible\\s+to\\s+work\\s+(?:in|from|within)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
+      "i",
+    ),
+    reason: "explicit_uk_remote",
+  },
+  {
+    pattern: new RegExp(
+      `\\b(?:no\\s+${ukAnchorSource}\\s+(?:applicants?|candidates?|residents?)|${ukAnchorSource}\\s+(?:applicants?|candidates?|residents?)\\s+only)\\b`,
+      "i",
+    ),
+    reason: "explicit_uk_remote",
+  },
+  {
+    pattern: new RegExp(
+      `\\b${ukAnchorSource}\\s+(?:applicants?|candidates?|workers?|residents?)\\s+(?:are\\s+)?(?:not\\s+eligible|ineligible)\\b`,
+      "i",
+    ),
+    reason: "explicit_uk_remote",
+  },
+  {
+    pattern: new RegExp(
+      `\\b${ukAnchorSource}[- ]wide\\s+remote(?:\\s+(?:role|position|job|vacancy))?\\b`,
+      "i",
+    ),
+    reason: "explicit_uk_remote",
+  },
+  {
+    pattern: new RegExp(
+      `\\b(?:remote(?:ly)?|work(?:ing)?(?:\\s+remotely)?)\\s+(?:in|from|within|across|anywhere\\s+in)\\s+(?:the\\s+)?${ukAnchorSource}\\b`,
+      "i",
+    ),
+    reason: "explicit_uk_remote",
+  },
+];
+
+const foreignEligibilityRules = [
+  new RegExp(
+    `\\b(?:remote(?:ly)?|work(?:ing)?(?:\\s+remotely)?)\\s+(?:in|from|within|across|anywhere\\s+in)\\s+(?:the\\s+)?${foreignAnchorSource}\\b`,
+    "i",
+  ),
+  new RegExp(
+    `\\b${foreignAnchorSource}\\s+(?:applicants?|candidates?|residents?)\\s+only\\b`,
+    "i",
+  ),
+] as const;
 
 type LocationAssessment =
   | { outcome: "eligible"; evidence: string }
@@ -130,7 +201,7 @@ function assessLocation(location: string): LocationAssessment {
   if (hasUkEvidence && !hasContradictoryQualifier) {
     return {
       outcome: "eligible",
-      evidence: `Location: ${location.trim()}`,
+      evidence: formatEvidence("Location", location.trim()),
     };
   }
 
@@ -144,19 +215,19 @@ function clausesFrom(description: string): string[] {
     .filter(Boolean);
 }
 
-function hasExplicitUkAnchor(clause: string): boolean {
-  return ukDescriptionAnchor.test(clause.replace(/\bNew England\b/gi, ""));
-}
-
 function negativeEvidenceFor(clause: string): string {
   const genericRolePrefix = clause.match(/^This role is\s+(.+)$/i);
   return genericRolePrefix?.[1] ?? clause;
 }
 
-function boundDescriptionEvidence(evidence: string): string {
-  const maximumContentLength = 500 - "Description: ".length;
-  if (evidence.length <= maximumContentLength) return evidence;
-  return `${evidence.slice(0, maximumContentLength - 1).trimEnd()}…`;
+function formatEvidence(
+  source: "Description" | "Location",
+  value: string,
+): string {
+  const prefix = `${source}: `;
+  const maximumContentLength = 500 - prefix.length;
+  if (value.length <= maximumContentLength) return `${prefix}${value}`;
+  return `${prefix}${value.slice(0, maximumContentLength - 1).trimEnd()}…`;
 }
 
 function assessDescription(description: string): DescriptionAssessment {
@@ -165,42 +236,35 @@ function assessDescription(description: string): DescriptionAssessment {
   let hasForeignEligibility = false;
 
   for (const clause of clausesFrom(description)) {
-    const hasUkAnchor = hasExplicitUkAnchor(clause);
-    const hasEligibilityLanguage = eligibilityLanguage.test(clause);
-    const isTimeZoneOnly =
-      timeZoneReference.test(clause) && !strongEligibilityLanguage.test(clause);
+    if (timeZoneReference.test(clause)) continue;
 
-    if (hasUkAnchor && hasEligibilityLanguage && !isTimeZoneOnly) {
+    const eligibilityRule = ukEligibilityRules.find(({ pattern }) =>
+      pattern.test(clause),
+    );
+    if (eligibilityRule) {
       if (negationOrExclusion.test(clause)) {
-        negativeEvidence ??= boundDescriptionEvidence(
-          negativeEvidenceFor(clause),
-        );
+        negativeEvidence ??= negativeEvidenceFor(clause);
       } else {
         positive ??= {
-          evidence: boundDescriptionEvidence(clause),
-          reason:
-            /\b(?:remote(?:ly)?|applicants?|candidates?|residents?)\b/i.test(
-              clause,
-            )
-              ? "explicit_uk_remote"
-              : "explicit_uk_location",
+          evidence: clause,
+          reason: eligibilityRule.reason,
         };
       }
       continue;
     }
 
-    if (!hasUkAnchor && explicitForeignEligibility.test(clause)) {
+    if (foreignEligibilityRules.some((pattern) => pattern.test(clause))) {
       hasForeignEligibility = true;
     }
   }
 
-  if (positive) return { outcome: "eligible", ...positive };
   if (negativeEvidence) {
     return {
       outcome: "non_uk",
-      evidence: [`Description: ${negativeEvidence}`],
+      evidence: [formatEvidence("Description", negativeEvidence)],
     };
   }
+  if (positive) return { outcome: "eligible", ...positive };
   if (hasForeignEligibility) return { outcome: "non_uk", evidence: [] };
   return { outcome: "ambiguous" };
 }
@@ -218,7 +282,7 @@ export function classifyUkEligibility(
   if (descriptionAssessment.outcome === "eligible") {
     return {
       eligible: true,
-      evidence: [`Description: ${descriptionAssessment.evidence}`],
+      evidence: [formatEvidence("Description", descriptionAssessment.evidence)],
       reason: descriptionAssessment.reason,
     };
   }

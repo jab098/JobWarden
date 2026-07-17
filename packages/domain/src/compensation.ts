@@ -17,6 +17,10 @@ const periodPatterns: readonly [RegExp, CompensationPeriod][] = [
   [/\b(?:per\s+year|per\s+annum|annually|annual|yearly)\b/i, "year"],
 ];
 
+const gbpCurrencyMarker = /(?:£|\bGBP\b)/i;
+const unsupportedCurrencyMarker =
+  /(?:[$€]|\b(?:USD|EUR|CAD|AUD|NZD|JPY|CHF)\b)/i;
+
 function classifyPeriod(raw: string): CompensationPeriod {
   for (const [pattern, period] of periodPatterns) {
     if (pattern.test(raw)) return period;
@@ -101,7 +105,17 @@ function findAmounts(raw: string): readonly [number, number | null] | null {
 
 export function parseCompensation(raw: string): ParsedCompensation {
   const period = classifyPeriod(raw);
-  if (!/(?:£|\bGBP\b)/i.test(raw)) {
+  const hasGbp = gbpCurrencyMarker.test(raw);
+  if (hasGbp && unsupportedCurrencyMarker.test(raw)) {
+    return {
+      currency: null,
+      minimum: null,
+      maximum: null,
+      period,
+    };
+  }
+
+  if (!hasGbp) {
     return {
       currency: null,
       minimum: null,

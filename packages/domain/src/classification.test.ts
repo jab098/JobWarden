@@ -84,6 +84,8 @@ describe("UK eligibility", () => {
       "You cannot work remotely within the UK",
       "Description: You cannot work remotely within the UK",
     ],
+    ["This role is not based in the UK", "Description: not based in the UK"],
+    ["No UK applicants", "Description: No UK applicants"],
   ])(
     "keeps explicit UK exclusion ineligible with evidence: %s",
     (description, evidence) => {
@@ -94,6 +96,38 @@ describe("UK eligibility", () => {
       });
     },
   );
+
+  it("lets explicit UK exclusion outrank a positive clause", () => {
+    expect(
+      classifyUkEligibility(
+        "Remote",
+        "UK applicants only; UK candidates are not eligible",
+      ),
+    ).toEqual({
+      eligible: false,
+      evidence: ["Description: UK candidates are not eligible"],
+      reason: "non_uk",
+    });
+  });
+
+  it.each([
+    ["Candidates must work UK time zones"],
+    ["Our headquarters are based in the UK"],
+    ["Remote within commuting distance"],
+    ["We spoke with UK applicants yesterday"],
+  ])("keeps non-permission wording ambiguous: %s", (description) => {
+    expect(classifyUkEligibility("Remote", description)).toEqual({
+      eligible: false,
+      evidence: [],
+      reason: "ambiguous",
+    });
+  });
+
+  it("does not treat a generic applicant modifier as foreign evidence", () => {
+    expect(
+      classifyUkEligibility("London, England", "Graduate applicants only"),
+    ).toMatchObject({ eligible: true, reason: "explicit_uk_location" });
+  });
 
   it("lets a concrete foreign location outrank remote UK permission", () => {
     expect(
@@ -109,6 +143,14 @@ describe("UK eligibility", () => {
       "Remote",
       `You may work remotely anywhere in the UK ${"supporting detail ".repeat(40)}`,
     );
+
+    expect(result.eligible).toBe(true);
+    expect(result.evidence[0].length).toBeLessThanOrEqual(500);
+  });
+
+  it("bounds qualified location evidence for the normalised job schema", () => {
+    const location = ["London", ...Array(80).fill("England")].join(", ");
+    const result = classifyUkEligibility(location, "Office based");
 
     expect(result.eligible).toBe(true);
     expect(result.evidence[0].length).toBeLessThanOrEqual(500);
