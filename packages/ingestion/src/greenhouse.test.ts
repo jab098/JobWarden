@@ -45,7 +45,8 @@ describe("Greenhouse read-only adapter", () => {
       return response(mixedFixture);
     };
 
-    const jobs = await adapterWith(fetchImplementation).fetchJobs(source);
+    const result = await adapterWith(fetchImplementation).fetchJobs(source);
+    const { jobs } = result;
 
     expect(requests).toHaveLength(1);
     expect(requests[0]?.url).toBe(
@@ -61,6 +62,7 @@ describe("Greenhouse read-only adapter", () => {
       "JobWarden/0.1 (+private UK job index)",
     );
     expect(headers.has("authorization")).toBe(false);
+    expect(result.coverage).toBe("complete");
     expect(jobs).toHaveLength(5);
     expect(jobs[0]).toEqual({
       providerJobId: "1001",
@@ -69,6 +71,7 @@ describe("Greenhouse read-only adapter", () => {
       descriptionHtml:
         "<p>Permanent full-time hybrid role.</p><p>Build reliable platforms for our customers.</p>",
       absoluteUrl: "https://boards.greenhouse.io/acme/jobs/1001",
+      canonicalApplicationUrl: "https://boards.greenhouse.io/acme/jobs/1001",
       updatedAt: "2026-07-16T09:30:00Z",
       metadataText: ["Employment Type: Permanent", "Salary: £60,000 per year"],
     });
@@ -125,7 +128,7 @@ describe("Greenhouse read-only adapter", () => {
 
     await expect(
       adapterWith(fetchImplementation).fetchJobs(source),
-    ).resolves.toEqual([]);
+    ).resolves.toEqual({ coverage: "complete", jobs: [] });
     expect(attempts).toBe(3);
   });
 

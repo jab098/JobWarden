@@ -5,12 +5,14 @@ import type {
   IngestionRequestView,
   IngestionRunView,
   JobSourceView,
+  SourceHealthView,
 } from "./types";
 
 export type DevelopmentAdminSnapshot = {
   accessRequestsEnabled: boolean;
   accessRequests: AccessRequestView[];
   sources: JobSourceView[];
+  sourceHealth: SourceHealthView[];
   runs: IngestionRunView[];
   ingestionRequests: IngestionRequestView[];
 };
@@ -55,6 +57,7 @@ const snapshot = deepFreeze<DevelopmentAdminSnapshot>({
     {
       sourceId: "52000000-0000-4000-8000-000000000001",
       provider: "greenhouse",
+      coverageMode: "complete",
       boardToken: "fictional-northstar",
       employerName: "Fictional Northstar UK Ltd",
       enabled: true,
@@ -70,6 +73,7 @@ const snapshot = deepFreeze<DevelopmentAdminSnapshot>({
     {
       sourceId: "52000000-0000-4000-8000-000000000002",
       provider: "greenhouse",
+      coverageMode: "complete",
       boardToken: "fictional-civic",
       employerName: "Fictional Civic Evidence Ltd",
       enabled: false,
@@ -81,6 +85,28 @@ const snapshot = deepFreeze<DevelopmentAdminSnapshot>({
       robotsReviewState: "overdue",
       complianceNotes: "Fictional source disabled pending compliance review.",
       allowedHosts: ["fictional.example.test"],
+    },
+  ],
+  sourceHealth: [
+    {
+      sourceId: "52000000-0000-4000-8000-000000000001",
+      employerName: "Fictional Northstar UK Ltd",
+      provider: "greenhouse",
+      coverageMode: "complete",
+      enabled: true,
+      freshnessState: "fresh",
+      lastSuccessfulSyncAt: "2026-07-18T08:03:00.000Z",
+      latestRunStatus: "succeeded",
+      latestErrorCode: null,
+      activeOccurrences: 42,
+      advertisedCompensation: 31,
+      estimatedCompensation: 0,
+      unknownCompensation: 11,
+      permanentRoles: 24,
+      contractRoles: 13,
+      temporaryRoles: 5,
+      fullTimeRoles: 37,
+      partTimeRoles: 5,
     },
   ],
   runs: [

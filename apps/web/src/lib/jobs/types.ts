@@ -39,12 +39,18 @@ export const compensationPeriods = [
   "year",
   "unknown",
 ] as const;
+export const compensationProvenances = [
+  "advertised",
+  "estimated",
+  "unknown",
+] as const;
 
 export type EmploymentType = (typeof employmentTypes)[number];
 export type WorkingTime = (typeof workingTimes)[number];
 export type WorkplaceType = (typeof workplaceTypes)[number];
 export type Ir35Status = (typeof ir35Statuses)[number];
 export type CompensationPeriod = (typeof compensationPeriods)[number];
+export type CompensationProvenance = (typeof compensationProvenances)[number];
 
 export type JobListItem = {
   id: string;
@@ -59,6 +65,7 @@ export type JobListItem = {
   compensationMaximum: number | null;
   compensationCurrency: "GBP" | null;
   compensationPeriod: CompensationPeriod;
+  compensationProvenance: CompensationProvenance;
   postedAt: string | null;
 };
 
@@ -68,6 +75,7 @@ export type JobFilters = {
   workingTime: WorkingTime | "all";
   workplace: WorkplaceType | "all";
   ir35: Ir35Status | "all";
+  compensation: CompensationProvenance | "all";
   page: number;
 };
 

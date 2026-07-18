@@ -8,6 +8,7 @@ export const requiredMigrationFiles = [
   "202607170003_audit_and_ingestion.sql",
   "202607180001_admin_operations.sql",
   "202607180002_shared_ingestion_runtime.sql",
+  "202607180003_uk_coverage_compensation.sql",
 ];
 
 const publicTables = [
@@ -21,6 +22,7 @@ const publicTables = [
   "ingestion_runs",
   "ingestion_source_runs",
   "ingestion_requests",
+  "job_source_occurrences",
 ];
 
 function compact(sql) {
@@ -70,8 +72,8 @@ export function verifyFoundationSql(files) {
 
   const requiredFragments = [
     [
-      "constraint jobs_provider_identity_unique unique (source_id, provider_job_id)",
-      "missing provider identity uniqueness",
+      "drop constraint jobs_provider_identity_unique",
+      "canonical jobs must delegate provider identity uniqueness to occurrences",
     ],
     [
       "constraint jobs_country_gb check (country_code = 'gb')",
@@ -263,6 +265,77 @@ export function verifyFoundationSql(files) {
     [
       "name = 'jobwarden_ingestion_cron_secret'",
       "scheduler must load the cron secret from Vault",
+    ],
+    [
+      "constraint job_source_occurrences_provider_identity_unique unique (source_id, provider_job_id)",
+      "missing exact source occurrence identity uniqueness",
+    ],
+    [
+      "candidate_data jsonb not null check (jsonb_typeof(candidate_data) = 'object')",
+      "source occurrences must retain validated canonical candidates",
+    ],
+    [
+      "create or replace function private.rematerialize_canonical_job(target_job_id uuid)",
+      "missing deterministic canonical rematerialisation",
+    ],
+    [
+      "case source.provider when 'greenhouse' then 0 else 1 end",
+      "canonical ranking must prefer direct Greenhouse evidence after salary provenance",
+    ],
+    [
+      "source.provider in ('greenhouse', 'reed')",
+      "shared queue must admit every database-supported provider",
+    ],
+    [
+      "source_record.provider not in ('greenhouse', 'reed')",
+      "source-run startup must admit every database-supported provider",
+    ],
+    [
+      "if not source_enabled or source_provider not in ('greenhouse', 'reed') then",
+      "batch persistence must recheck source state under lock",
+    ],
+    [
+      "where job.id = any(affected_job_ids)",
+      "source finalisation must only close affected canonical jobs",
+    ],
+    [
+      "compensation_provenance in ('advertised', 'estimated', 'unknown')",
+      "missing compensation provenance constraint",
+    ],
+    [
+      "coverage_mode in ('complete', 'incremental')",
+      "missing complete or incremental source coverage constraint",
+    ],
+    [
+      "provider <> 'reed' or minimum_sync_interval >= interval '6 hours'",
+      "Reed discovery sources must enforce a six-hour minimum interval",
+    ],
+    [
+      "coverage_mode_value = 'complete' and response_was_complete",
+      "incremental source completion must not advance omissions",
+    ],
+    ["limit 500", "missing bounded closing-date lifecycle maintenance"],
+    [
+      "create or replace function public.get_job_source_health()",
+      "missing bounded administrator source-health function",
+    ],
+    [
+      "grant execute on function public.get_job_source_health() to authenticated",
+      "source-health function must have its narrow authenticated grant",
+    ],
+    [
+      "freshness_state text",
+      "source health must expose a bounded freshness state",
+    ],
+    [
+      "latest_error_code text",
+      "source health must expose the sanitised latest error code",
+    ],
+    ["temporary_roles integer", "source health must count temporary roles"],
+    ["full_time_roles integer", "source health must count full-time roles"],
+    [
+      "occurrence.candidate_data ->> 'compensationprovenance'",
+      "source health must aggregate each source occurrence candidate",
     ],
   ];
 

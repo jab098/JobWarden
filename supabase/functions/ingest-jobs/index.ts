@@ -1,4 +1,8 @@
-import { GreenhouseAdapter } from "@jobwarden/ingestion";
+import {
+  AdapterError,
+  GreenhouseAdapter,
+  ReedAdapter,
+} from "@jobwarden/ingestion";
 
 import { readRuntimeEnvironment } from "../_shared/env.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
@@ -9,7 +13,17 @@ const handler = createIngestionHandler({
   readEnvironment: () => readRuntimeEnvironment(Deno.env.toObject()),
   createRepository: (environment) =>
     createSupabaseIngestionRepository(createServiceRoleClient(environment)),
-  createAdapter: () => new GreenhouseAdapter(),
+  createAdapter: (source, environment) => {
+    if (source.provider === "greenhouse") return new GreenhouseAdapter();
+    if (!environment.reedApiKey) {
+      throw new AdapterError(
+        "configuration_error",
+        "Reed API key is not configured.",
+        0,
+      );
+    }
+    return new ReedAdapter({ apiKey: environment.reedApiKey });
+  },
   now: () => new Date(),
   randomUuid: () => crypto.randomUUID(),
   log: (record) => console.info(JSON.stringify(record)),

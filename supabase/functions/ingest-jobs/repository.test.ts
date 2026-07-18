@@ -33,8 +33,11 @@ const job = normalisedJobSchema.parse({
   compensationMaximum: 5_000_000,
   compensationCurrency: "GBP",
   compensationPeriod: "year",
+  compensationProvenance: "advertised",
+  compensationObservedAt: "2026-07-18T08:00:00.000Z",
   postedAt: null,
   closesAt: null,
+  deduplicationKey: "b".repeat(64),
   contentHash: "a".repeat(64),
 });
 
@@ -80,6 +83,30 @@ describe("Supabase ingestion repository", () => {
     expect(fake.rpc).toHaveBeenCalledWith("claim_ingestion_requests", {
       maximum_requests: 4,
     });
+  });
+
+  it("accepts the one reviewed incremental Reed discovery source shape", async () => {
+    const reedRow = {
+      ...claimedRow,
+      provider: "reed",
+      board_token: "gb-discovery",
+      employer_name: "Reed",
+      allowed_hosts: ["www.reed.co.uk"],
+    };
+    const fake = client({
+      claim_ingestion_requests: { data: [reedRow], error: null },
+    });
+
+    await expect(
+      createSupabaseIngestionRepository(fake.client).claim(1),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        source: expect.objectContaining({
+          provider: "reed",
+          boardToken: "gb-discovery",
+        }),
+      }),
+    ]);
   });
 
   it("rejects malformed database rows without returning their content", async () => {
@@ -141,8 +168,11 @@ describe("Supabase ingestion repository", () => {
           compensationMaximum: job.compensationMaximum,
           compensationCurrency: job.compensationCurrency,
           compensationPeriod: job.compensationPeriod,
+          compensationProvenance: job.compensationProvenance,
+          compensationObservedAt: job.compensationObservedAt,
           postedAt: job.postedAt,
           closesAt: job.closesAt,
+          deduplicationKey: job.deduplicationKey,
           contentHash: job.contentHash,
         },
       ],

@@ -2,7 +2,7 @@ import type { NormalisedJob } from "@jobwarden/domain";
 
 type NormalisedJobContent = Omit<NormalisedJob, "contentHash">;
 
-async function sha256Hex(value: string): Promise<string> {
+export async function sha256Hex(value: string): Promise<string> {
   const bytes = new TextEncoder().encode(value);
   const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest), (byte) =>
@@ -14,8 +14,6 @@ export async function hashNormalisedJobContent(
   job: NormalisedJobContent,
 ): Promise<string> {
   const canonicalContent = {
-    sourceId: job.sourceId,
-    providerJobId: job.providerJobId,
     title: job.title,
     employer: job.employer,
     descriptionText: job.descriptionText,
@@ -31,8 +29,11 @@ export async function hashNormalisedJobContent(
     compensationMaximum: job.compensationMaximum,
     compensationCurrency: job.compensationCurrency,
     compensationPeriod: job.compensationPeriod,
+    compensationProvenance: job.compensationProvenance,
+    compensationObservedAt: job.compensationObservedAt,
     postedAt: job.postedAt,
     closesAt: job.closesAt,
+    deduplicationKey: job.deduplicationKey,
   };
 
   return sha256Hex(JSON.stringify(canonicalContent));

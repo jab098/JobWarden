@@ -37,6 +37,7 @@ describe("server jobs repository selector", () => {
         workingTime: "all",
         workplace: "all",
         ir35: "all",
+        compensation: "all",
         page: 1,
       }),
     ).resolves.toMatchObject({ dataMode: "fixtures" });

@@ -1,4 +1,8 @@
-import type { ProviderAdapter, ProviderJob } from "@jobwarden/ingestion";
+import {
+  AdapterError,
+  type ProviderAdapter,
+  type ProviderJob,
+} from "@jobwarden/ingestion";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -88,11 +92,14 @@ function repositoryHarness(claims: ClaimedIngestion[] = []): RepositoryHarness {
   };
 }
 
-function adapter(jobs: ProviderJob[] | Error): ProviderAdapter {
+function adapter(
+  jobs: ProviderJob[] | Error,
+  coverage: "complete" | "incremental" = "complete",
+): ProviderAdapter {
   return {
     fetchJobs: vi.fn(async () => {
       if (jobs instanceof Error) throw jobs;
-      return jobs;
+      return { coverage, jobs };
     }),
   };
 }
@@ -338,6 +345,33 @@ describe("shared ingestion Edge Function handler", () => {
     });
   });
 
+  it("finalises incremental discovery successfully without claiming a complete snapshot", async () => {
+    const claim = source(1);
+    claim.source = {
+      ...claim.source,
+      provider: "reed",
+      boardToken: "gb-discovery",
+      employerName: "Reed",
+      allowedHosts: ["www.reed.co.uk"],
+    };
+    const harness = repositoryHarness([claim]);
+    const handler = createIngestionHandler(
+      dependencies({ harness, adapterFor: () => adapter([], "incremental") }),
+    );
+
+    const response = await handler(request({ secret: expectedSecret }));
+
+    expect(response.status).toBe(200);
+    expect(harness.finishSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "succeeded",
+        responseComplete: false,
+        receivedCount: 0,
+        errorCode: null,
+      }),
+    );
+  });
+
   it("isolates a source failure and continues with later queue claims", async () => {
     const first = source(1);
     const second = source(2);
@@ -372,6 +406,53 @@ describe("shared ingestion Edge Function handler", () => {
       }),
     );
     expect(harness.completeRequest).toHaveBeenCalledTimes(2);
+    expect(await json(response)).toMatchObject({
+      status: "partial_failure",
+      sourceCount: 2,
+      failedSourceCount: 1,
+    });
+  });
+
+  it("isolates a missing Reed credential and still processes later Greenhouse work", async () => {
+    const reed = source(1);
+    reed.source = {
+      ...reed.source,
+      provider: "reed",
+      boardToken: "gb-discovery",
+      employerName: "Reed",
+      allowedHosts: ["www.reed.co.uk"],
+    };
+    const greenhouse = source(2);
+    const harness = repositoryHarness([reed, greenhouse]);
+    const handler = createIngestionHandler(
+      dependencies({
+        harness,
+        adapterFor: (jobSource) => {
+          if (jobSource.provider === "reed") {
+            throw new AdapterError(
+              "configuration_error",
+              "Reed API key is not configured.",
+              0,
+            );
+          }
+          return adapter([providerJob(2)]);
+        },
+      }),
+    );
+
+    const response = await handler(request({ secret: expectedSecret }));
+
+    expect(harness.finishSource).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        status: "failed",
+        errorCode: "provider_configuration_error",
+      }),
+    );
+    expect(harness.finishSource).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ status: "succeeded", responseComplete: true }),
+    );
     expect(await json(response)).toMatchObject({
       status: "partial_failure",
       sourceCount: 2,

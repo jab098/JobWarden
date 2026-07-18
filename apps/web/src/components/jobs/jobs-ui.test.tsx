@@ -21,6 +21,7 @@ const defaultFilters: JobFilters = {
   workingTime: "all",
   workplace: "all",
   ir35: "all",
+  compensation: "all",
   page: 1,
 };
 
@@ -37,6 +38,7 @@ const populatedJob: JobListItem = {
   compensationMaximum: 8_400_000,
   compensationCurrency: "GBP",
   compensationPeriod: "year",
+  compensationProvenance: "advertised",
   postedAt: "2026-07-15T09:00:00.000Z",
 };
 
@@ -53,6 +55,7 @@ const unknownContract: JobListItem = {
   compensationMaximum: null,
   compensationCurrency: null,
   compensationPeriod: "unknown",
+  compensationProvenance: "unknown",
   postedAt: null,
 };
 
@@ -122,6 +125,10 @@ describe("jobs workspace", () => {
       "name",
       "ir35",
     );
+    expect(screen.getAllByLabelText("Salary information")[0]).toHaveAttribute(
+      "name",
+      "compensation",
+    );
     expect(
       screen.getAllByRole("link", { name: "Clear all filters" })[0],
     ).toHaveAttribute("href", "/jobs");
@@ -140,6 +147,7 @@ describe("jobs workspace", () => {
       "Permanent",
       "Full time",
       "£72,000–£84,000 per year",
+      "Advertised salary",
       "Posted 2 days ago",
       "View details",
     ];
@@ -153,7 +161,7 @@ describe("jobs workspace", () => {
       .getByRole("heading", { level: 2, name: unknownContract.title })
       .closest("article");
     expect(contract).toHaveTextContent("IR35 status not stated");
-    expect(contract).not.toHaveTextContent("Compensation");
+    expect(contract).toHaveTextContent("Salary not stated");
     expect(contract).not.toHaveTextContent("£");
     expect(screen.getByText("2 jobs")).toBeInTheDocument();
     expect(screen.getByText(/Latest listing update/)).toBeInTheDocument();
@@ -319,6 +327,7 @@ describe("jobs workspace", () => {
     expect(screen.getByText("Contract")).toBeInTheDocument();
     expect(screen.getByText("Full time")).toBeInTheDocument();
     expect(screen.getByText("£72,000–£84,000 per year")).toBeInTheDocument();
+    expect(screen.getAllByText("Advertised salary").length).toBeGreaterThan(0);
     expect(screen.getByText("Posted 2 days ago")).toBeInTheDocument();
 
     const applyLink = screen.getByRole("link", {

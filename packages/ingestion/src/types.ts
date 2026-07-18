@@ -1,11 +1,32 @@
-import type { NormalisedJob } from "@jobwarden/domain";
+import type {
+  CompensationPeriod,
+  EmploymentType,
+  NormalisedJob,
+} from "@jobwarden/domain";
 
-export type JobSource = {
+type JobSourceBase = {
   id: string;
-  provider: "greenhouse";
   boardToken: string;
   employerName: string;
   allowedHosts: readonly string[];
+};
+
+export type JobSource = JobSourceBase &
+  (
+    | { provider: "greenhouse" }
+    | { provider: "reed"; boardToken: "gb-discovery" }
+  );
+
+export type CompensationProvenance = "advertised" | "estimated" | "unknown";
+
+export type ProviderCompensation = {
+  raw: string | null;
+  minimum: number | null;
+  maximum: number | null;
+  currency: "GBP" | null;
+  period: CompensationPeriod;
+  provenance: CompensationProvenance;
+  observedAt: string | null;
 };
 
 export type ProviderJob = {
@@ -14,12 +35,27 @@ export type ProviderJob = {
   location: string;
   descriptionHtml: string;
   absoluteUrl: string;
+  canonicalApplicationUrl?: string | null;
+  employerName?: string | null;
   updatedAt: string | null;
+  postedAt?: string | null;
+  closesAt?: string | null;
   metadataText: string[];
+  employmentType?: EmploymentType;
+  workingTime?: NormalisedJob["workingTime"];
+  compensation?: ProviderCompensation;
+};
+
+export type ProviderFetchResult = {
+  coverage: "complete" | "incremental";
+  jobs: ProviderJob[];
 };
 
 export interface ProviderAdapter {
-  fetchJobs(source: JobSource, signal?: AbortSignal): Promise<ProviderJob[]>;
+  fetchJobs(
+    source: JobSource,
+    signal?: AbortSignal,
+  ): Promise<ProviderFetchResult>;
 }
 
 export type NormalisationResult =

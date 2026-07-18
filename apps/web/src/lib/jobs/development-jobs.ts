@@ -17,6 +17,7 @@ const developmentJobs = [
     compensationMaximum: 8_400_000,
     compensationCurrency: "GBP",
     compensationPeriod: "year",
+    compensationProvenance: "advertised",
     postedAt: "2026-07-15T09:00:00.000Z",
     descriptionText:
       "A fictional permanent role building internal workflow tools. Two days each week are spent with the Manchester team.",
@@ -40,6 +41,7 @@ const developmentJobs = [
     compensationMaximum: 4_200_000,
     compensationCurrency: "GBP",
     compensationPeriod: "year",
+    compensationProvenance: "advertised",
     postedAt: "2026-07-14T12:00:00.000Z",
     descriptionText:
       "A fictional twelve-month fixed-term research post based in central Cardiff.",
@@ -63,6 +65,7 @@ const developmentJobs = [
     compensationMaximum: 1_900_000,
     compensationCurrency: "GBP",
     compensationPeriod: "year",
+    compensationProvenance: "advertised",
     postedAt: "2026-07-13T10:15:00.000Z",
     descriptionText:
       "A fictional twenty-hour-per-week support role that may be performed remotely from anywhere in the United Kingdom.",
@@ -86,6 +89,7 @@ const developmentJobs = [
     compensationMaximum: 60_000,
     compensationCurrency: "GBP",
     compensationPeriod: "day",
+    compensationProvenance: "advertised",
     postedAt: "2026-07-16T08:00:00.000Z",
     descriptionText:
       "A fictional six-month delivery contract explicitly assessed as inside IR35 and open to remote workers located in the UK.",
@@ -109,6 +113,7 @@ const developmentJobs = [
     compensationMaximum: 70_000,
     compensationCurrency: "GBP",
     compensationPeriod: "day",
+    compensationProvenance: "advertised",
     postedAt: "2026-07-12T14:30:00.000Z",
     descriptionText:
       "A fictional outside-IR35 platform contract with one agreed team day each fortnight in Edinburgh.",
@@ -132,6 +137,7 @@ const developmentJobs = [
     compensationMaximum: 47_500,
     compensationCurrency: "GBP",
     compensationPeriod: "day",
+    compensationProvenance: "advertised",
     postedAt: null,
     descriptionText:
       "A fictional Bristol-based data migration contract. The fictional advert does not state an IR35 determination.",
@@ -158,6 +164,7 @@ function toListItem(job: JobDetail): JobListItem {
     compensationMaximum: job.compensationMaximum,
     compensationCurrency: job.compensationCurrency,
     compensationPeriod: job.compensationPeriod,
+    compensationProvenance: job.compensationProvenance,
     postedAt: job.postedAt,
   };
 }
@@ -173,7 +180,9 @@ function matchesFilters(job: JobDetail, filters: JobFilters): boolean {
     (filters.workingTime === "all" ||
       job.workingTime === filters.workingTime) &&
     (filters.workplace === "all" || job.workplaceType === filters.workplace) &&
-    (filters.ir35 === "all" || job.ir35Status === filters.ir35)
+    (filters.ir35 === "all" || job.ir35Status === filters.ir35) &&
+    (filters.compensation === "all" ||
+      job.compensationProvenance === filters.compensation)
   );
 }
 

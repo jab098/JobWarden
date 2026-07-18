@@ -110,4 +110,31 @@ describe("Supabase foundation static verifier", () => {
       "ingestion schedule migration contains a literal secret or project URL",
     );
   });
+
+  it("requires canonical occurrence provenance and incremental-safe lifecycle rules", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "public table job_source_occurrences must enable and force RLS",
+        "missing exact source occurrence identity uniqueness",
+        "missing compensation provenance constraint",
+        "missing complete or incremental source coverage constraint",
+        "Reed discovery sources must enforce a six-hour minimum interval",
+        "incremental source completion must not advance omissions",
+        "missing bounded closing-date lifecycle maintenance",
+        "source occurrences must retain validated canonical candidates",
+        "missing deterministic canonical rematerialisation",
+        "shared queue must admit every database-supported provider",
+        "source health must expose a bounded freshness state",
+        "source health must count full-time roles",
+        "canonical jobs must delegate provider identity uniqueness to occurrences",
+        "batch persistence must recheck source state under lock",
+        "source finalisation must only close affected canonical jobs",
+        "source health must aggregate each source occurrence candidate",
+      ]),
+    );
+  });
 });

@@ -13,7 +13,9 @@ export type AccessRequestView = {
   decisionReason: string | null;
 };
 
-export type JobSourceView = SaveJobSourceInput & {
+export type JobSourceView = Omit<SaveJobSourceInput, "provider"> & {
+  provider: "greenhouse" | "reed";
+  coverageMode: "complete" | "incremental";
   sourceId: string;
   lastSuccessfulSyncAt: string | null;
   termsReviewState: ComplianceReviewState;
@@ -25,7 +27,7 @@ export type IngestionRunView = {
   runId: string;
   sourceId: string;
   employerName: string;
-  provider: "greenhouse";
+  provider: "greenhouse" | "reed";
   triggerType: "scheduled" | "admin" | "manual";
   status: "running" | "succeeded" | "failed";
   responseComplete: boolean;
@@ -53,9 +55,30 @@ export type IngestionRequestView = {
   correlationId: string;
   sourceId: string;
   employerName: string;
-  provider: "greenhouse";
+  provider: "greenhouse" | "reed";
   status: "pending" | "claimed" | "completed" | "cancelled";
   requestedAt: string;
+};
+
+export type SourceHealthView = {
+  sourceId: string;
+  employerName: string;
+  provider: "greenhouse" | "reed";
+  coverageMode: "complete" | "incremental";
+  enabled: boolean;
+  freshnessState: "fresh" | "stale" | "failed" | "never" | "disabled";
+  lastSuccessfulSyncAt: string | null;
+  latestRunStatus: "running" | "succeeded" | "failed" | null;
+  latestErrorCode: string | null;
+  activeOccurrences: number;
+  advertisedCompensation: number;
+  estimatedCompensation: number;
+  unknownCompensation: number;
+  permanentRoles: number;
+  contractRoles: number;
+  temporaryRoles: number;
+  fullTimeRoles: number;
+  partTimeRoles: number;
 };
 
 export type AdminActionState =

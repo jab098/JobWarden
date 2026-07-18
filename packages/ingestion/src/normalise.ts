@@ -8,7 +8,7 @@ import {
 } from "@jobwarden/domain";
 import sanitizeHtml from "sanitize-html";
 
-import { hashNormalisedJobContent } from "./hash.ts";
+import { hashNormalisedJobContent, sha256Hex } from "./hash.ts";
 import type { JobSource, NormalisationResult, ProviderJob } from "./types.ts";
 
 const nonTextTags = [
@@ -279,6 +279,50 @@ function compensationEvidence(
   return candidate.slice(0, 1_000).trimEnd();
 }
 
+function toMinorUnits(value: number | null): number | null {
+  if (value === null || !Number.isFinite(value) || value < 0) return null;
+  const minorUnits = Math.round(value * 100);
+  return Number.isSafeInteger(minorUnits) ? minorUnits : null;
+}
+
+function canonicalDeduplicationUrl(value: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return null;
+  }
+
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.username !== "" ||
+    parsed.password !== ""
+  ) {
+    return null;
+  }
+
+  parsed.hash = "";
+  for (const key of [...parsed.searchParams.keys()]) {
+    if (/^utm_/i.test(key)) parsed.searchParams.delete(key);
+  }
+  parsed.searchParams.sort();
+  return parsed.toString();
+}
+
+async function deduplicationKey(
+  source: JobSource,
+  providerJob: ProviderJob,
+): Promise<string> {
+  const canonicalUrl = providerJob.canonicalApplicationUrl
+    ? canonicalDeduplicationUrl(providerJob.canonicalApplicationUrl)
+    : null;
+
+  return sha256Hex(
+    canonicalUrl ??
+      `${source.provider}\u0000${source.id}\u0000${providerJob.providerJobId}`,
+  );
+}
+
 export async function normaliseProviderJob(
   source: JobSource,
   providerJob: ProviderJob,
@@ -321,28 +365,76 @@ export async function normaliseProviderJob(
         };
   }
 
-  const compensationRaw = compensationEvidence(descriptionText, metadataText);
-  const compensation = parseCompensation(compensationRaw ?? "");
+  const inferredCompensationRaw = compensationEvidence(
+    descriptionText,
+    metadataText,
+  );
+  const inferredCompensation = parseCompensation(inferredCompensationRaw ?? "");
+  const structuredCompensation = providerJob.compensation;
+  const structuredMinimum = structuredCompensation
+    ? toMinorUnits(structuredCompensation.minimum)
+    : null;
+  const structuredMaximum = structuredCompensation
+    ? toMinorUnits(structuredCompensation.maximum)
+    : null;
+  const hasStructuredCompensation =
+    structuredCompensation?.currency === "GBP" &&
+    (structuredMinimum !== null || structuredMaximum !== null);
+  const compensationRaw = hasStructuredCompensation
+    ? structuredCompensation.raw
+    : inferredCompensationRaw;
+  const compensationMinimum = hasStructuredCompensation
+    ? structuredMinimum
+    : inferredCompensation.minimum;
+  const compensationMaximum = hasStructuredCompensation
+    ? structuredMaximum
+    : inferredCompensation.maximum;
+  const compensationCurrency = hasStructuredCompensation
+    ? structuredCompensation.currency
+    : inferredCompensation.currency;
+  const compensationPeriod = hasStructuredCompensation
+    ? structuredCompensation.period
+    : inferredCompensation.period;
+  const hasAdvertisedCompensation =
+    compensationCurrency === "GBP" &&
+    (compensationMinimum !== null || compensationMaximum !== null);
   const content: Omit<NormalisedJob, "contentHash"> = {
     sourceId: source.id,
     providerJobId: providerJob.providerJobId,
     title: titleText,
-    employer: htmlToPlainText(source.employerName),
+    employer: htmlToPlainText(
+      providerJob.employerName?.trim() || source.employerName,
+    ),
     descriptionText,
     applicationUrl,
     countryCode: "GB",
     ukEligibilityEvidence: ukEligibility.evidence,
-    employmentType: classifyEmployment(classificationText),
-    workingTime: classifyWorkingTime(classificationText),
+    employmentType:
+      providerJob.employmentType ?? classifyEmployment(classificationText),
+    workingTime:
+      providerJob.workingTime ?? classifyWorkingTime(classificationText),
     workplaceType: classifyWorkplace(locationText, classificationText),
     ir35Status: classifyIr35(classificationText),
     compensationRaw,
-    compensationMinimum: compensation.minimum,
-    compensationMaximum: compensation.maximum,
-    compensationCurrency: compensation.currency,
-    compensationPeriod: compensation.period,
-    postedAt: null,
-    closesAt: null,
+    compensationMinimum,
+    compensationMaximum,
+    compensationCurrency,
+    compensationPeriod,
+    compensationProvenance:
+      hasStructuredCompensation && structuredCompensation
+        ? structuredCompensation.provenance
+        : hasAdvertisedCompensation
+          ? "advertised"
+          : "unknown",
+    compensationObservedAt:
+      hasStructuredCompensation && structuredCompensation
+        ? structuredCompensation.observedAt
+        : hasAdvertisedCompensation
+          ? (providerJob.updatedAt ?? providerJob.postedAt ?? null)
+          : null,
+    postedAt: providerJob.postedAt ?? null,
+    closesAt: providerJob.closesAt ?? null,
+    deduplicationKey: await deduplicationKey(source, providerJob),
   };
   const contentHash = await hashNormalisedJobContent(content);
 

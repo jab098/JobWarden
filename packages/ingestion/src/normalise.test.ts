@@ -50,7 +50,7 @@ describe("Greenhouse normalisation", () => {
     const providerJobs = await adapter.fetchJobs(source);
 
     const results = await Promise.all(
-      providerJobs.map((job) => normaliseProviderJob(source, job)),
+      providerJobs.jobs.map((job) => normaliseProviderJob(source, job)),
     );
 
     expect(
@@ -125,7 +125,8 @@ describe("Greenhouse normalisation", () => {
       random: () => 0,
       createTimeoutSignal: () => new AbortController().signal,
     });
-    const [providerJob] = await adapter.fetchJobs(source);
+    const { jobs } = await adapter.fetchJobs(source);
+    const [providerJob] = jobs;
 
     const job = await eligibleJob(providerJob);
 
@@ -135,6 +136,135 @@ describe("Greenhouse normalisation", () => {
     expect(job.descriptionText).not.toMatch(
       /<[^>]*>|class=|data-track|href=|onclick|tracker\.example|evil\.example|STEAL/,
     );
+  });
+
+  it("prefers structured provider evidence and stores advertised compensation provenance", async () => {
+    const job = await eligibleJob(
+      {
+        ...baseJob,
+        employerName: "Reed Employer Ltd",
+        canonicalApplicationUrl:
+          "https://employer.example/careers/123?utm_source=reed&ref=jobs",
+        absoluteUrl: "https://www.reed.co.uk/jobs/platform-engineer/123",
+        employmentType: "contract",
+        workingTime: "part_time",
+        postedAt: "2026-07-16T08:00:00.000Z",
+        closesAt: "2026-08-16T08:00:00.000Z",
+        compensation: {
+          raw: "£450 - £550 per day",
+          minimum: 450,
+          maximum: 550,
+          currency: "GBP",
+          period: "day",
+          provenance: "advertised",
+          observedAt: "2026-07-18T09:00:00.000Z",
+        },
+      },
+      {
+        id: source.id,
+        provider: "reed",
+        boardToken: "gb-discovery",
+        employerName: "Reed",
+        allowedHosts: ["www.reed.co.uk"],
+      },
+    );
+
+    expect(job).toMatchObject({
+      employer: "Reed Employer Ltd",
+      employmentType: "contract",
+      workingTime: "part_time",
+      compensationRaw: "£450 - £550 per day",
+      compensationMinimum: 45_000,
+      compensationMaximum: 55_000,
+      compensationCurrency: "GBP",
+      compensationPeriod: "day",
+      compensationProvenance: "advertised",
+      compensationObservedAt: "2026-07-18T09:00:00.000Z",
+      postedAt: "2026-07-16T08:00:00.000Z",
+      closesAt: "2026-08-16T08:00:00.000Z",
+    });
+    expect(job.deduplicationKey).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("falls back to visible advertised GBP when structured salary fields are empty", async () => {
+    const job = await eligibleJob({
+      ...baseJob,
+      descriptionHtml:
+        "<p>UK role with an advertised salary of £62,000 per year.</p>",
+      postedAt: "2026-07-18T08:00:00.000Z",
+      compensation: {
+        raw: null,
+        minimum: null,
+        maximum: null,
+        currency: null,
+        period: "unknown",
+        provenance: "unknown",
+        observedAt: null,
+      },
+    });
+
+    expect(job).toMatchObject({
+      compensationRaw: "UK role with an advertised salary of £62,000 per year.",
+      compensationMinimum: 6_200_000,
+      compensationMaximum: null,
+      compensationCurrency: "GBP",
+      compensationPeriod: "year",
+      compensationProvenance: "advertised",
+      compensationObservedAt: "2026-07-17T10:00:00Z",
+    });
+  });
+
+  it("falls back to a provider occurrence key when no canonical employer URL exists", async () => {
+    const first = await eligibleJob(baseJob);
+    const second = await eligibleJob({
+      ...baseJob,
+      absoluteUrl:
+        "https://boards.greenhouse.io/acme/jobs/normalise-1?utm_source=test",
+    });
+
+    expect(first.deduplicationKey).toBe(second.deduplicationKey);
+    expect(first.compensationProvenance).toBe("unknown");
+    expect(first.compensationObservedAt).toBeNull();
+  });
+
+  it("uses the same exact employer URL identity across Greenhouse and Reed", async () => {
+    const employerUrl =
+      "https://boards.greenhouse.io/acme/jobs/normalise-1?utm_source=board";
+    const greenhouse = await eligibleJob({
+      ...baseJob,
+      canonicalApplicationUrl: employerUrl,
+    });
+    const reed = await eligibleJob(
+      {
+        ...baseJob,
+        providerJobId: "reed-1",
+        absoluteUrl: "https://www.reed.co.uk/jobs/platform-engineer/1",
+        canonicalApplicationUrl:
+          "https://boards.greenhouse.io/acme/jobs/normalise-1?utm_source=reed",
+      },
+      {
+        id: "f9d635bc-3b4f-4235-b966-3779f279bd5f",
+        provider: "reed",
+        boardToken: "gb-discovery",
+        employerName: "Reed",
+        allowedHosts: ["www.reed.co.uk"],
+      },
+    );
+
+    expect(reed.deduplicationKey).toBe(greenhouse.deduplicationKey);
+  });
+
+  it("never trusts an unsafe external URL as a cross-source deduplication key", async () => {
+    const withoutExternalUrl = await eligibleJob(baseJob);
+    const withUnsafeExternalUrl = await eligibleJob({
+      ...baseJob,
+      canonicalApplicationUrl: "https://user:secret@jobs.example.com/123",
+    });
+
+    expect(withUnsafeExternalUrl.deduplicationKey).toBe(
+      withoutExternalUrl.deduplicationKey,
+    );
+    expect(JSON.stringify(withUnsafeExternalUrl)).not.toContain("secret");
   });
 
   it.each([

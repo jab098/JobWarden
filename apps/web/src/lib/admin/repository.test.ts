@@ -30,6 +30,7 @@ function createRepository(): AdminRepository {
     listAccessRequests: vi.fn(async () => []),
     getAccessRequestsEnabled: vi.fn(async () => true),
     listSources: vi.fn(async () => []),
+    listSourceHealth: vi.fn(async () => []),
     listIngestionRuns: vi.fn(async () => []),
     listIngestionRequests: vi.fn(async () => []),
     decideAccess: vi.fn(async () => undefined),

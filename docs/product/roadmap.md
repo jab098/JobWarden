@@ -24,7 +24,7 @@ Status changes to `reviewed` only after independent review, full verification, p
 | ---- | -------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------ |
 | 7    | Administrator operations                                                   | reviewed | None for fixture development                                                         |
 | 8    | Shared ingestion runtime                                                   | reviewed | Supabase project for live deployment; local implementation does not wait             |
-| 9    | UK coverage and compensation                                               | pending  | Source credentials only when an approved API requires them                           |
+| 9    | UK coverage and compensation                                               | active   | Reed credential only after terms, pgTAP, and controlled live validation              |
 | 10   | Career profile, onboarding, and CV extraction                              | pending  | Supabase private Storage and Cloudflare Workers AI before real-data testing          |
 | 11   | Target Feed and explainable fit scores                                     | pending  | No paid AI dependency                                                                |
 | 12   | Explore and career pathways                                                | pending  | Cloudflare Workers AI optional; deterministic taxonomy is the fallback               |

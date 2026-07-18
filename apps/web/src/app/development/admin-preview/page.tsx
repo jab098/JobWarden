@@ -5,6 +5,7 @@ import { AccessRequestList } from "@/components/admin/access-request-list";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { IngestionRequestList } from "@/components/admin/ingestion-request-list";
 import { IngestionRunList } from "@/components/admin/ingestion-run-list";
+import { SourceHealthList } from "@/components/admin/source-health-list";
 import { SourceList } from "@/components/admin/source-list";
 import { Button } from "@/components/ui/button";
 import { getDevelopmentAdminSnapshot } from "@/lib/admin/development-admin";
@@ -93,6 +94,7 @@ export default async function DevelopmentAdminPreview() {
           </section>
 
           <IngestionRequestList requests={snapshot.ingestionRequests} />
+          <SourceHealthList sources={snapshot.sourceHealth} />
           <IngestionRunList runs={snapshot.runs} />
         </div>
       </main>

@@ -13,6 +13,7 @@ const allFilters: JobFilters = {
   workingTime: "all",
   workplace: "all",
   ir35: "all",
+  compensation: "all",
   page: 1,
 };
 
@@ -28,6 +29,7 @@ const listRow = {
   compensation_maximum: 70_000,
   compensation_currency: "GBP",
   compensation_period: "day",
+  compensation_provenance: "advertised",
   posted_at: "2026-07-12T14:30:00.000Z",
   last_seen_at: "2026-07-17T08:00:00.000Z",
   job_locations: [
@@ -101,6 +103,7 @@ describe("RLS-bound Supabase jobs list", () => {
           compensationMaximum: 70_000,
           compensationCurrency: "GBP",
           compensationPeriod: "day",
+          compensationProvenance: "advertised",
           postedAt: "2026-07-12T14:30:00.000Z",
         },
       ],
@@ -122,6 +125,7 @@ describe("RLS-bound Supabase jobs list", () => {
       workingTime: "part_time",
       workplace: "remote",
       ir35: "inside",
+      compensation: "unknown",
       page: 2,
     });
 
@@ -131,6 +135,7 @@ describe("RLS-bound Supabase jobs list", () => {
       ["working_time", "part_time"],
       ["workplace_type", "remote"],
       ["ir35_status", "inside"],
+      ["compensation_provenance", "unknown"],
     ]);
     expect(builder.range).toHaveBeenCalledWith(25, 49);
   });

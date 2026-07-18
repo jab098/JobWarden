@@ -17,6 +17,8 @@ JobWarden is designed to operate as close to free as practical during private be
 | Error reporting                                                    | Sentry EU, optional                  | Useful production fault visibility                                           | No default PII, raw CV, job description, request body, cookie, or token; app works without it                                          | Task 16                 |
 | Product analytics                                                  | Disabled                             | Consent and personalisation make premature tracking high-risk                | No browser analytics SDK until affirmative consent and a separate data review                                                          | Separate owner decision |
 
+The Reed Jobseeker API is a credentialed source integration, not a metered AI service. JobWarden still treats it as a bounded external dependency: one shared page of at most 50 jobs, a six-hour minimum source interval, four concurrent detail calls, and no automatic paid or alternative-provider fallback. A provider limit or unavailable credential fails only that source and cannot spend money or abort later sources.
+
 ## Current provider references
 
 - [Cloudflare Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/) documents a free daily allocation and failed requests rather than free-plan overage after the allocation is exhausted. JobWarden still sets its own lower reserve so a single feature cannot consume the day.
@@ -26,6 +28,7 @@ JobWarden is designed to operate as close to free as practical during private be
 - [Supabase Cron](https://supabase.com/docs/guides/cron) documents pg_cron scheduling and execution constraints.
 - [Supabase pgvector](https://supabase.com/docs/guides/ai/vector-columns) is the approved vector route if semantic retrieval proves valuable.
 - [Resend limits](https://resend.com/docs/knowledge-base/account-quotas-and-limits) is the source of truth for current daily and monthly email allowances.
+- [Reed's Jobseeker API documentation](https://www.reed.co.uk/developers/jobseeker) is the source of truth for its search/detail interface and credential method. Its public page does not document a price, quota, retention grant, or redistribution terms, so the source remains disabled until the owner reviews registration terms and confirms the intended use.
 
 ## Services not in the default architecture
 
@@ -64,6 +67,7 @@ The counter must be atomic. Failure states are `capacity_exhausted`, `provider_u
 No platform setup is required for Task 7's fictional local implementation. When a task reaches a live gate, its operations guide must give the owner exact click-by-click/CLI steps and request only the values required for that service:
 
 - Task 8: Supabase project URL, server secret, and Vault/Cron setup using the exact [shared ingestion operations guide](../operations/ingestion.md). A publishable key is not used by the custom bearer-protected scheduler path.
+- Task 9: Reed API registration and server-only `REED_API_KEY` setup using the exact [Reed ingestion runbook](../operations/reed-ingestion.md). Do not send the key in chat. Create the source disabled, validate it against a staging database, and enable it only after the documented terms/retention decision and real pgTAP checks are complete.
 - Task 10: private Storage bucket/policies and Cloudflare Workers AI binding before real CV tests.
 - Task 14: Resend account, API key, verified sender, and DNS records.
 - Task 16: Google OAuth/Supabase callbacks, administrator bootstrap UUID, Cloudflare deployment/domain, and optional Sentry EU project.

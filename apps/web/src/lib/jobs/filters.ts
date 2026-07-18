@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  compensationProvenances,
   employmentTypes,
   ir35Statuses,
   workplaceTypes,
@@ -14,6 +15,7 @@ export const jobFilterSchema = z.object({
   workingTime: z.enum([...workingTimes, "all"]).catch("all"),
   workplace: z.enum([...workplaceTypes, "all"]).catch("all"),
   ir35: z.enum([...ir35Statuses, "all"]).catch("all"),
+  compensation: z.enum([...compensationProvenances, "all"]).catch("all"),
   page: z.coerce.number().int().min(1).max(1000).catch(1),
 }) satisfies z.ZodType<JobFilters>;
 
@@ -29,6 +31,8 @@ export function parseJobFilters(input: JobFilterInput): JobFilters {
     workplace:
       typeof input.workplace === "string" ? input.workplace : undefined,
     ir35: typeof input.ir35 === "string" ? input.ir35 : undefined,
+    compensation:
+      typeof input.compensation === "string" ? input.compensation : undefined,
     page: typeof input.page === "string" ? input.page : undefined,
   });
 }
@@ -47,6 +51,9 @@ export function createJobFiltersQueryString(filters: JobFilters): string {
     query.set("workplace", filters.workplace);
   }
   if (filters.ir35 !== "all") query.set("ir35", filters.ir35);
+  if (filters.compensation && filters.compensation !== "all") {
+    query.set("compensation", filters.compensation);
+  }
   if (filters.page !== 1) query.set("page", String(filters.page));
 
   return query.toString();

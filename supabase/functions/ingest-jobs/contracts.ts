@@ -48,6 +48,7 @@ export type RuntimeEnvironment = {
   supabaseUrl: string;
   serviceRoleKey: string;
   cronSecret: string;
+  reedApiKey?: string;
 };
 
 export type RuntimeLog = Readonly<{
@@ -66,7 +67,10 @@ export type RuntimeLog = Readonly<{
 export type IngestionHandlerDependencies = {
   readEnvironment(): RuntimeEnvironment;
   createRepository(environment: RuntimeEnvironment): IngestionRepository;
-  createAdapter(source: JobSource): ProviderAdapter;
+  createAdapter(
+    source: JobSource,
+    environment: RuntimeEnvironment,
+  ): ProviderAdapter;
   now(): Date;
   randomUuid(): string;
   log(record: RuntimeLog): void;
