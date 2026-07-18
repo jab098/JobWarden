@@ -8,6 +8,7 @@ export const requiredMigrationFiles = [
   "202607170003_audit_and_ingestion.sql",
   "202607180001_admin_operations.sql",
   "202607180002_shared_ingestion_runtime.sql",
+  "202607180003_uk_coverage_compensation.sql",
 ];
 
 const publicTables = [
@@ -21,6 +22,7 @@ const publicTables = [
   "ingestion_runs",
   "ingestion_source_runs",
   "ingestion_requests",
+  "job_source_occurrences",
 ];
 
 function compact(sql) {
@@ -264,6 +266,27 @@ export function verifyFoundationSql(files) {
       "name = 'jobwarden_ingestion_cron_secret'",
       "scheduler must load the cron secret from Vault",
     ],
+    [
+      "constraint job_source_occurrences_provider_identity_unique unique (source_id, provider_job_id)",
+      "missing exact source occurrence identity uniqueness",
+    ],
+    [
+      "compensation_provenance in ('advertised', 'estimated', 'unknown')",
+      "missing compensation provenance constraint",
+    ],
+    [
+      "coverage_mode in ('complete', 'incremental')",
+      "missing complete or incremental source coverage constraint",
+    ],
+    [
+      "provider <> 'reed' or minimum_sync_interval >= interval '6 hours'",
+      "Reed discovery sources must enforce a six-hour minimum interval",
+    ],
+    [
+      "coverage_mode_value = 'complete' and response_was_complete",
+      "incremental source completion must not advance omissions",
+    ],
+    ["limit 500", "missing bounded closing-date lifecycle maintenance"],
   ];
 
   for (const [fragment, message] of requiredFragments) {

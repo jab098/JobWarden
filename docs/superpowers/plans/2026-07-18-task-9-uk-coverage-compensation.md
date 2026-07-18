@@ -61,12 +61,12 @@
 - Produces `public.job_source_occurrences`, compensation provenance columns, `coverage_mode`, provider-safe source constraints, bounded expiry maintenance, and revised batch/finalisation RPCs.
 - Existing `jobs` reads remain valid; occurrence mutations remain service-role-only.
 
-- [ ] Write failing static-verifier tests requiring migration 6, forced RLS, exact-key occurrence uniqueness, Reed provider support, incremental non-omission, provenance constraints, and bounded expiry.
-- [ ] Run the verifier tests and confirm all new fragments are missing.
-- [ ] Write the migration and pgTAP behavioural specification, including a migration of every existing job into one occurrence.
-- [ ] Update the static verifier minimally and rerun to green.
-- [ ] Confirm pgTAP plan count matches the exact assertion count and run `git diff --check`.
-- [ ] Commit `feat: add canonical job provenance model`.
+- [x] Write failing static-verifier tests requiring migration 6, forced RLS, exact-key occurrence uniqueness, Reed provider support, incremental non-omission, provenance constraints, and bounded expiry.
+- [x] Run the verifier tests and confirm all new fragments are missing.
+- [x] Write the migration and pgTAP behavioural specification, including a migration of every existing job into one occurrence.
+- [x] Update the static verifier minimally and rerun to green.
+- [x] Confirm pgTAP plan count matches the exact assertion count and run `git diff --check`.
+- [x] Commit `feat: add canonical job provenance model`.
 
 ### Task 3: Edge runtime dispatch and transactional persistence
 
