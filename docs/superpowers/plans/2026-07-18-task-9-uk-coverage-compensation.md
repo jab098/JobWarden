@@ -39,15 +39,15 @@
 - Produces `ProviderFetchResult`, provider-discriminated `JobSource`, `ProviderCompensation`, `compensationProvenance`, `deduplicationKey`, and `ReedAdapter`.
 - Reed returns at most 50 detailed jobs and `coverage: "incremental"`; Greenhouse returns `coverage: "complete"`.
 
-- [ ] Write failing domain tests for compensation provenance and canonical deduplication key fields.
-- [ ] Run focused domain tests and confirm schema failures.
-- [ ] Implement the minimal schema/parser changes and rerun to green.
-- [ ] Write failing Reed adapter tests for Basic auth, bounded results/detail concurrency, explicit fields, retries, abort, malformed payload, and redacted errors.
-- [ ] Run the focused Reed tests and confirm `ReedAdapter` is missing.
-- [ ] Implement the adapter with the existing retry primitives and rerun to green.
-- [ ] Write failing normalisation tests for structured Reed facts, exact canonical URL keys, unsafe external URLs, and incremental coverage.
-- [ ] Implement provider-fact precedence without weakening visible-text or UK classification boundaries.
-- [ ] Run domain and ingestion suites, typecheck, and commit `feat: add Reed ingestion adapter`.
+- [x] Write failing domain tests for compensation provenance and canonical deduplication key fields.
+- [x] Run focused domain tests and confirm schema failures.
+- [x] Implement the minimal schema/parser changes and rerun to green.
+- [x] Write failing Reed adapter tests for Basic auth, bounded results/detail concurrency, explicit fields, retries, abort, malformed payload, and redacted errors.
+- [x] Run the focused Reed tests and confirm `ReedAdapter` is missing.
+- [x] Implement the adapter with the existing retry primitives and rerun to green.
+- [x] Write failing normalisation tests for structured Reed facts, exact canonical URL keys, unsafe external URLs, and incremental coverage.
+- [x] Implement provider-fact precedence without weakening visible-text or UK classification boundaries.
+- [x] Run domain and ingestion suites, typecheck, and commit `feat: add Reed ingestion adapter`.
 
 ### Task 2: Canonical jobs, source occurrences, and lifecycle migration
 

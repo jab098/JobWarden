@@ -207,10 +207,11 @@ async function processSource(options: {
         options.dependencies.now().getTime() -
         PERSISTENCE_RESERVE_MS,
     );
-    const jobs = await adapter.fetchJobs(
+    const fetchResult = await adapter.fetchJobs(
       options.claim.source,
       AbortSignal.timeout(adapterBudgetMs),
     );
+    const { jobs } = fetchResult;
     receivedCount = jobs.length;
 
     if (jobs.length > MAX_JOBS_PER_SOURCE) {

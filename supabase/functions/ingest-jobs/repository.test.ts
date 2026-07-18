@@ -33,8 +33,11 @@ const job = normalisedJobSchema.parse({
   compensationMaximum: 5_000_000,
   compensationCurrency: "GBP",
   compensationPeriod: "year",
+  compensationProvenance: "advertised",
+  compensationObservedAt: "2026-07-18T08:00:00.000Z",
   postedAt: null,
   closesAt: null,
+  deduplicationKey: "b".repeat(64),
   contentHash: "a".repeat(64),
 });
 

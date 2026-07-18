@@ -92,7 +92,7 @@ function adapter(jobs: ProviderJob[] | Error): ProviderAdapter {
   return {
     fetchJobs: vi.fn(async () => {
       if (jobs instanceof Error) throw jobs;
-      return jobs;
+      return { coverage: "complete" as const, jobs };
     }),
   };
 }

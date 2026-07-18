@@ -2,7 +2,11 @@ import { z } from "zod";
 
 import { isTransientStatus, retryDelayMilliseconds, sleep } from "./retry.ts";
 import type { Sleep } from "./retry.ts";
-import type { JobSource, ProviderAdapter, ProviderJob } from "./types.ts";
+import type {
+  JobSource,
+  ProviderAdapter,
+  ProviderFetchResult,
+} from "./types.ts";
 
 const MAX_ATTEMPTS = 3;
 const DEFAULT_TIMEOUT_MS = 8_000;
@@ -42,7 +46,12 @@ const greenhouseResponseSchema = z.object({
 });
 
 export type AdapterErrorCode =
-  "aborted" | "timeout" | "network_error" | "http_error" | "invalid_response";
+  | "aborted"
+  | "timeout"
+  | "network_error"
+  | "http_error"
+  | "invalid_response"
+  | "configuration_error";
 
 export class AdapterError extends Error {
   override readonly name = "AdapterError";
@@ -167,7 +176,14 @@ export class GreenhouseAdapter implements ProviderAdapter {
   async fetchJobs(
     source: JobSource,
     callerSignal?: AbortSignal,
-  ): Promise<ProviderJob[]> {
+  ): Promise<ProviderFetchResult> {
+    if (source.provider !== "greenhouse") {
+      throw new AdapterError(
+        "configuration_error",
+        "Greenhouse adapter requires a Greenhouse source.",
+        0,
+      );
+    }
     const endpoint = new URL(
       `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(source.boardToken)}/jobs`,
     );
@@ -275,20 +291,23 @@ export class GreenhouseAdapter implements ProviderAdapter {
         );
       }
 
-      return result.data.jobs.map((job) => ({
-        providerJobId: String(job.id),
-        title: job.title,
-        location: job.location.name,
-        descriptionHtml: job.content,
-        absoluteUrl: job.absolute_url,
-        updatedAt: job.updated_at,
-        metadataText: (job.metadata ?? [])
-          .map(
-            (metadata) =>
-              `${metadata.name}: ${stableMetadataValue(metadata.value)}`,
-          )
-          .sort(compareText),
-      }));
+      return {
+        coverage: "complete",
+        jobs: result.data.jobs.map((job) => ({
+          providerJobId: String(job.id),
+          title: job.title,
+          location: job.location.name,
+          descriptionHtml: job.content,
+          absoluteUrl: job.absolute_url,
+          updatedAt: job.updated_at,
+          metadataText: (job.metadata ?? [])
+            .map(
+              (metadata) =>
+                `${metadata.name}: ${stableMetadataValue(metadata.value)}`,
+            )
+            .sort(compareText),
+        })),
+      };
     }
 
     throw new AdapterError(

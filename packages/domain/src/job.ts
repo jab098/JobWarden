@@ -39,6 +39,11 @@ export const compensationPeriods = [
   "year",
   "unknown",
 ] as const;
+export const compensationProvenances = [
+  "advertised",
+  "estimated",
+  "unknown",
+] as const;
 
 export const normalisedJobSchema = z.object({
   sourceId: z.string().uuid(),
@@ -60,8 +65,11 @@ export const normalisedJobSchema = z.object({
   compensationMaximum: z.number().int().nonnegative().nullable(),
   compensationCurrency: z.literal("GBP").nullable(),
   compensationPeriod: z.enum(compensationPeriods),
+  compensationProvenance: z.enum(compensationProvenances),
+  compensationObservedAt: z.iso.datetime().nullable(),
   postedAt: z.iso.datetime().nullable(),
   closesAt: z.iso.datetime().nullable(),
+  deduplicationKey: z.string().regex(/^[a-f0-9]{64}$/),
   contentHash: z.string().regex(/^[a-f0-9]{64}$/),
 });
 

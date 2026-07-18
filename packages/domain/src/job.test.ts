@@ -20,8 +20,11 @@ const validJob = {
   compensationMaximum: null,
   compensationCurrency: "GBP",
   compensationPeriod: "year",
+  compensationProvenance: "advertised",
+  compensationObservedAt: "2026-07-17T09:30:00.000Z",
   postedAt: "2026-07-17T09:30:00.000Z",
   closesAt: null,
+  deduplicationKey: "b".repeat(64),
   contentHash: "a".repeat(64),
 } as const;
 
@@ -34,6 +37,8 @@ describe("normalised job schema", () => {
     ["a non-HTTPS application URL", { applicationUrl: "http://example.com" }],
     ["missing UK evidence", { ukEligibilityEvidence: [] }],
     ["a non-GB country code", { countryCode: "US" }],
+    ["invalid compensation provenance", { compensationProvenance: "guessed" }],
+    ["an invalid deduplication key", { deduplicationKey: "not-a-hash" }],
     ["an invalid content hash", { contentHash: "abc123" }],
   ])("rejects %s", (_name, override) => {
     expect(

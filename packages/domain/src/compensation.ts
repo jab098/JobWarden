@@ -1,6 +1,6 @@
 import type { compensationPeriods } from "./job.ts";
 
-type CompensationPeriod = (typeof compensationPeriods)[number];
+export type CompensationPeriod = (typeof compensationPeriods)[number];
 
 export type ParsedCompensation = {
   currency: "GBP" | null;
