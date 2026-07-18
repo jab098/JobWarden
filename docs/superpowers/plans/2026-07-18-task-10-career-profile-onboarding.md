@@ -50,7 +50,7 @@ export function parseCareerProfileDraft(input: unknown): CareerProfileDraft {
 ```
 
 - [x] Rerun the focused tests and `pnpm --filter @jobwarden/domain typecheck`; expect green.
-- [ ] Commit `feat: define career profile contracts`.
+- [x] Commit `feat: define career profile contracts`.
 
 ### Task 2: Owner-only data and CV metadata
 
@@ -84,11 +84,11 @@ alter table public.career_profiles force row level security;
 
 - [x] Add pgTAP tests for owner isolation, administrator denial by default, service extraction, suggestion acceptance, CV replacement, and cascading deletion.
 - [x] Run `pnpm check:supabase`, match `plan(N)` to exact assertions, and run `git diff --check`; expect green. Real PostgreSQL execution remains part of the existing Docker-backed pre-live gate.
-- [ ] Commit `feat: add private career profile storage`.
+- [x] Commit `feat: add private career profile storage`.
 
 ### Task 3: Safe deterministic CV intake
 
-**Progress (2026-07-18):** The package, strict pre-parser file gate, sanitised error vocabulary, and deterministic evidence proposal are implemented with fictional tests. DOCX/PDF parser tests and implementations remain open because `fflate` and `unpdf` are not present locally and this sandbox cannot currently reach the package registry; do not substitute an unreviewed home-grown document parser.
+**Progress (2026-07-18):** Complete. The package now has a strict pre-parser file gate, sanitised error vocabulary, bounded DOCX/PDF extraction, and a deterministic evidence proposal covered by fictional in-memory tests. DOCX archive metadata is checked before selected parts are inflated with `fflate`; PDF parsing uses `unpdf` behind encryption, page, character, and deadline bounds. Real CV upload remains disabled.
 
 **Files:**
 - Create: `packages/profile/package.json`
@@ -109,9 +109,9 @@ alter table public.career_profiles force row level security;
 - Produces `validateCvFile(input): ValidatedCvFile`, `extractCvText(file): Promise<ExtractedCvText>`, and `createDeterministicProfileProposal(text): ProfileProposal`.
 - Limits are 5 MiB input, 20 MiB total DOCX expansion, 2,000 archive entries, 250 PDF pages, 100,000 extracted characters, and 20 seconds.
 
-- [ ] Write failing in-memory fictional tests for DOCM, MIME/extension/magic mismatch, unsafe or duplicate ZIP paths, expansion limits, external relationships, encrypted PDF, page limits, and text truncation.
-- [ ] Run `pnpm --filter @jobwarden/profile test`; expect failure because implementation is absent.
-- [ ] Implement validation before parsing with these exported limits:
+- [x] Write failing in-memory fictional tests for DOCM, MIME/extension/magic mismatch, unsafe or duplicate ZIP paths, expansion limits, external relationships, encrypted PDF, page limits, and text truncation.
+- [x] Run `pnpm --filter @jobwarden/profile test`; expect failure because implementation is absent.
+- [x] Implement validation before parsing with these exported limits:
 
 ```ts
 export const cvFileLimits = {
@@ -124,8 +124,8 @@ export const cvFileLimits = {
 } as const;
 ```
 
-- [ ] Use `fflate` only after archive checks. Read approved internal DOCX relationships only. Use `unpdf` behind page/timeout bounds. Return evidence offsets without logging bytes or text.
-- [ ] Run package tests and typecheck; expect green. Commit `feat: add bounded CV extraction`.
+- [x] Use `fflate` only after archive checks. Read approved internal DOCX relationships only. Use `unpdf` behind page/timeout bounds. Return evidence offsets without logging bytes or text.
+- [x] Run package tests and typecheck; expect green. Commit `feat: add bounded CV extraction`.
 
 ### Task 4: Authenticated extraction runtime
 
