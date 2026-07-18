@@ -9,20 +9,25 @@
   "scripts": {
     "bootstrap:admin": "node scripts/bootstrap-admin.mjs",
     "build": "pnpm --filter @jobwarden/web build",
+    "check:deno": "deno check --config supabase/functions/ingest-jobs/deno.json supabase/functions/ingest-jobs/index.ts",
     "check:guardrails": "node scripts/check-project-guardrails.mjs",
     "check:supabase": "node scripts/verify-supabase-foundation.mjs",
     "format:check": "prettier --check .",
     "lint": "pnpm -r lint",
-    "test": "vitest run --config vitest.workspace.ts",
+    "test": "vitest run --config vitest.workspace.ts && pnpm test:functions",
+    "test:functions": "vitest run --config supabase/functions/ingest-jobs/vitest.config.ts",
     "test:watch": "vitest --config vitest.workspace.ts",
-    "typecheck": "pnpm -r typecheck",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm check:guardrails && pnpm build"
+    "typecheck": "pnpm -r typecheck && pnpm typecheck:functions",
+    "typecheck:functions": "tsc --noEmit -p supabase/functions/tsconfig.json",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm check:deno && pnpm test && pnpm check:guardrails && pnpm build"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.110.6",
     "@types/node": "latest",
+    "deno": "2.5.6",
     "prettier": "latest",
     "typescript": "latest",
-    "vitest": "latest"
+    "vitest": "latest",
+    "zod": "^4.0.0"
   }
 }

@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import { isTransientStatus, retryDelayMilliseconds, sleep } from "./retry";
-import type { Sleep } from "./retry";
-import type { JobSource, ProviderAdapter, ProviderJob } from "./types";
+import { isTransientStatus, retryDelayMilliseconds, sleep } from "./retry.ts";
+import type { Sleep } from "./retry.ts";
+import type { JobSource, ProviderAdapter, ProviderJob } from "./types.ts";
 
 const MAX_ATTEMPTS = 3;
 const DEFAULT_TIMEOUT_MS = 8_000;
@@ -45,7 +45,7 @@ export type AdapterErrorCode =
   "aborted" | "timeout" | "network_error" | "http_error" | "invalid_response";
 
 export class AdapterError extends Error {
-  readonly name = "AdapterError";
+  override readonly name = "AdapterError";
 
   constructor(
     readonly code: AdapterErrorCode,

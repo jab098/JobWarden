@@ -6,7 +6,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 - [Approved foundation design](superpowers/specs/2026-07-17-jobwarden-foundation-design.md)
 - [Historical Tasks 1–6 foundation plan](superpowers/plans/2026-07-17-jobwarden-foundation.md)
-- [Active Task 7 implementation plan](superpowers/plans/2026-07-18-task-7-administrator-operations.md)
+- [Active Task 8 implementation plan](superpowers/plans/2026-07-18-task-8-shared-ingestion-runtime.md)
 - [Shipping standard](standards/shipping-standards.md)
 - [UI direction](design/ui-direction.md)
 - [UK source coverage strategy](product/source-coverage.md)
@@ -18,10 +18,10 @@ This file is the durable cross-session recovery map. Update task status to `revi
 ## Handoff
 
 - Current integration branch: `main`
-- Last independently reviewed task implementation commit: `4a1efdd`
+- Last independently reviewed task implementation commit: `8556997`
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
-- Active feature branch: none
-- Next task: Task 8 shared ingestion runtime; authentication setup remains deferred by the owner
+- Active feature branch: none after Task 8 delivery
+- Active task: Task 9 UK coverage and compensation planning; authentication setup remains deferred by the owner
 
 ## Task progress
 
@@ -34,7 +34,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 5. Supabase authentication and route gates                             | reviewed | Code retained; live OAuth and operational setup deferred      |
 | 6. Responsive app shell and UK jobs feed                               | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally   |
 | 7. Administrator operations                                            | reviewed | Delivered by PR #8; final code review clean at `4a1efdd`      |
-| 8. Shared ingestion runtime                                            | pending  |                                                               |
+| 8. Shared ingestion runtime                                            | reviewed | Delivered by PR #9; final code review clean at `8556997`      |
 | 9. UK coverage and compensation                                        | pending  |                                                               |
 | 10. Career profile, onboarding, and CV extraction                      | pending  |                                                               |
 | 11. Target Feed and explainable fit scores                             | pending  |                                                               |
@@ -55,6 +55,9 @@ pnpm --filter @jobwarden/domain test
 pnpm --filter @jobwarden/domain typecheck
 pnpm --filter @jobwarden/ingestion test
 pnpm --filter @jobwarden/ingestion typecheck
+pnpm test:functions
+pnpm typecheck:functions
+pnpm check:deno
 pnpm vitest run scripts/bootstrap-admin.test.ts scripts/verify-supabase-foundation.test.ts
 pnpm check:supabase
 pnpm check:guardrails
@@ -76,6 +79,8 @@ Task 5 passed 58 focused web tests and the 235-test workspace verification, incl
 Task 6 passed independent full-range review with no remaining critical, important, or minor findings and was delivered by PR #5 at merge commit `7878d47`. The fail-closed, server-only development mode uses explicitly fictional UK fixtures and cannot enable outside `NODE_ENV=development`; production continues to use the caller's cookie-bound Supabase client and existing RLS. URL-backed filters cover employment type, working time, workplace, IR35, literal title/employer search, and stable pagination. The responsive editorial workspace provides a desktop rail, accessible mobile navigation and filter sheets, one jobs list, manual employer-site applications, job detail, and designed loading, empty, no-results, error, and not-found states without pricing, payments, AI scoring, or auto-apply. Compensation preserves minor-unit precision without inventing range semantics, IR35 labels do not reinterpret `not_applicable`, and deep out-of-range pages return directly to the last available page. Small warm-surface text meets WCAG AA contrast and valid long source tokens cannot force mobile horizontal overflow. The web suite passed 128 tests across 15 files and the workspace passed 305 tests across 23 files; lint, typecheck, axe checks, the production build, dependency audit, exact-range secret scan, and production fail-closed probe passed. Hydrated browser verification passed `/`, `/jobs`, a filtered URL, and a detail route at 1440 px and true 390 px with meaningful content, no error overlays, no console errors, no horizontal overflow, working mobile sheets, visible keyboard focus, and a 1,000-character unbroken-token regression probe. The frozen install and complete verification were repeated successfully on the merge commit. Live Supabase queries and OAuth remain intentionally unverified until the deferred service setup is resumed.
 
 Task 7 delivered audited access decisions, lawful Greenhouse source configuration, bounded ingestion visibility, and a globally coalesced manual-ingestion request queue. Production `/admin` still requires server-derived administrator access; mutation forms cannot supply actor or role authority, exact-origin validation fails closed, and the caller-bound Supabase client remains subject to RLS/RPC checks. The separate `/development/admin-preview` uses deeply immutable fictional data, imports no production repository or mutation action, exposes no usable production privilege, and is forbidden outside exact local development mode. The editorial operations workspace passed automated accessibility coverage and true 1440 px / 390 px browser checks without horizontal document overflow or a framework error overlay. Independent review findings covering strict Origin parsing, PostgreSQL day intervals, confirmation lifecycles, stable live regions, colour contrast, and fictional fixtures were remediated; the final re-review found no remaining critical, important, or minor issues. The workspace passed 393 tests across 32 files, formatting, lint, typechecking, guardrails, a normal production build, the static four-migration/ten-forced-RLS-table Supabase check, production dependency audit, and a 51-commit Gitleaks scan. A production build with `JOBWARDEN_DEV_ACCESS_BYPASS=true` failed closed with the expected forbidden-bypass error. Docker is not installed, so the real Supabase reset and pgTAP suite—including `supabase/tests/004_admin_operations.sql`—did not run and remain mandatory before live deployment. No owner platform setup is required for the completed fictional/local Task 7 slice.
+
+Task 8 delivered a custom-bearer-protected Supabase Edge Function, a shared scheduled/administrator queue with just-in-time claims up to a four-source invocation cap, a 120-second internal deadline, transactional job batches, five-minute leases and a three-attempt ceiling, GMT/BST-safe London scheduling, service-role-only RPCs, source-isolated Greenhouse execution, a 500-job response ceiling, a 36-assertion pgTAP specification, and a complete operations guide through PR #9. Focused function verification passed 34 tests across four files; the unchanged repository suite passed 393 tests across 32 files, for 427 automated tests total. Function typechecking, a pinned Deno 2 deployment-graph check, the five-migration static Supabase verifier, guardrails, formatting, lint, both dependency audits, the exact-range secret scan, and the production web build passed. The final independent re-review of `7df2818..8556997` found no remaining Critical, Important, or Minor issues. Docker remains unavailable, so `supabase db reset` and the real pgTAP suite through `005_shared_ingestion_runtime.sql` are still mandatory before any live source is enabled. No owner platform setup is required until the runtime is activated.
 
 ## Approved programme update
 

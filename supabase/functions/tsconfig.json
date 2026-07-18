@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": false,
+    "paths": {
+      "@jobwarden/domain": ["../../packages/domain/src/index.ts"],
+      "@jobwarden/ingestion": ["../../packages/ingestion/src/index.ts"]
+    },
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["**/node_modules/**"]
+}

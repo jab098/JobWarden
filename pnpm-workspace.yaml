@@ -3,6 +3,7 @@ packages:
   - packages/*
 
 allowBuilds:
+  deno: true
   sharp: true
   unrs-resolver: true
 
