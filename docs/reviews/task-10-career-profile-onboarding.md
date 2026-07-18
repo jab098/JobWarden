@@ -4,11 +4,11 @@
 
 **Base:** Task 9 merge `44a3580`
 
-**Local implementation head:** `0d315eb` plus the consolidated final-review remediation at branch `HEAD`
+**Final implementation head:** `0875d48`
 
-**Task-slice review status:** remediation Tasks 1–4 passed their focused reviews; findings from the later whole-branch review and its optional-content re-review are remediated at `HEAD`, with clean independent confirmation still pending
+**Task-slice review status:** remediation Tasks 1–4 passed their focused reviews; every finding from the later whole-branch review waves, including the final container-recursion finding, is remediated at `0875d48` with clean independent confirmation
 
-**Delivery status:** active; clean independent confirmation, PR #11 update/merge, local `main` update, and merge-commit verification remain pending
+**Delivery status:** delivered; the final whole-branch review returned specification PASS and quality APPROVED, PR #11 was merged to GitHub `main` at `06b5a9c`, and the merge commit passed the full verification gate on the updated local `main`
 
 ## Outcome
 
@@ -19,7 +19,7 @@ Real CV handling remains closed at two independent boundaries:
 - the web repository always returns a disabled upload capability and the UI contains no file input; and
 - `private.app_settings.career_cv_uploads_enabled` defaults false and blocks upload intents, Storage inserts, CV registration, and extraction claims. Task 10 exposes no setter.
 
-The branch must not be described as `reviewed` or delivered until the final whole-branch review of `44a3580..HEAD` is clean, PR #11 is merged to GitHub `main`, and the merge commit passes the same verification. Task 11 has not started.
+Those conditions are now met: the final whole-branch review of `44a3580..0875d48` was clean, PR #11 was merged to GitHub `main` at `06b5a9c`, and the merge commit passed the same verification on the updated local `main`. Task 11 has not started.
 
 ## Acceptance mapping
 

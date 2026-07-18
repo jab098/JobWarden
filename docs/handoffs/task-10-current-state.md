@@ -1,18 +1,18 @@
-# Task 10 current state
+# Task 10 delivery record
 
 **Updated:** 2026-07-18
 
 **Repository:** `/Users/jabed/Desktop/Jabed's Trash/Dev/JobWarden`
 
-**Branch:** `codex/task-10-career-profile`
+**Branch:** `codex/task-10-career-profile` (merged; preserved on GitHub)
 
 **Base:** Task 9 merge commit `44a3580`
 
-**Implementation head:** `b0d4da3`
+**Final implementation head:** `0875d48`
 
-**Pull request:** #11 (open; not merged)
+**Pull request:** #11 (merged into `main` at `06b5a9c`)
 
-This is the durable recovery note for Task 10 until publication. The canonical status remains in [Project Status](../project-status.md). Task 10 stays `active`: the independently approved remediation slices, release record, and local release gate are complete, but final whole-branch review, PR merge, local `main` update, and merge-commit verification are still required.
+This began as the durable recovery note for Task 10 and is now its delivery record. The canonical status remains in [Project Status](../project-status.md). Task 10 is `reviewed`: the final whole-branch review of `44a3580..0875d48` returned specification PASS and quality APPROVED with no remaining findings, PR #11 was merged, and the merge commit passed the full verification gate (577 workspace, 27 ingestion, and 26 extraction tests; all typechecks, Deno graphs, guardrails, production build, and the 10-migration/20-forced-RLS static Supabase verifier) on the updated local `main`.
 
 ## Completed and independently approved remediation
 
@@ -24,12 +24,12 @@ Task 3's final independent specification and quality re-review at `b0d4da3` pass
 
 ## Current release-gate state
 
-The Task 4 operational record and documentation commit are complete. The pre-commit gate passed frozen install; formatting, lint, all typechecks and Deno graphs; 535 workspace, 27 ingestion, and 25 extraction tests; guardrails; the production build; the 10-migration/20-forced-RLS static Supabase verifier; a clean production audit; branch/working-tree diff checks; and a 14-commit Gitleaks scan. The production bypass probe failed closed with the expected forbidden-bypass error. Exact amended-head verification is kept in the ignored SDD final-head evidence handoff.
+The Task 4 operational record and documentation commit are complete. The final release gate at `0875d48` passed frozen install; formatting, lint, all typechecks and Deno graphs; 577 workspace, 27 ingestion, and 26 extraction tests; guardrails; the production build; the 10-migration/20-forced-RLS static Supabase verifier; a clean production audit; branch/working-tree diff checks; and a clean 16-commit Gitleaks scan.
 
-Required remaining steps are:
+The previously required remaining steps are complete:
 
-1. obtain a clean independent whole-branch review of `44a3580..HEAD` and address every Critical or Important finding;
-2. update and merge PR #11, update local `main`, rerun the merge-commit gate, and only then mark Task 10 `reviewed`.
+1. the independent whole-branch review of `44a3580..0875d48` and its fix-confirmation re-review are clean, with every Critical and Important finding (including the final unbounded container-recursion finding) remediated test-first;
+2. PR #11 was updated and merged into `main` at `06b5a9c`, local `main` was updated, the merge-commit gate was rerun green, and Task 10 is marked `reviewed`.
 
 Task 11 has not started.
 
