@@ -20,8 +20,8 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - Current integration branch: `main`; the reviewed Task 9 branch is awaiting publication
 - Last independently reviewed task implementation commit: `5d53b7f`
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
-- Active feature branch: `codex/task-9-uk-coverage`
-- Active task: publish Task 9, then begin Task 10 career profile and onboarding; authentication setup remains deferred by the owner
+- Active feature branch: `codex/task-10-career-profile` stacked on reviewed Task 9 commit `51df9f8` while this sandbox cannot publish
+- Active task: Task 10 career profile and onboarding; authentication setup remains deferred by the owner
 
 ## Task progress
 
@@ -36,7 +36,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 7. Administrator operations                                            | reviewed | Delivered by PR #8; final code review clean at `4a1efdd`        |
 | 8. Shared ingestion runtime                                            | reviewed | Delivered by PR #9; final code review clean at `8556997`        |
 | 9. UK coverage and compensation                                        | active   | Final review clean; GitHub publication and local-main sync next |
-| 10. Career profile, onboarding, and CV extraction                      | pending  |                                                                 |
+| 10. Career profile, onboarding, and CV extraction                      | active   | Focused plan created; real CV data remains activation-gated     |
 | 11. Target Feed and explainable fit scores                             | pending  |                                                                 |
 | 12. Explore and career pathways                                        | pending  |                                                                 |
 | 13. Application tracker and follow-ups                                 | pending  |                                                                 |
