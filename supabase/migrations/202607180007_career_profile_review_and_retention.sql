@@ -41,6 +41,7 @@ alter table public.cv_extraction_runs
 
 create or replace function public.complete_career_profile_extraction(
   target_run_id uuid,
+  target_claim_token uuid,
   requested_status text,
   proposal_value jsonb,
   sanitised_error_code text,
@@ -56,7 +57,7 @@ as $$
 declare
   run_record public.cv_extraction_runs%rowtype;
 begin
-  if auth.role() <> 'service_role' then
+  if auth.role() is distinct from 'service_role' then
     raise exception using errcode = '42501', message = 'service role required';
   end if;
   if requested_status not in ('succeeded', 'failed') then
@@ -96,14 +97,13 @@ begin
   select run.* into run_record
   from public.cv_extraction_runs as run
   where run.id = target_run_id
+    and run.claim_token = target_claim_token
+    and run.status = 'running'
+    and run.lease_expires_at > clock_timestamp()
   for update;
 
   if not found then
-    raise exception using errcode = 'P0002', message = 'extraction run not found';
-  end if;
-  if run_record.status <> 'running' then
-    if run_record.status = requested_status then return; end if;
-    raise exception using errcode = '22023', message = 'extraction already completed';
+    raise exception using errcode = 'P0002', message = 'active extraction claim not found';
   end if;
 
   update public.cv_extraction_runs
@@ -115,6 +115,8 @@ begin
     evidence_count = evidence_count_value,
     suggestion_count = suggestion_count_value,
     completed_at = clock_timestamp(),
+    claim_token = null,
+    lease_expires_at = null,
     proposal_expires_at = case
       when requested_status = 'succeeded'
         then clock_timestamp() + interval '24 hours'
@@ -338,7 +340,7 @@ security definer
 set search_path = ''
 as $$
 begin
-  if auth.role() <> 'service_role' then
+  if auth.role() is distinct from 'service_role' then
     raise exception using errcode = '42501', message = 'service role required';
   end if;
 
@@ -400,7 +402,7 @@ as $$
 declare
   expired_count integer;
 begin
-  if auth.role() <> 'service_role'
+  if auth.role() is distinct from 'service_role'
     and session_user not in ('postgres', 'supabase_admin') then
     raise exception using errcode = '42501', message = 'service role required';
   end if;

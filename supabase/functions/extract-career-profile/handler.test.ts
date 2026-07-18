@@ -9,10 +9,25 @@ import type {
 import { CareerExtractionError } from "./errors";
 import { createCareerExtractionHandler } from "./handler";
 
+let forceTruncatedExtraction = false;
+vi.mock("@jobwarden/profile", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@jobwarden/profile")>();
+  return {
+    ...original,
+    extractCvText: async (
+      file: Parameters<typeof original.extractCvText>[0],
+    ) =>
+      forceTruncatedExtraction
+        ? { kind: "docx" as const, text: "Fictional evidence", truncated: true }
+        : original.extractCvText(file),
+  };
+});
+
 const documentId = "10000000-0000-4000-8000-000000000001";
 const runId = "20000000-0000-4000-8000-000000000001";
 const userId = "30000000-0000-4000-8000-000000000001";
 const correlationId = "40000000-0000-4000-8000-000000000001";
+const claimToken = "50000000-0000-4000-8000-000000000001";
 
 function fictionalDocx(): Uint8Array {
   const fixture =
@@ -36,6 +51,10 @@ function claimed(aiAllowed = false): ExtractionClaim {
     status: "running",
     proposal: null,
     errorCode: null,
+    claimToken,
+    leaseExpiresAt: "2026-07-18T12:01:00.000Z",
+    sha256Hex:
+      "f3c08e680d2373f5e476f89f6e9e339b7d2893b8bce52084b85915e46bd36ff3",
   };
 }
 
@@ -47,19 +66,23 @@ function harness(
     logs?: CareerRuntimeLog[];
     allowance?: number;
     succeedError?: Error;
+    downloadPromise?: Promise<Uint8Array>;
   } = {},
 ) {
   const claimResult = options.claim ?? claimed();
   const bytesResult = options.bytes ?? fictionalDocx();
   const repository: CareerExtractionRepository = {
+    verifyUser: vi.fn(async () => userId),
     claim: vi.fn(async () => {
       if (claimResult instanceof Error) throw claimResult;
       return claimResult;
     }),
     download: vi.fn(async () => {
+      if (options.downloadPromise) return options.downloadPromise;
       if (bytesResult instanceof Error) throw bytesResult;
       return bytesResult;
     }),
+    renew: vi.fn(async () => new Date("2026-07-18T12:01:00.000Z")),
     succeed: vi.fn(async () => {
       if (options.succeedError) throw options.succeedError;
     }),
@@ -129,6 +152,20 @@ describe("career extraction handler", () => {
     expect(await json(response)).toEqual({ error: "unauthorised" });
   });
 
+  it("derives the user from the verified bearer client before the service claim", async () => {
+    const { dependencies, repository } = harness();
+    await createCareerExtractionHandler(dependencies)(
+      request({ token: "valid-user-token" }),
+    );
+
+    expect(repository.verifyUser).toHaveBeenCalledOnce();
+    expect(repository.claim).toHaveBeenCalledWith(
+      userId,
+      documentId,
+      "a".repeat(64),
+    );
+  });
+
   it("maps wrong-owner claims to one safe forbidden response", async () => {
     const { dependencies } = harness({
       claim: new CareerExtractionError("forbidden"),
@@ -170,7 +207,11 @@ describe("career extraction handler", () => {
       correlationId,
       error: "invalid_file",
     });
-    expect(repository.fail).toHaveBeenCalledWith(runId, "invalid_file");
+    expect(repository.fail).toHaveBeenCalledWith(
+      runId,
+      claimToken,
+      "invalid_file",
+    );
   });
 
   it("returns an existing successful result idempotently", async () => {
@@ -212,7 +253,11 @@ describe("career extraction handler", () => {
       request({ token: "valid-user-token" }),
     );
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
+    expect(await json(response)).toEqual({
+      correlationId,
+      error: "invalid_file",
+    });
     expect(repository.fail).not.toHaveBeenCalled();
   });
 
@@ -230,7 +275,11 @@ describe("career extraction handler", () => {
       correlationId,
       error: "persistence_failed",
     });
-    expect(repository.fail).toHaveBeenCalledWith(runId, "internal_error");
+    expect(repository.fail).toHaveBeenCalledWith(
+      runId,
+      claimToken,
+      "internal_error",
+    );
   });
 
   it("does not call AI when disabled or quota-denied", async () => {
@@ -272,6 +321,87 @@ describe("career extraction handler", () => {
 
     expect(response.status).toBe(200);
     expect(repository.succeed).toHaveBeenCalledOnce();
+  });
+
+  it("renews the claim lease around long extraction phases", async () => {
+    const { dependencies, repository } = harness();
+    await createCareerExtractionHandler(dependencies)(
+      request({ token: "valid-user-token" }),
+    );
+
+    expect(repository.renew).toHaveBeenCalledWith(runId, claimToken);
+    expect(repository.renew).toHaveBeenCalledTimes(3);
+  });
+
+  it("rejects truncated extraction instead of persisting a complete proposal", async () => {
+    forceTruncatedExtraction = true;
+    const { dependencies, repository } = harness();
+    const result = await createCareerExtractionHandler(dependencies)(
+      request({ token: "valid-user-token" }),
+    ).finally(() => {
+      forceTruncatedExtraction = false;
+    });
+
+    expect(result.status).toBe(422);
+    expect(await json(result)).toEqual({
+      correlationId,
+      error: "file_too_large",
+    });
+    expect(repository.succeed).not.toHaveBeenCalled();
+    expect(repository.fail).toHaveBeenCalledWith(
+      runId,
+      claimToken,
+      "file_too_large",
+    );
+  });
+
+  it("cancels an undeclared request body as soon as it crosses 2,048 bytes", async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(1_500).fill(0x20));
+        controller.enqueue(new Uint8Array(600).fill(0x20));
+      },
+      cancel,
+    });
+    const oversized = new Request(
+      "https://example.test/functions/v1/extract-career-profile",
+      {
+        method: "POST",
+        headers: { authorization: "Bearer valid-user-token" },
+        body,
+        duplex: "half",
+      } as RequestInit & { duplex: "half" },
+    );
+    const { dependencies, repository } = harness();
+
+    const result = await createCareerExtractionHandler(dependencies)(oversized);
+
+    expect(result.status).toBe(400);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(repository.verifyUser).not.toHaveBeenCalled();
+  });
+
+  it("applies one overall deadline to stalled lifecycle work", async () => {
+    vi.useFakeTimers();
+    try {
+      const { dependencies, repository } = harness({
+        downloadPromise: new Promise(() => undefined),
+      });
+      let result: Response | undefined;
+      void createCareerExtractionHandler(dependencies)(
+        request({ token: "valid-user-token" }),
+      ).then((response) => {
+        result = response;
+      });
+
+      await vi.advanceTimersByTimeAsync(60_001);
+
+      expect(result?.status).toBe(422);
+      expect(repository.succeed).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("logs only approved metadata and never request, path, bytes, or extracted text", async () => {

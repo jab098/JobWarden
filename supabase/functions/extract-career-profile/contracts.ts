@@ -3,6 +3,7 @@ export const careerExtractionLimits = {
   aiInputCharacters: 60_000,
   aiOutputTokens: 4_000,
   aiTimeoutMilliseconds: 30_000,
+  requestTimeoutMilliseconds: 55_000,
   maximumAiDailyAllowance: 25,
 } as const;
 
@@ -29,23 +30,29 @@ export type ExtractionClaim = {
   status: "running" | "succeeded" | "failed";
   proposal: unknown | null;
   errorCode: string | null;
+  claimToken: string | null;
+  leaseExpiresAt: string | null;
+  sha256Hex: string;
 };
 
 export interface CareerExtractionRepository {
+  verifyUser(): Promise<string>;
   claim(
+    userId: string,
     cvDocumentId: string,
     idempotencyKey: string,
-    aiDailyAllowance: number,
   ): Promise<ExtractionClaim>;
   download(claim: ExtractionClaim): Promise<Uint8Array>;
+  renew(runId: string, claimToken: string): Promise<Date>;
   succeed(
     runId: string,
+    claimToken: string,
     proposal: unknown,
     inputCharacterCount: number,
     evidenceCount: number,
     suggestionCount: number,
   ): Promise<void>;
-  fail(runId: string, errorCode: string): Promise<void>;
+  fail(runId: string, claimToken: string, errorCode: string): Promise<void>;
 }
 
 export type CareerRuntimeLog = Readonly<{
@@ -81,14 +88,23 @@ export type CareerExtractionDependencies = {
   log(record: CareerRuntimeLog): void;
 };
 
-export type CareerRpcClient = {
+type RpcClient = {
   rpc(
     name: string,
     parameters?: Record<string, unknown>,
   ): Promise<{ data: unknown; error: unknown }>;
 };
 
-export type CareerServiceClient = CareerRpcClient & {
+export type CareerRpcClient = RpcClient & {
+  auth: {
+    getUser(): Promise<{
+      data: { user: { id: string } | null };
+      error: unknown;
+    }>;
+  };
+};
+
+export type CareerServiceClient = RpcClient & {
   storage: {
     from(bucket: string): {
       download(path: string): Promise<{ data: Blob | null; error: unknown }>;

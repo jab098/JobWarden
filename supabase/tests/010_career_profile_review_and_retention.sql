@@ -2,7 +2,25 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(25);
+select plan(34);
+
+select has_column(
+  'public', 'cv_extraction_runs', 'claim_token',
+  'running extraction claims have an unguessable fencing token'
+);
+select has_column(
+  'public', 'cv_extraction_runs', 'lease_expires_at',
+  'running extraction claims have a bounded lease'
+);
+select ok(
+  not exists (
+    select 1
+    from pg_catalog.pg_constraint
+    where conrelid = 'public.career_ai_daily_usage'::regclass
+      and contype = 'f'
+  ),
+  'the global daily AI aggregate has no deletable user/profile owner'
+);
 
 select has_column(
   'public', 'cv_extraction_runs', 'proposal_expires_at',
@@ -109,13 +127,14 @@ values
   );
 insert into public.cv_extraction_runs (
   id, user_id, cv_document_id, status, extractor_version, idempotency_key,
-  started_at
+  claim_token, lease_expires_at, started_at
 )
 values (
   '83000000-0000-4000-8000-000000000001',
   '80000000-0000-4000-8000-000000000001',
   '82000000-0000-4000-8000-000000000002',
-  'running', 'deterministic-v1', repeat('c', 64), now()
+  'running', 'deterministic-v1', repeat('c', 64),
+  '84000000-0000-4000-8000-000000000001', now() + interval '1 minute', now()
 );
 
 set local role service_role;
@@ -123,6 +142,7 @@ select set_config('request.jwt.claim.role', 'service_role', true);
 select lives_ok(
   $$ select public.complete_career_profile_extraction(
     '83000000-0000-4000-8000-000000000001',
+    '84000000-0000-4000-8000-000000000001',
     'failed', null, 'internal_error', 0, 0, 0
   ) $$,
   'a failed replacement completes with a sanitised result'
@@ -173,13 +193,14 @@ values (
 );
 insert into public.cv_extraction_runs (
   id, user_id, cv_document_id, status, extractor_version, idempotency_key,
-  started_at
+  claim_token, lease_expires_at, started_at
 )
 values (
   '83000000-0000-4000-8000-000000000002',
   '80000000-0000-4000-8000-000000000001',
   '82000000-0000-4000-8000-000000000003',
-  'running', 'deterministic-v1', repeat('e', 64), now()
+  'running', 'deterministic-v1', repeat('e', 64),
+  '84000000-0000-4000-8000-000000000002', now() + interval '1 minute', now()
 );
 
 set local role service_role;
@@ -187,6 +208,7 @@ select set_config('request.jwt.claim.role', 'service_role', true);
 select lives_ok(
   $$ select public.complete_career_profile_extraction(
     '83000000-0000-4000-8000-000000000002',
+    '84000000-0000-4000-8000-000000000002',
     'succeeded',
     '{
       "version":"deterministic-v1",
@@ -306,40 +328,147 @@ values (
   100, repeat('f', 64), 'ready', true
 );
 update private.app_settings
-set career_cv_uploads_enabled = true
+set career_cv_uploads_enabled = true, career_ai_daily_allowance = 1
 where singleton = true;
 
-set local role authenticated;
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config(
-  'request.jwt.claim.sub',
-  '80000000-0000-4000-8000-000000000001',
-  true
-);
+set local role service_role;
+select set_config('request.jwt.claim.role', 'service_role', true);
 select is(
   (
     select ai_allowed
     from public.claim_career_profile_extraction(
-      '82000000-0000-4000-8000-000000000003', repeat('1', 64), 1
+      '80000000-0000-4000-8000-000000000001',
+      '82000000-0000-4000-8000-000000000003', repeat('1', 64)
     )
   ),
   true,
   'the first daily AI reservation is admitted'
 );
-select set_config(
-  'request.jwt.claim.sub',
-  '80000000-0000-4000-8000-000000000002',
-  true
-);
 select is(
   (
     select ai_allowed
     from public.claim_career_profile_extraction(
-      '82000000-0000-4000-8000-000000000004', repeat('2', 64), 1
+      '80000000-0000-4000-8000-000000000002',
+      '82000000-0000-4000-8000-000000000004', repeat('2', 64)
     )
   ),
   false,
   'the application-wide daily ceiling denies a second user atomically'
+);
+
+select throws_ok(
+  $$ select public.complete_career_profile_extraction(
+    (
+      select id from public.cv_extraction_runs
+      where user_id = '80000000-0000-4000-8000-000000000002'
+        and idempotency_key = repeat('2', 64)
+    ),
+    '84000000-0000-4000-8000-000000000099',
+    'failed', null, 'internal_error', 0, 0, 0
+  ) $$,
+  'P0002',
+  null,
+  'a superseded claim token cannot complete a running extraction'
+);
+select is(
+  (
+    select status from public.cv_extraction_runs
+    where user_id = '80000000-0000-4000-8000-000000000002'
+      and idempotency_key = repeat('2', 64)
+  ),
+  'running',
+  'a rejected completion token cannot mutate the run'
+);
+
+reset role;
+insert into auth.users (
+  id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+)
+values (
+  '80000000-0000-4000-8000-000000000003',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated', 'stale-owner@example.test', '', now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"full_name":"Stale owner"}', now(), now()
+);
+update public.access_requests
+set status = 'approved', decided_at = now(), decision_reason = 'Approved fixture'
+where user_id = '80000000-0000-4000-8000-000000000003';
+insert into public.career_profiles (user_id)
+values ('80000000-0000-4000-8000-000000000003');
+insert into public.cv_documents (
+  id, user_id, storage_path, original_file_name, file_kind, media_type,
+  byte_size, sha256, lifecycle_status, is_current, replaced_at
+)
+values
+  (
+    '82000000-0000-4000-8000-000000000005',
+    '80000000-0000-4000-8000-000000000003',
+    '80000000-0000-4000-8000-000000000003/previous.docx',
+    'previous.docx', 'docx',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    100, repeat('a', 64), 'ready', false, now()
+  ),
+  (
+    '82000000-0000-4000-8000-000000000006',
+    '80000000-0000-4000-8000-000000000003',
+    '80000000-0000-4000-8000-000000000003/replacement.pdf',
+    'replacement.pdf', 'pdf', 'application/pdf',
+    100, repeat('b', 64), 'processing', true, null
+  );
+insert into public.cv_extraction_runs (
+  id, user_id, cv_document_id, status, extractor_version, idempotency_key,
+  claim_token, lease_expires_at, started_at
+)
+values (
+  '83000000-0000-4000-8000-000000000003',
+  '80000000-0000-4000-8000-000000000003',
+  '82000000-0000-4000-8000-000000000006',
+  'running', 'deterministic-v1', repeat('3', 64),
+  '84000000-0000-4000-8000-000000000003', now() - interval '1 second',
+  now() - interval '2 minutes'
+);
+set local role service_role;
+select set_config('request.jwt.claim.role', 'service_role', true);
+select is(
+  (
+    select status || ':' || error_code
+    from public.claim_career_profile_extraction(
+      '80000000-0000-4000-8000-000000000003',
+      '82000000-0000-4000-8000-000000000006', repeat('3', 64)
+    )
+  ),
+  'failed:extraction_timeout',
+  'a stale same-key claim is recovered before idempotent return'
+);
+select is(
+  (
+    select status || ':' || (claim_token is null)::text
+    from public.cv_extraction_runs
+    where id = '83000000-0000-4000-8000-000000000003'
+  ),
+  'failed:true',
+  'stale recovery clears the expired claim token and commits the failure'
+);
+select is(
+  (
+    select id from public.cv_documents
+    where user_id = '80000000-0000-4000-8000-000000000003' and is_current
+  ),
+  '82000000-0000-4000-8000-000000000005'::uuid,
+  'stale replacement recovery restores the previous usable document'
+);
+
+delete from public.career_profiles
+where user_id = '80000000-0000-4000-8000-000000000001';
+select is(
+  (
+    select attempt_count from public.career_ai_daily_usage
+    where usage_date = (clock_timestamp() at time zone 'UTC')::date
+  ),
+  1,
+  'deleting a career profile cannot delete the durable daily aggregate'
 );
 
 select * from finish();

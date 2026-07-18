@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(12);
+select plan(16);
 
 select has_table(
   'public',
@@ -23,35 +23,49 @@ select is(
 select has_function(
   'public',
   'claim_career_profile_extraction',
-  array['uuid', 'text', 'integer'],
-  'the authenticated extraction claim exists'
+  array['uuid', 'uuid', 'text'],
+  'the service extraction claim exists'
+);
+select has_function(
+  'public',
+  'renew_career_profile_extraction_lease',
+  array['uuid', 'uuid'],
+  'the service extraction lease renewal exists'
 );
 select has_function(
   'public',
   'complete_career_profile_extraction',
-  array['uuid', 'text', 'jsonb', 'text', 'integer', 'integer', 'integer'],
-  'the service-only extraction completion exists'
+  array['uuid', 'uuid', 'text', 'jsonb', 'text', 'integer', 'integer', 'integer'],
+  'the token-fenced service-only extraction completion exists'
 );
 select ok(
   not has_function_privilege(
     'anon',
-    'public.claim_career_profile_extraction(uuid,text,integer)',
+    'public.claim_career_profile_extraction(uuid,uuid,text)',
     'EXECUTE'
   ),
   'anonymous callers cannot claim a career extraction'
 );
 select ok(
-  has_function_privilege(
+  not has_function_privilege(
     'authenticated',
-    'public.claim_career_profile_extraction(uuid,text,integer)',
+    'public.claim_career_profile_extraction(uuid,uuid,text)',
     'EXECUTE'
   ),
-  'authenticated callers can invoke the owner-derived claim'
+  'authenticated callers cannot invoke the service claim'
 );
 select ok(
   not has_function_privilege(
     'authenticated',
-    'public.complete_career_profile_extraction(uuid,text,jsonb,text,integer,integer,integer)',
+    'public.renew_career_profile_extraction_lease(uuid,uuid)',
+    'EXECUTE'
+  ),
+  'authenticated callers cannot renew an extraction lease'
+);
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    'public.complete_career_profile_extraction(uuid,uuid,text,jsonb,text,integer,integer,integer)',
     'EXECUTE'
   ),
   'authenticated callers cannot complete extraction runs directly'
@@ -59,10 +73,26 @@ select ok(
 select ok(
   has_function_privilege(
     'service_role',
-    'public.complete_career_profile_extraction(uuid,text,jsonb,text,integer,integer,integer)',
+    'public.claim_career_profile_extraction(uuid,uuid,text)',
     'EXECUTE'
   ),
-  'only the service runtime receives the completion grant'
+  'the service runtime receives the claim grant'
+);
+select ok(
+  has_function_privilege(
+    'service_role',
+    'public.renew_career_profile_extraction_lease(uuid,uuid)',
+    'EXECUTE'
+  ),
+  'the service runtime receives the renewal grant'
+);
+select ok(
+  has_function_privilege(
+    'service_role',
+    'public.complete_career_profile_extraction(uuid,uuid,text,jsonb,text,integer,integer,integer)',
+    'EXECUTE'
+  ),
+  'the service runtime receives the completion grant'
 );
 select ok(
   not has_table_privilege(
@@ -85,9 +115,9 @@ set local role anon;
 select throws_ok(
   $$
     select * from public.claim_career_profile_extraction(
+      '30000000-0000-4000-8000-000000000001',
       '10000000-0000-4000-8000-000000000001',
-      repeat('a', 64),
-      0
+      repeat('a', 64)
     )
   $$,
   '42501',
@@ -100,6 +130,7 @@ select throws_ok(
   $$
     select public.complete_career_profile_extraction(
       '20000000-0000-4000-8000-000000000001',
+      '40000000-0000-4000-8000-000000000001',
       'failed',
       null,
       'internal_error',

@@ -60,17 +60,53 @@ async function readBody(
   ) {
     throw new CareerExtractionError("bad_request");
   }
-  const text = await request.text();
-  if (
-    new TextEncoder().encode(text).length > careerExtractionLimits.requestBytes
-  ) {
-    throw new CareerExtractionError("bad_request");
+  if (request.body === null) throw new CareerExtractionError("bad_request");
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let byteCount = 0;
+  let text = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      byteCount += value.byteLength;
+      if (byteCount > careerExtractionLimits.requestBytes) {
+        await reader.cancel();
+        throw new CareerExtractionError("bad_request");
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    text += decoder.decode();
+  } finally {
+    reader.releaseLock();
   }
   try {
     return requestSchema.parse(JSON.parse(text));
   } catch {
     throw new CareerExtractionError("bad_request");
   }
+}
+
+async function withinDeadline<T>(
+  operation: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  if (signal.aborted) throw new CareerExtractionError("extraction_timeout");
+  return await new Promise<T>((resolve, reject) => {
+    const timeout = () =>
+      reject(new CareerExtractionError("extraction_timeout"));
+    signal.addEventListener("abort", timeout, { once: true });
+    operation.then(
+      (value) => {
+        signal.removeEventListener("abort", timeout);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", timeout);
+        reject(error);
+      },
+    );
+  });
 }
 
 function existingCounts(proposal: unknown): {
@@ -114,6 +150,7 @@ async function optionalAiSuggestions(options: {
   allowed: boolean;
   text: string;
   evidence: readonly Record<string, unknown>[];
+  signal: AbortSignal;
 }): Promise<unknown[]> {
   if (!options.allowed || options.environment.aiDailyAllowance <= 0) return [];
   try {
@@ -122,15 +159,19 @@ async function optionalAiSuggestions(options: {
       options.evidence,
       {
         environment: options.environment,
-        signal: AbortSignal.timeout(
-          careerExtractionLimits.aiTimeoutMilliseconds,
-        ),
+        signal: AbortSignal.any([
+          options.signal,
+          AbortSignal.timeout(careerExtractionLimits.aiTimeoutMilliseconds),
+        ]),
         maximumOutputTokens: careerExtractionLimits.aiOutputTokens,
       },
     );
     const parsed = aiSuggestionsSchema.safeParse(result);
     return parsed.success ? parsed.data : [];
   } catch {
+    if (options.signal.aborted) {
+      throw new CareerExtractionError("extraction_timeout");
+    }
     return [];
   }
 }
@@ -166,20 +207,36 @@ export function createCareerExtractionHandler(
 
     const correlationId = dependencies.randomUuid();
     const startedAt = dependencies.now().getTime();
+    const overallController = new AbortController();
+    const overallTimeout = setTimeout(
+      () => overallController.abort(),
+      careerExtractionLimits.requestTimeoutMilliseconds,
+    );
+    const overallSignal = overallController.signal;
     const repository = dependencies.createRepository(environment, accessToken);
     let runId: string | null = null;
+    let claimToken: string | null = null;
     let claimedByThisRequest = false;
     try {
-      const claim = await repository.claim(
-        input.cvDocumentId,
-        input.idempotencyKey,
-        environment.aiDailyAllowance,
+      const verifiedUserId = await withinDeadline(
+        repository.verifyUser(),
+        overallSignal,
+      );
+      const claim = await withinDeadline(
+        repository.claim(
+          verifiedUserId,
+          input.cvDocumentId,
+          input.idempotencyKey,
+        ),
+        overallSignal,
       );
       runId = claim.runId;
       if (claim.disposition === "existing") {
         if (claim.status !== "succeeded") {
           throw new CareerExtractionError(
-            claim.status === "running" ? "already_running" : "bad_request",
+            claim.status === "running"
+              ? "already_running"
+              : completionErrorCode(claim.errorCode ?? "internal_error"),
           );
         }
         return response(
@@ -192,15 +249,36 @@ export function createCareerExtractionHandler(
           200,
         );
       }
+      if (claim.claimToken === null) {
+        throw new CareerExtractionError("persistence_failed");
+      }
+      claimToken = claim.claimToken;
       claimedByThisRequest = true;
 
-      const bytes = await repository.download(claim);
+      await withinDeadline(
+        repository.renew(claim.runId, claim.claimToken),
+        overallSignal,
+      );
+      const bytes = await withinDeadline(
+        repository.download(claim),
+        overallSignal,
+      );
+      await withinDeadline(
+        repository.renew(claim.runId, claim.claimToken),
+        overallSignal,
+      );
       const validated = validateCvFile({
         fileName: claim.originalFileName,
         mediaType: claim.mediaType,
         bytes,
       });
-      const extracted = await extractCvText(validated);
+      const extracted = await withinDeadline(
+        extractCvText(validated),
+        overallSignal,
+      );
+      if (extracted.truncated) {
+        throw new CareerExtractionError("file_too_large");
+      }
       const deterministic = createDeterministicProfileProposal(extracted.text);
       const evidence = await Promise.all(
         deterministic.evidence.map(async (item) => ({
@@ -208,22 +286,31 @@ export function createCareerExtractionHandler(
           ...item,
         })),
       );
+      await withinDeadline(
+        repository.renew(claim.runId, claim.claimToken),
+        overallSignal,
+      );
       const aiSuggestions = await optionalAiSuggestions({
         dependencies,
         environment,
         allowed: claim.aiAllowed,
         text: extracted.text,
         evidence,
+        signal: overallSignal,
       });
       const proposal = { ...deterministic, evidence, aiSuggestions };
       const suggestionCount =
         deterministic.suggestions.length + aiSuggestions.length;
-      await repository.succeed(
-        claim.runId,
-        proposal,
-        deterministic.inputCharacterCount,
-        evidence.length,
-        suggestionCount,
+      await withinDeadline(
+        repository.succeed(
+          claim.runId,
+          claim.claimToken,
+          proposal,
+          deterministic.inputCharacterCount,
+          evidence.length,
+          suggestionCount,
+        ),
+        overallSignal,
       );
 
       const durationMs = Math.max(0, dependencies.now().getTime() - startedAt);
@@ -253,9 +340,17 @@ export function createCareerExtractionHandler(
       );
     } catch (error) {
       const code = safeCareerErrorCode(error);
-      if (runId !== null && claimedByThisRequest) {
+      if (
+        runId !== null &&
+        claimToken !== null &&
+        claimedByThisRequest &&
+        !overallSignal.aborted
+      ) {
         try {
-          await repository.fail(runId, completionErrorCode(code));
+          await withinDeadline(
+            repository.fail(runId, claimToken, completionErrorCode(code)),
+            overallSignal,
+          );
         } catch {
           // The response and log remain sanitised if finalisation is unavailable.
         }
@@ -272,6 +367,8 @@ export function createCareerExtractionHandler(
         { correlationId, error: code },
         statusForCareerError(code),
       );
+    } finally {
+      clearTimeout(overallTimeout);
     }
   };
 }

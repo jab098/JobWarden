@@ -29,6 +29,9 @@ const claimRowSchema = z
     status: z.enum(["running", "succeeded", "failed"]),
     proposal: z.unknown().nullable(),
     error_code: z.string().min(3).max(100).nullable(),
+    claim_token: z.string().uuid().nullable(),
+    lease_expires_at: z.iso.datetime({ offset: true }).nullable(),
+    sha256_hex: z.string().regex(/^[a-f0-9]{64}$/u),
   })
   .strict()
   .refine(
@@ -63,7 +66,21 @@ function mapClaim(input: unknown): ExtractionClaim {
     status: row.status,
     proposal: row.proposal,
     errorCode: row.error_code,
+    claimToken: row.claim_token,
+    leaseExpiresAt: row.lease_expires_at,
+    sha256Hex: row.sha256_hex,
   };
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const source = new Uint8Array(bytes.byteLength);
+  source.set(bytes);
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", source.buffer),
+  );
+  return [...digest]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export function createSupabaseCareerExtractionRepository(
@@ -71,13 +88,22 @@ export function createSupabaseCareerExtractionRepository(
   serviceClient: CareerServiceClient,
 ): CareerExtractionRepository {
   return {
-    async claim(cvDocumentId, idempotencyKey, aiDailyAllowance) {
-      const { data, error } = await callerClient.rpc(
+    async verifyUser() {
+      const { data, error } = await callerClient.auth.getUser();
+      const parsed = z.string().uuid().safeParse(data.user?.id);
+      if ((error !== null && error !== undefined) || !parsed.success) {
+        throw new CareerExtractionError("unauthorised");
+      }
+      return parsed.data;
+    },
+
+    async claim(userId, cvDocumentId, idempotencyKey) {
+      const { data, error } = await serviceClient.rpc(
         "claim_career_profile_extraction",
         {
+          target_user_id: userId,
           target_document_id: cvDocumentId,
           idempotency_key_value: idempotencyKey,
-          ai_daily_allowance: aiDailyAllowance,
         },
       );
       if (error !== null && error !== undefined) repositoryFailure(error);
@@ -92,14 +118,33 @@ export function createSupabaseCareerExtractionRepository(
         throw new CareerExtractionError("storage_missing");
       }
       const bytes = new Uint8Array(await data.arrayBuffer());
-      if (bytes.length !== claim.byteSize) {
+      if (
+        bytes.length !== claim.byteSize ||
+        (await sha256Hex(bytes)) !== claim.sha256Hex
+      ) {
         throw new CareerExtractionError("storage_missing");
       }
       return bytes;
     },
 
+    async renew(runId, claimToken) {
+      const { data, error } = await serviceClient.rpc(
+        "renew_career_profile_extraction_lease",
+        {
+          target_run_id: runId,
+          target_claim_token: claimToken,
+        },
+      );
+      if (error !== null && error !== undefined) repositoryFailure(error);
+      const parsed = z.coerce.date().safeParse(data);
+      if (!parsed.success)
+        throw new CareerExtractionError("persistence_failed");
+      return parsed.data;
+    },
+
     async succeed(
       runId,
+      claimToken,
       proposal,
       inputCharacterCount,
       evidenceCount,
@@ -109,6 +154,7 @@ export function createSupabaseCareerExtractionRepository(
         "complete_career_profile_extraction",
         {
           target_run_id: runId,
+          target_claim_token: claimToken,
           requested_status: "succeeded",
           proposal_value: proposal,
           sanitised_error_code: null,
@@ -120,11 +166,12 @@ export function createSupabaseCareerExtractionRepository(
       if (error !== null && error !== undefined) repositoryFailure(error);
     },
 
-    async fail(runId, errorCode) {
+    async fail(runId, claimToken, errorCode) {
       const { error } = await serviceClient.rpc(
         "complete_career_profile_extraction",
         {
           target_run_id: runId,
+          target_claim_token: claimToken,
           requested_status: "failed",
           proposal_value: null,
           sanitised_error_code: errorCode,

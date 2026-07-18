@@ -1,9 +1,33 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 
 import {
   requiredMigrationFiles,
   verifyFoundationSql,
 } from "./verify-supabase-foundation.mjs";
+
+function migration(name: string): string {
+  return readFileSync(
+    new URL(`../supabase/migrations/${name}`, import.meta.url),
+    {
+      encoding: "utf8",
+    },
+  )
+    .toLowerCase()
+    .replace(/\s+/gu, " ");
+}
+
+function migrations(): Map<string, string> {
+  return new Map(
+    requiredMigrationFiles.map((file) => [
+      file,
+      readFileSync(
+        new URL(`../supabase/migrations/${file}`, import.meta.url),
+        "utf8",
+      ),
+    ]),
+  );
+}
 
 describe("Supabase foundation static verifier", () => {
   it("fails when a required migration is missing", () => {
@@ -192,8 +216,72 @@ describe("Supabase foundation static verifier", () => {
         "career extraction claims must fail while real CV uploads are disabled",
         "career extraction claim must use a per-user transaction lock",
         "career extraction claim must enforce one concurrent run per user",
-        "career extraction completion must be service-role only",
+        "career extraction completion must be token-fenced and service-role only",
       ]),
+    );
+  });
+
+  it("requires a service-only caller-free extraction claim contract", () => {
+    const sql = migration("202607180005_career_extraction_runtime.sql");
+
+    expect(sql).toContain(
+      "claim_career_profile_extraction( target_user_id uuid, target_document_id uuid, idempotency_key_value text )",
+    );
+    expect(sql).not.toMatch(
+      /grant execute on function public\.claim_career_profile_extraction\([^;]+to authenticated/u,
+    );
+    expect(sql).toMatch(
+      /grant execute on function public\.claim_career_profile_extraction\(uuid, uuid, text\) to service_role/u,
+    );
+  });
+
+  it("requires durable owner-controlled UTC AI accounting", () => {
+    const sql = migration("202607180005_career_extraction_runtime.sql");
+
+    expect(sql).toMatch(
+      /career_ai_daily_allowance integer not null default 0 check \( career_ai_daily_allowance between 0 and 25 \)/u,
+    );
+    expect(sql).toContain("usage_date date primary key");
+    expect(sql).not.toContain(
+      "references public.career_profiles (user_id) on delete cascade",
+    );
+    expect(sql).toContain("clock_timestamp() at time zone 'utc'");
+  });
+
+  it("requires lease-token fencing for renewal and every completion definition", () => {
+    const runtime = migration("202607180005_career_extraction_runtime.sql");
+    const retention = migration(
+      "202607180007_career_profile_review_and_retention.sql",
+    );
+
+    expect(runtime).toContain("add column claim_token uuid");
+    expect(runtime).toContain("add column lease_expires_at timestamptz");
+    expect(runtime).toContain(
+      "renew_career_profile_extraction_lease( target_run_id uuid, target_claim_token uuid )",
+    );
+    for (const sql of [runtime, retention]) {
+      expect(sql).toContain(
+        "complete_career_profile_extraction( target_run_id uuid, target_claim_token uuid",
+      );
+      expect(sql).toContain("run.claim_token = target_claim_token");
+      expect(sql).toContain("run.lease_expires_at > clock_timestamp()");
+      expect(sql).toContain("auth.role() is distinct from 'service_role'");
+    }
+  });
+
+  it("fails when the real token-fenced completion grant is removed", () => {
+    const files = migrations();
+    const runtimeFile = "202607180005_career_extraction_runtime.sql";
+    const runtime = files.get(runtimeFile);
+    if (runtime === undefined) throw new Error("runtime migration missing");
+    const tokenFencedGrant = `grant execute on function public.complete_career_profile_extraction(
+  uuid, uuid, text, jsonb, text, integer, integer, integer
+) to service_role;`;
+    expect(runtime).toContain(tokenFencedGrant);
+    files.set(runtimeFile, runtime.replace(tokenFencedGrant, ""));
+
+    expect(verifyFoundationSql(files)).toContain(
+      "career extraction completion must be token-fenced and service-role only",
     );
   });
 

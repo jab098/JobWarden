@@ -175,8 +175,8 @@ export function verifyFoundationSql(files) {
       "career extraction claim must enforce one concurrent run per user",
     ],
     [
-      "grant execute on function public.complete_career_profile_extraction( uuid, text, jsonb, text, integer, integer, integer ) to service_role",
-      "career extraction completion must be service-role only",
+      "grant execute on function public.complete_career_profile_extraction( uuid, uuid, text, jsonb, text, integer, integer, integer ) to service_role",
+      "career extraction completion must be token-fenced and service-role only",
     ],
     [
       "drop constraint jobs_provider_identity_unique",
