@@ -33,7 +33,7 @@ The final Minor coverage finding was remediated in `5d53b7f`. The pgTAP specific
 - `supabase/tests/006_uk_coverage_compensation.sql`: exactly 59 assertions for `plan(59)` by static count and independent inspection.
 - Network-isolated Next.js Webpack production build with mocked Google font responses: passed compilation, TypeScript, page-data collection, static generation, and trace collection.
 - Standard Next.js production build reached compilation and failed only because this sandbox could not reach Google Fonts.
-- `gitleaks git . --log-opts="origin/main..HEAD" --no-banner --redact`: passed; 10 commits and approximately 173 KB scanned with no leaks.
+- `gitleaks git . --log-opts="origin/main..HEAD" --no-banner --redact`: passed across the complete Task 9 range with no leaks.
 - `git diff --check origin/main...HEAD`: passed.
 - Independent final review: clean.
 
