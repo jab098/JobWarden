@@ -2,7 +2,7 @@
 
 ## Outcome
 
-Task 7 is independently reviewed with no remaining Critical, Important, or Minor findings. Publication to GitHub `main` is the remaining delivery action.
+Task 7 is independently reviewed with no remaining Critical, Important, or Minor findings and is delivered through GitHub pull request #8.
 
 Reviewed implementation range: `b70c1b9..4a1efdd`.
 

@@ -502,6 +502,6 @@ git add docs
 git commit -m "docs: record Task 7 delivery"
 ```
 
-- [ ] **Step 7: Publish through a pull request and merge**
+- [x] **Step 7: Publish through a pull request and merge**
 
 Push the feature branch, create a focused pull request, ensure checks pass, merge to GitHub `main`, then fetch and fast-forward the local main checkout. Verify `git rev-parse main` equals `git rev-parse origin/main` before starting Task 8.

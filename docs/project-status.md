@@ -33,7 +33,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 4. Supabase schema, RLS, mutations, and database tests                 | reviewed | Review clean; real Supabase reset/pgTAP pending Docker        |
 | 5. Supabase authentication and route gates                             | reviewed | Code retained; live OAuth and operational setup deferred      |
 | 6. Responsive app shell and UK jobs feed                               | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally   |
-| 7. Administrator operations                                            | reviewed | Independent code re-review clean at `4a1efdd`                 |
+| 7. Administrator operations                                            | reviewed | Delivered by PR #8; final code review clean at `4a1efdd`      |
 | 8. Shared ingestion runtime                                            | pending  |                                                               |
 | 9. UK coverage and compensation                                        | pending  |                                                               |
 | 10. Career profile, onboarding, and CV extraction                      | pending  |                                                               |
