@@ -34,9 +34,9 @@
 - Produces `careerEvidenceItemSchema`, `careerProfileDraftSchema`, `profileSuggestionSchema`, `namedSearchProfileDraftSchema`, `parseCareerProfileDraft(input)`, and inferred types.
 - Rejects a draft without a CV reference, target role family, industry/domain, skill, or keyword.
 
-- [ ] Write failing tests for evidence bounds, distinct seniority, inactive suggestions, strict objects, duplicate concepts, and minimum onboarding signals.
-- [ ] Run `pnpm --filter @jobwarden/domain test -- career-profile.test.ts`; expect failure because the module does not exist.
-- [ ] Implement strict Zod contracts. Use trimmed bounded strings, unique normalised concepts, confidence `0..1`, ISO recency dates, 280-character maximum excerpts, and this exact seniority vocabulary:
+- [x] Write failing tests for evidence bounds, distinct seniority, inactive suggestions, strict objects, duplicate concepts, and minimum onboarding signals.
+- [x] Run `pnpm --filter @jobwarden/domain test -- career-profile.test.ts`; expect failure because the module does not exist.
+- [x] Implement strict Zod contracts. Use trimmed bounded strings, unique normalised concepts, confidence `0..1`, ISO recency dates, 280-character maximum excerpts, and this exact seniority vocabulary:
 
 ```ts
 export const seniorityLevels = [
@@ -49,7 +49,7 @@ export function parseCareerProfileDraft(input: unknown): CareerProfileDraft {
 }
 ```
 
-- [ ] Rerun the focused tests and `pnpm --filter @jobwarden/domain typecheck`; expect green.
+- [x] Rerun the focused tests and `pnpm --filter @jobwarden/domain typecheck`; expect green.
 - [ ] Commit `feat: define career profile contracts`.
 
 ### Task 2: Owner-only data and CV metadata
