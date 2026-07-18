@@ -134,8 +134,8 @@
 **Interfaces:**
 - Produces the permanent Reed setup/disable/removal runbook and Task 10 handoff.
 
-- [ ] Record dated official endpoint, key, cadence, retention, attribution, termination/removal, and named-board access decisions with direct sources.
-- [ ] Add exact owner setup steps without requesting the key in chat or storing it in Git.
+- [x] Record dated official endpoint, key, cadence, retention, attribution, termination/removal, and named-board access decisions with direct sources.
+- [x] Add exact owner setup steps without requesting the key in chat or storing it in Git.
 - [ ] Run frozen install, formatting, lint, all typechecks, Deno graph, all tests, guardrails, static Supabase verification, production build, both audits, diff check, and exact-range Gitleaks.
 - [ ] Run real `supabase db reset` and pgTAP if Docker is available; otherwise preserve the explicit pre-live blocker.
 - [ ] Request independent full-range review and remediate every Critical, Important, and Minor finding through test-first commits.

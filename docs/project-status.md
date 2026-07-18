@@ -6,7 +6,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 - [Approved foundation design](superpowers/specs/2026-07-17-jobwarden-foundation-design.md)
 - [Historical Tasks 1–6 foundation plan](superpowers/plans/2026-07-17-jobwarden-foundation.md)
-- [Active Task 8 implementation plan](superpowers/plans/2026-07-18-task-8-shared-ingestion-runtime.md)
+- [Active Task 9 implementation plan](superpowers/plans/2026-07-18-task-9-uk-coverage-compensation.md)
 - [Shipping standard](standards/shipping-standards.md)
 - [UI direction](design/ui-direction.md)
 - [UK source coverage strategy](product/source-coverage.md)
@@ -25,24 +25,24 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Task progress
 
-| Task                                                                   | Status   | Notes                                                         |
-| ---------------------------------------------------------------------- | -------- | ------------------------------------------------------------- |
-| 1. Monorepo, persistent standards, and invariant guardrails            | reviewed | Commits `5563920` and `dc021a6`; independent review clean     |
-| 2. UK job domain and access state machine                              | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean |
-| 3. Greenhouse adapter and normalisation pipeline                       | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean  |
-| 4. Supabase schema, RLS, mutations, and database tests                 | reviewed | Review clean; real Supabase reset/pgTAP pending Docker        |
-| 5. Supabase authentication and route gates                             | reviewed | Code retained; live OAuth and operational setup deferred      |
-| 6. Responsive app shell and UK jobs feed                               | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally   |
-| 7. Administrator operations                                            | reviewed | Delivered by PR #8; final code review clean at `4a1efdd`      |
-| 8. Shared ingestion runtime                                            | reviewed | Delivered by PR #9; final code review clean at `8556997`      |
-| 9. UK coverage and compensation                                        | active   | Adapter, provenance DB, and shared runtime complete; UI next  |
-| 10. Career profile, onboarding, and CV extraction                      | pending  |                                                               |
-| 11. Target Feed and explainable fit scores                             | pending  |                                                               |
-| 12. Explore and career pathways                                        | pending  |                                                               |
-| 13. Application tracker and follow-ups                                 | pending  |                                                               |
-| 14. Scheduled updates and notifications                                | pending  |                                                               |
-| 15. Evidence-bound CV tailoring                                        | pending  |                                                               |
-| 16. Privacy, production access, deployment, and full-path verification | pending  |                                                               |
+| Task                                                                   | Status   | Notes                                                          |
+| ---------------------------------------------------------------------- | -------- | -------------------------------------------------------------- |
+| 1. Monorepo, persistent standards, and invariant guardrails            | reviewed | Commits `5563920` and `dc021a6`; independent review clean      |
+| 2. UK job domain and access state machine                              | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean  |
+| 3. Greenhouse adapter and normalisation pipeline                       | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean   |
+| 4. Supabase schema, RLS, mutations, and database tests                 | reviewed | Review clean; real Supabase reset/pgTAP pending Docker         |
+| 5. Supabase authentication and route gates                             | reviewed | Code retained; live OAuth and operational setup deferred       |
+| 6. Responsive app shell and UK jobs feed                               | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally    |
+| 7. Administrator operations                                            | reviewed | Delivered by PR #8; final code review clean at `4a1efdd`       |
+| 8. Shared ingestion runtime                                            | reviewed | Delivered by PR #9; final code review clean at `8556997`       |
+| 9. UK coverage and compensation                                        | active   | Implementation and operations docs complete; final review next |
+| 10. Career profile, onboarding, and CV extraction                      | pending  |                                                                |
+| 11. Target Feed and explainable fit scores                             | pending  |                                                                |
+| 12. Explore and career pathways                                        | pending  |                                                                |
+| 13. Application tracker and follow-ups                                 | pending  |                                                                |
+| 14. Scheduled updates and notifications                                | pending  |                                                                |
+| 15. Evidence-bound CV tailoring                                        | pending  |                                                                |
+| 16. Privacy, production access, deployment, and full-path verification | pending  |                                                                |
 
 ## Last verification commands
 
@@ -82,7 +82,7 @@ Task 7 delivered audited access decisions, lawful Greenhouse source configuratio
 
 Task 8 delivered a custom-bearer-protected Supabase Edge Function, a shared scheduled/administrator queue with just-in-time claims up to a four-source invocation cap, a 120-second internal deadline, transactional job batches, five-minute leases and a three-attempt ceiling, GMT/BST-safe London scheduling, service-role-only RPCs, source-isolated Greenhouse execution, a 500-job response ceiling, a 36-assertion pgTAP specification, and a complete operations guide through PR #9. Focused function verification passed 34 tests across four files; the unchanged repository suite passed 393 tests across 32 files, for 427 automated tests total. Function typechecking, a pinned Deno 2 deployment-graph check, the five-migration static Supabase verifier, guardrails, formatting, lint, both dependency audits, the exact-range secret scan, and the production web build passed. The final independent re-review of `7df2818..8556997` found no remaining Critical, Important, or Minor issues. Docker remains unavailable, so `supabase db reset` and the real pgTAP suite through `005_shared_ingestion_runtime.sql` are still mandatory before any live source is enabled. No owner platform setup is required until the runtime is activated.
 
-Task 9 implementation through commit `e7c8534` adds the credential-ready Reed Jobseeker API adapter without enabling it, distinguishes incremental discovery from complete employer-board snapshots, caps each Reed page at 50 jobs with four detail requests in flight, and keeps credentials and provider bodies out of errors. Provider facts now carry salary provenance, observation dates, closing dates, work patterns, and employer identity into the shared normaliser. Exact canonical employer URLs may deduplicate across providers after tracking removal; unsafe or absent URLs fall back to the provider/source/job occurrence key, and fuzzy title/employer merging remains forbidden. Migration 6 adds canonical source occurrences, complete/incremental lifecycle semantics, a 500-row closing-date maintenance bound, exact Reed source configuration constraints, and a 29-assertion pgTAP specification. The shared Edge runtime now dispatches Reed only with an optional server-side key, persists the new facts, records incremental runs truthfully, and isolates a missing Reed key so later Greenhouse work continues. Current verification passed 137 domain tests, 66 ingestion tests, the 405-test workspace suite, 40 Edge Function tests, function typechecking, the Deno deployment graph, and the six-migration/eleven-table static Supabase check. No Reed key is required yet. Docker remains unavailable, so migration 6 and pgTAP 006 still require real PostgreSQL execution before any source is enabled. The next slice is the compensation filter and administrator source-health UI.
+Task 9 now implements the credential-ready Reed Jobseeker API adapter without enabling it, distinguishes incremental discovery from complete employer-board snapshots, caps each Reed page at 50 jobs with four detail requests in flight, and keeps credentials and provider bodies out of errors. Provider facts carry salary provenance, observation dates, closing dates, work patterns, and employer identity into the shared normaliser. Exact canonical employer URLs may deduplicate across providers after tracking removal; unsafe or absent URLs fall back to the provider/source/job occurrence key, and fuzzy title/employer merging remains forbidden. Migration 6 adds canonical source occurrences, complete/incremental lifecycle semantics, a 500-row closing-date maintenance bound, exact Reed source configuration constraints, a bounded administrator source-health RPC, and a 31-assertion pgTAP specification. The shared Edge runtime dispatches Reed only with an optional server-side key, persists the new facts, records incremental runs truthfully, and isolates a missing Reed key so later Greenhouse work continues. The jobs UI has a URL-backed compensation-provenance filter that includes unknown salary by default, truthful advertised/estimated/unknown labels, and responsive source-health visibility for freshness, coverage mode, compensation mix, employment type, and part-time representation. The permanent source record and owner runbook preserve Reed as disabled until terms, credential, real database, and smoke-test gates pass. Current pre-review verification passed the 407-test workspace suite, 40 Edge Function tests, function typechecking, the Deno deployment graph, and the six-migration/eleven-table static Supabase check. Docker remains unavailable, so migration 6 and pgTAP 006 still require real PostgreSQL execution before any source is enabled. Final full verification and independent review remain in progress.
 
 ## Approved programme update
 
