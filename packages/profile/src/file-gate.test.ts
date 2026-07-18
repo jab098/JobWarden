@@ -10,6 +10,17 @@ const pdfBytes = new TextEncoder().encode("%PDF-1.7\n% fictional fixture");
 const docxBytes = Uint8Array.from([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]);
 
 describe("CV file gate", () => {
+  it("keeps every extraction ceiling at its reviewed fixed value", () => {
+    expect(cvFileLimits).toEqual({
+      inputBytes: 5 * 1024 * 1024,
+      uncompressedBytes: 20 * 1024 * 1024,
+      archiveEntries: 2_000,
+      pdfPages: 250,
+      extractedCharacters: 100_000,
+      timeoutMilliseconds: 20_000,
+    });
+  });
+
   it("accepts a bounded PDF only when extension, MIME, and magic agree", () => {
     expect(
       validateCvFile({

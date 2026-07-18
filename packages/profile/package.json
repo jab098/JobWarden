@@ -14,6 +14,7 @@
   "dependencies": {
     "@jobwarden/domain": "workspace:*",
     "fflate": "^0.8.3",
+    "saxes": "^6.0.0",
     "unpdf": "^1.6.2"
   },
   "devDependencies": {

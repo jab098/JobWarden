@@ -47,6 +47,38 @@ export class CvFileValidationError extends Error {
   }
 }
 
+export function ensureCvExtractionWithinDeadline(startedAt: number): void {
+  if (
+    !Number.isFinite(startedAt) ||
+    Date.now() - startedAt >= cvFileLimits.timeoutMilliseconds
+  ) {
+    throw new CvFileValidationError("extraction_timeout");
+  }
+}
+
+export function consumeCvInflatedBytes(
+  currentBytes: number,
+  emittedBytes: number,
+): number {
+  if (
+    !Number.isSafeInteger(currentBytes) ||
+    currentBytes < 0 ||
+    !Number.isSafeInteger(emittedBytes) ||
+    emittedBytes < 0
+  ) {
+    throw new CvFileValidationError("unsafe_archive");
+  }
+
+  const nextBytes = currentBytes + emittedBytes;
+  if (
+    !Number.isSafeInteger(nextBytes) ||
+    nextBytes > cvFileLimits.uncompressedBytes
+  ) {
+    throw new CvFileValidationError("unsafe_archive");
+  }
+  return nextBytes;
+}
+
 const docxMediaType =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const pdfMediaType = "application/pdf";

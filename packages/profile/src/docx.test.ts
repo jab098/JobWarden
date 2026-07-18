@@ -26,6 +26,7 @@ function documentXml(textRuns: string): string {
 
 function createDocx(
   overrides: Record<string, Uint8Array | string> = {},
+  level: 0 | 9 = 9,
 ): Uint8Array {
   const entries: Record<string, Uint8Array> = {
     "[Content_Types].xml": strToU8(contentTypes),
@@ -42,7 +43,85 @@ function createDocx(
     entries[name] = typeof value === "string" ? strToU8(value) : value;
   }
 
-  return zipSync(entries, { level: 9 });
+  return zipSync(entries, { level });
+}
+
+interface TestZipEntry {
+  centralOffset: number;
+  compressedSize: number;
+  dataOffset: number;
+  localOffset: number;
+  name: string;
+  originalSize: number;
+}
+
+function readUint16(bytes: Uint8Array, offset: number): number {
+  return bytes[offset]! | (bytes[offset + 1]! << 8);
+}
+
+function readUint32(bytes: Uint8Array, offset: number): number {
+  return (
+    (bytes[offset]! |
+      (bytes[offset + 1]! << 8) |
+      (bytes[offset + 2]! << 16) |
+      (bytes[offset + 3]! << 24)) >>>
+    0
+  );
+}
+
+function writeUint32(bytes: Uint8Array, offset: number, value: number): void {
+  bytes[offset] = value & 0xff;
+  bytes[offset + 1] = (value >>> 8) & 0xff;
+  bytes[offset + 2] = (value >>> 16) & 0xff;
+  bytes[offset + 3] = (value >>> 24) & 0xff;
+}
+
+function findEndOfCentralDirectory(bytes: Uint8Array): number {
+  for (let offset = bytes.length - 22; offset >= 0; offset -= 1) {
+    if (readUint32(bytes, offset) === 0x06054b50) return offset;
+  }
+  throw new Error("test fixture has no end-of-central-directory record");
+}
+
+function inspectTestZip(bytes: Uint8Array): TestZipEntry[] {
+  const endOffset = findEndOfCentralDirectory(bytes);
+  const entryCount = readUint16(bytes, endOffset + 10);
+  let centralOffset = readUint32(bytes, endOffset + 16);
+  const entries: TestZipEntry[] = [];
+
+  for (let index = 0; index < entryCount; index += 1) {
+    if (readUint32(bytes, centralOffset) !== 0x02014b50) {
+      throw new Error("test fixture has an invalid central-directory entry");
+    }
+    const nameLength = readUint16(bytes, centralOffset + 28);
+    const extraLength = readUint16(bytes, centralOffset + 30);
+    const commentLength = readUint16(bytes, centralOffset + 32);
+    const localOffset = readUint32(bytes, centralOffset + 42);
+    const localNameLength = readUint16(bytes, localOffset + 26);
+    const localExtraLength = readUint16(bytes, localOffset + 28);
+    const name = new TextDecoder().decode(
+      bytes.subarray(centralOffset + 46, centralOffset + 46 + nameLength),
+    );
+    entries.push({
+      centralOffset,
+      compressedSize: readUint32(bytes, centralOffset + 20),
+      dataOffset: localOffset + 30 + localNameLength + localExtraLength,
+      localOffset,
+      name,
+      originalSize: readUint32(bytes, centralOffset + 24),
+    });
+    centralOffset += 46 + nameLength + extraLength + commentLength;
+  }
+
+  return entries;
+}
+
+function requireTestZipEntry(bytes: Uint8Array, name: string): TestZipEntry {
+  const entry = inspectTestZip(bytes).find(
+    (candidate) => candidate.name === name,
+  );
+  if (!entry) throw new Error(`test fixture is missing ${name}`);
+  return entry;
 }
 
 function replaceAllAscii(
@@ -164,6 +243,48 @@ describe("bounded DOCX extraction", () => {
     });
   });
 
+  it("rejects forged stored-entry size metadata before extraction", async () => {
+    const archive = createDocx(
+      { "custom/fictional-padding.bin": "fictional stored padding" },
+      0,
+    );
+    const forged = archive.slice();
+    const entry = requireTestZipEntry(forged, "custom/fictional-padding.bin");
+    expect(entry.compressedSize).toBe(entry.originalSize);
+    expect(entry.originalSize).toBeGreaterThan(1);
+
+    writeUint32(forged, entry.centralOffset + 24, 1);
+    writeUint32(forged, entry.localOffset + 22, 1);
+
+    await expect(extractDocxText(forged)).rejects.toMatchObject({
+      code: "unsafe_archive",
+    });
+  });
+
+  it("rejects archive entry byte ranges that overlap", async () => {
+    const archive = createDocx(
+      {
+        "custom/fictional-a.bin": "aaaaaaaa",
+        "custom/fictional-b.bin": "bbbbbbbb",
+      },
+      0,
+    );
+    const overlapping = archive.slice();
+    const first = requireTestZipEntry(overlapping, "custom/fictional-a.bin");
+    const second = requireTestZipEntry(overlapping, "custom/fictional-b.bin");
+    const overlappingSize = second.localOffset - first.dataOffset + 1;
+    expect(overlappingSize).toBeGreaterThan(first.compressedSize);
+
+    writeUint32(overlapping, first.centralOffset + 20, overlappingSize);
+    writeUint32(overlapping, first.centralOffset + 24, overlappingSize);
+    writeUint32(overlapping, first.localOffset + 18, overlappingSize);
+    writeUint32(overlapping, first.localOffset + 22, overlappingSize);
+
+    await expect(extractDocxText(overlapping)).rejects.toMatchObject({
+      code: "unsafe_archive",
+    });
+  });
+
   it("rejects archives above the entry-count ceiling", async () => {
     const extraEntries = Object.fromEntries(
       Array.from({ length: cvFileLimits.archiveEntries }, (_, index) => [
@@ -186,6 +307,32 @@ describe("bounded DOCX extraction", () => {
     expect(compressedBomb.length).toBeLessThan(cvFileLimits.inputBytes);
 
     await expect(extractDocxText(compressedBomb)).rejects.toMatchObject({
+      code: "unsafe_archive",
+    });
+  });
+
+  it("aborts when actual emitted ZIP bytes cross the expansion ceiling", async () => {
+    const document =
+      documentXml(
+        "<w:p><w:r><w:t>Visible fictional evidence</w:t></w:r></w:p>",
+      ) + " ".repeat(cvFileLimits.uncompressedBytes + 1);
+    const archive = createDocx({ "word/document.xml": document });
+    expect(archive.length).toBeLessThan(cvFileLimits.inputBytes);
+    const forged = archive.slice();
+    const entries = inspectTestZip(forged);
+    const documentEntry = requireTestZipEntry(forged, "word/document.xml");
+    const otherDeclaredBytes = entries
+      .filter((entry) => entry.name !== "word/document.xml")
+      .reduce((total, entry) => total + entry.originalSize, 0);
+    const forgedDocumentSize =
+      cvFileLimits.uncompressedBytes - otherDeclaredBytes;
+    expect(forgedDocumentSize).toBeGreaterThan(0);
+    expect(documentEntry.originalSize).toBeGreaterThan(forgedDocumentSize);
+
+    writeUint32(forged, documentEntry.centralOffset + 24, forgedDocumentSize);
+    writeUint32(forged, documentEntry.localOffset + 22, forgedDocumentSize);
+
+    await expect(extractDocxText(forged)).rejects.toMatchObject({
       code: "unsafe_archive",
     });
   });
@@ -224,6 +371,176 @@ describe("bounded DOCX extraction", () => {
     await expect(extractDocxText(malformed)).rejects.toMatchObject({
       code: "unsafe_archive",
     });
+  });
+
+  it.each([
+    documentXml(
+      "<w:p><w:r><w:t>Fictional truncated evidence</w:t></w:r></w:p>",
+    ).replace(/<\/w:body>\s*<\/w:document>/u, ""),
+    `<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body><w:p><w:r><w:t>Fictional misnested evidence</w:t></w:r></w:body></w:p>
+</w:document>`,
+  ])("rejects incomplete or misnested WordprocessingML", async (xml) => {
+    await expect(
+      extractDocxText(createDocx({ "word/document.xml": xml })),
+    ).rejects.toMatchObject({ code: "unsafe_archive" });
+  });
+
+  it("excludes text inherited from a hidden WordprocessingML style", async () => {
+    const styles = `<?xml version="1.0" encoding="UTF-8"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="character" w:styleId="HiddenEvidence">
+    <w:rPr><w:vanish/></w:rPr>
+  </w:style>
+</w:styles>`;
+    const relationships = `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+    const result = await extractDocxText(
+      createDocx({
+        "word/document.xml": documentXml(
+          "<w:p><w:r><w:t>Visible fictional evidence</w:t></w:r></w:p>" +
+            '<w:p><w:r><w:rPr><w:rStyle w:val="HiddenEvidence"/></w:rPr><w:t>Hidden fictional claim</w:t></w:r></w:p>',
+        ),
+        "word/styles.xml": styles,
+        "word/_rels/document.xml.rels": relationships,
+      }),
+    );
+
+    expect(result.text).toBe("Visible fictional evidence");
+  });
+
+  it("suppresses text hidden by the document run-property defaults", async () => {
+    const styles = `<?xml version="1.0" encoding="UTF-8"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults>
+    <w:rPrDefault><w:rPr><w:vanish/></w:rPr></w:rPrDefault>
+  </w:docDefaults>
+</w:styles>`;
+    const relationships = `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+    await expect(
+      extractDocxText(
+        createDocx({
+          "word/document.xml": documentXml(
+            "<w:p><w:r><w:t>Default-hidden fictional claim</w:t></w:r></w:p>",
+          ),
+          "word/styles.xml": styles,
+          "word/_rels/document.xml.rels": relationships,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_file" });
+  });
+
+  it("suppresses text inherited from the default hidden character style", async () => {
+    const styles = `<?xml version="1.0" encoding="UTF-8"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="character" w:default="1" w:styleId="DefaultHiddenEvidence">
+    <w:rPr><w:vanish/></w:rPr>
+  </w:style>
+</w:styles>`;
+    const relationships = `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+    await expect(
+      extractDocxText(
+        createDocx({
+          "word/document.xml": documentXml(
+            "<w:p><w:r><w:t>Style-default-hidden fictional claim</w:t></w:r></w:p>",
+          ),
+          "word/styles.xml": styles,
+          "word/_rels/document.xml.rels": relationships,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_file" });
+  });
+
+  it("suppresses text inherited from the default hidden paragraph style when pStyle is absent", async () => {
+    const styles = `<?xml version="1.0" encoding="UTF-8"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:styleId="HiddenParagraphBase">
+    <w:rPr><w:vanish/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:default="1" w:styleId="DefaultHiddenParagraph">
+    <w:basedOn w:val="HiddenParagraphBase"/>
+  </w:style>
+</w:styles>`;
+    const relationships = `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+    await expect(
+      extractDocxText(
+        createDocx({
+          "word/document.xml": documentXml(
+            "<w:p><w:r><w:t>Paragraph-default-hidden fictional claim</w:t></w:r></w:p>",
+          ),
+          "word/styles.xml": styles,
+          "word/_rels/document.xml.rels": relationships,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_file" });
+  });
+
+  it("excludes moved-from and out-of-body WordprocessingML text", async () => {
+    const result = await extractDocxText(
+      createDocx({
+        "word/document.xml": `<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Visible fictional evidence</w:t></w:r></w:p>
+    <w:moveFrom><w:p><w:r><w:t>Moved fictional claim</w:t></w:r></w:p></w:moveFrom>
+  </w:body>
+  <w:p><w:r><w:t>Out-of-body fictional claim</w:t></w:r></w:p>
+</w:document>`,
+      }),
+    );
+
+    expect(result.text).toBe("Visible fictional evidence");
+  });
+
+  it("excludes field-instruction content from evidence", async () => {
+    const result = await extractDocxText(
+      createDocx({
+        "word/document.xml": documentXml(
+          "<w:p><w:r><w:t>Visible fictional evidence</w:t></w:r></w:p>" +
+            '<w:fldSimple w:instr="fictional instruction"><w:r><w:t>Instruction-only claim</w:t></w:r></w:fldSimple>',
+        ),
+      }),
+    );
+
+    expect(result.text).toBe("Visible fictional evidence");
+  });
+
+  it("keeps nested field results hidden while an outer field is still an instruction", async () => {
+    const result = await extractDocxText(
+      createDocx({
+        "word/document.xml": documentXml(
+          `<w:p>
+            <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+            <w:r><w:instrText>OUTER INSTRUCTION</w:instrText></w:r>
+            <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+            <w:r><w:instrText>INNER INSTRUCTION</w:instrText></w:r>
+            <w:r><w:fldChar w:fldCharType="separate"/></w:r>
+            <w:r><w:t>Nested result inside outer instruction</w:t></w:r>
+            <w:r><w:fldChar w:fldCharType="end"/></w:r>
+            <w:r><w:fldChar w:fldCharType="separate"/></w:r>
+            <w:r><w:t>Visible outer field result</w:t></w:r>
+            <w:r><w:fldChar w:fldCharType="end"/></w:r>
+          </w:p>`,
+        ),
+      }),
+    );
+
+    expect(result.text).toBe("Visible outer field result");
   });
 
   it("truncates extracted text at the character ceiling", async () => {
