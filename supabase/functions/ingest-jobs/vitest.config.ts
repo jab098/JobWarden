@@ -16,6 +16,6 @@ export default defineProject({
   test: {
     name: "ingest-jobs-function",
     environment: "node",
-    include: ["supabase/functions/**/*.test.ts"],
+    include: ["supabase/functions/ingest-jobs/**/*.test.ts"],
   },
 });

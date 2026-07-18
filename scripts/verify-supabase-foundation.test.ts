@@ -172,4 +172,22 @@ describe("Supabase foundation static verifier", () => {
       ]),
     );
   });
+
+  it("requires atomic owner claims, one-user concurrency, and auditable AI ceilings", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "public table career_ai_daily_usage must enable and force RLS",
+        "missing auditable career AI daily usage counter",
+        "career AI daily usage must have a hard free-tier ceiling",
+        "missing atomic owner-derived career extraction claim",
+        "career extraction claim must use a per-user transaction lock",
+        "career extraction claim must enforce one concurrent run per user",
+        "career extraction completion must be service-role only",
+      ]),
+    );
+  });
 });

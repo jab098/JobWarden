@@ -10,6 +10,7 @@ export const requiredMigrationFiles = [
   "202607180002_shared_ingestion_runtime.sql",
   "202607180003_uk_coverage_compensation.sql",
   "202607180004_career_profiles.sql",
+  "202607180005_career_extraction_runtime.sql",
 ];
 
 const publicTables = [
@@ -30,6 +31,7 @@ const publicTables = [
   "search_profiles",
   "cv_documents",
   "cv_extraction_runs",
+  "career_ai_daily_usage",
 ];
 
 function compact(sql) {
@@ -78,6 +80,30 @@ export function verifyFoundationSql(files) {
   }
 
   const requiredFragments = [
+    [
+      "create table public.career_ai_daily_usage",
+      "missing auditable career AI daily usage counter",
+    ],
+    [
+      "attempt_count integer not null default 0 check (attempt_count between 0 and 25)",
+      "career AI daily usage must have a hard free-tier ceiling",
+    ],
+    [
+      "create or replace function public.claim_career_profile_extraction(",
+      "missing atomic owner-derived career extraction claim",
+    ],
+    [
+      "pg_catalog.hashtextextended(actor_user_id::text, 10)",
+      "career extraction claim must use a per-user transaction lock",
+    ],
+    [
+      "and run.status = 'running'",
+      "career extraction claim must enforce one concurrent run per user",
+    ],
+    [
+      "grant execute on function public.complete_career_profile_extraction( uuid, text, jsonb, text, integer, integer, integer ) to service_role",
+      "career extraction completion must be service-role only",
+    ],
     [
       "drop constraint jobs_provider_identity_unique",
       "canonical jobs must delegate provider identity uniqueness to occurrences",
