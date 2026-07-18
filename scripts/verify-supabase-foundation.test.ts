@@ -137,4 +137,39 @@ describe("Supabase foundation static verifier", () => {
       ]),
     );
   });
+
+  it("requires private owner-only career profile and CV storage boundaries", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "public table career_profiles must enable and force RLS",
+        "public table career_evidence_items must enable and force RLS",
+        "public table profile_suggestions must enable and force RLS",
+        "public table search_profiles must enable and force RLS",
+        "public table cv_documents must enable and force RLS",
+        "public table cv_extraction_runs must enable and force RLS",
+        "missing private career-document Storage bucket",
+        "career-document Storage bucket must be private and capped at 5 MiB",
+        "career-document objects must be isolated by owner path",
+        "missing approved-owner career-profile policy",
+        "missing user-origin career-evidence insert policy",
+        "authenticated users must not forge CV-derived evidence",
+        "career-evidence review must use a column-limited update grant",
+        "missing approved-owner search-profile policy",
+        "missing approved-owner suggestion read policy",
+        "missing approved-owner CV metadata policy",
+        "missing approved-owner extraction-run read policy",
+        "profile suggestions must use bounded review states",
+        "CV metadata must allow only one current document per user",
+        "CV extraction runs must use bounded statuses",
+        "CV extraction runs must use bounded sanitised error codes",
+        "missing atomic current-CV registration function",
+        "missing owner-only suggestion decision function",
+        "suggestion decisions must have a narrow authenticated grant",
+      ]),
+    );
+  });
 });
