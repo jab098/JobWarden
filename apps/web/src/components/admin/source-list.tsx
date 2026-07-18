@@ -65,13 +65,13 @@ export function SourceList({
               </div>
               <dl className="mt-4 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
                 <div>
-                  <dt className="text-xs text-[#687183]">Cadence</dt>
+                  <dt className="text-xs text-[#596173]">Cadence</dt>
                   <dd className="mt-0.5">
                     Every {source.minimumSyncMinutes} minutes
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-[#687183]">
+                  <dt className="text-xs text-[#596173]">
                     Last successful sync
                   </dt>
                   <dd className="mt-0.5 font-mono text-xs">
@@ -79,7 +79,7 @@ export function SourceList({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-[#687183]">
+                  <dt className="text-xs text-[#596173]">
                     Terms / robots review
                   </dt>
                   <dd className="mt-0.5 font-mono text-xs">
@@ -87,7 +87,7 @@ export function SourceList({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-[#687183]">Allowed hosts</dt>
+                  <dt className="text-xs text-[#596173]">Allowed hosts</dt>
                   <dd className="mt-0.5 font-mono text-xs">
                     {source.allowedHosts.join(", ")}
                   </dd>

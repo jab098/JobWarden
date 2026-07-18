@@ -54,8 +54,6 @@ function InteractiveDecision({
   decision: (typeof decisions)[keyof typeof decisions][number];
 }) {
   const [state, formAction, pending] = useActionState(action, initialState);
-  const verb = decision.label.toLowerCase();
-
   return (
     <AlertDialog>
       <AlertDialogTrigger
@@ -94,10 +92,14 @@ function InteractiveDecision({
               minLength={3}
               maxLength={500}
               required
-              placeholder={`Why should this access be ${verb}d?`}
+              placeholder={`Why is ${decision.nextStatus} the correct access state?`}
               aria-invalid={state.kind === "invalid" || undefined}
             />
-            {state.kind !== "idle" && state.kind !== "success" ? (
+            {state.kind === "success" ? (
+              <p role="status" className="text-sm text-[#245d43]">
+                {state.message}
+              </p>
+            ) : state.kind !== "idle" ? (
               <p role="alert" className="text-sm text-[#8a3030]">
                 {state.message}
               </p>

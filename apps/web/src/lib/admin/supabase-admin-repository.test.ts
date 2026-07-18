@@ -172,6 +172,28 @@ describe("Supabase administrator repository", () => {
     ]);
   });
 
+  it.each([
+    ["1 day", 1_440],
+    ["7 days", 10_080],
+    ["1 day 00:15:00", 1_455],
+  ])("maps a Postgres %s interval", async (minimum_sync_interval, minutes) => {
+    const { client } = createClient({
+      job_sources: {
+        data: [{ ...sourceRow, minimum_sync_interval }],
+        error: null,
+      },
+    });
+
+    await expect(
+      createSupabaseAdminRepository(
+        client,
+        () => new Date("2026-07-18T12:00:00.000Z"),
+      ).listSources(),
+    ).resolves.toEqual([
+      expect.objectContaining({ minimumSyncMinutes: minutes }),
+    ]);
+  });
+
   it("loads bounded run and queued-request metadata without provider payloads", async () => {
     const { client, builders } = createClient({
       ingestion_source_runs: { data: [runRow], error: null },

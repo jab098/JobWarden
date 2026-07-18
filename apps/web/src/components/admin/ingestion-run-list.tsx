@@ -55,7 +55,7 @@ export function IngestionRunList({
               <dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-3 text-sm sm:grid-cols-5">
                 {countFields.map(([label, field]) => (
                   <div key={field}>
-                    <dt className="text-xs text-[#687183]">{label}</dt>
+                    <dt className="text-xs text-[#596173]">{label}</dt>
                     <dd className="mt-0.5 font-mono">{run[field]}</dd>
                   </div>
                 ))}

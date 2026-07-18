@@ -11,6 +11,7 @@ import { AdminShell } from "./admin-shell";
 import { IngestionRequestList } from "./ingestion-request-list";
 import { IngestionRunList } from "./ingestion-run-list";
 import { SourceList } from "./source-list";
+import { SourceForm } from "./source-form";
 import { getDevelopmentAdminSnapshot } from "@/lib/admin/development-admin";
 import type { AdminActionState } from "@/lib/admin/types";
 
@@ -101,7 +102,7 @@ describe("administrator workspace", () => {
       "Enabled",
       "Every 60 minutes",
       "Last successful sync",
-      "boards.greenhouse.io",
+      "boards.fictional.example.test",
     ].reduce((previous, text) => {
       const index = sourceCopy.indexOf(text);
       expect(index).toBeGreaterThan(previous);
@@ -130,11 +131,51 @@ describe("administrator workspace", () => {
       expect(index).toBeGreaterThan(previous);
       return index;
     }, -1);
-    expect(screen.getByText("upstream_timeout")).toBeInTheDocument();
+    expect(screen.getByText("fictional_upstream_timeout")).toBeInTheDocument();
 
     rerender(<IngestionRequestList requests={snapshot.ingestionRequests} />);
     expect(screen.getByText("Pending request")).toBeInTheDocument();
     expect(screen.getByText(/54100000/)).toBeInTheDocument();
+  });
+
+  it("requires explicit confirmation before a source can change state", async () => {
+    const user = userEvent.setup();
+    render(<SourceForm source={snapshot.sources[0]} action={successAction} />);
+
+    await user.click(screen.getByRole("button", { name: "Save source" }));
+
+    expect(
+      screen.getByRole("alertdialog", {
+        name: "Confirm source configuration for Fictional Northstar UK Ltd?",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/enable or disable collection from this source/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Confirm source changes" }),
+    ).toHaveAttribute("type", "submit");
+  });
+
+  it("announces a completed access decision", async () => {
+    const user = userEvent.setup();
+    render(
+      <AccessDecisionForm
+        request={snapshot.accessRequests[0]}
+        action={successAction}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Approve" }));
+    await user.type(
+      screen.getByLabelText("Decision reason"),
+      "Approved for controlled private-beta access.",
+    );
+    await user.click(screen.getByRole("button", { name: "Confirm approval" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Access decision recorded.",
+    );
   });
 
   it("has no automated accessibility violations across the three admin lists", async () => {

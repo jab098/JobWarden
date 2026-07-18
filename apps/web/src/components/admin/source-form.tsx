@@ -6,6 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { AdminFormAction, JobSourceView } from "@/lib/admin/types";
 
 const initialState = { kind: "idle" as const };
@@ -106,7 +117,7 @@ function SourceFields({ source }: { source?: JobSourceView }) {
           required
           className="min-h-24 font-mono text-xs"
         />
-        <p className="text-xs text-[#687183]">
+        <p className="text-xs text-[#596173]">
           One bare lowercase hostname per line. No schemes or paths.
         </p>
       </div>
@@ -136,14 +147,41 @@ export function SourceForm({
   source?: JobSourceView;
 }) {
   const [state, formAction, pending] = useActionState(action, initialState);
+  const formId = `source-form-${source?.sourceId ?? "new"}`;
+  const sourceLabel = source?.employerName ?? "this new source";
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form id={formId} action={formAction} className="space-y-5">
       <SourceFields source={source} />
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={pending}>
-          {pending ? "Saving…" : source ? "Save source" : "Add source"}
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger
+            render={<Button type="button" disabled={pending} />}
+          >
+            {pending ? "Saving…" : source ? "Save source" : "Add source"}
+          </AlertDialogTrigger>
+          <AlertDialogContent
+            aria-label={`Confirm source configuration for ${sourceLabel}?`}
+            className="max-w-md"
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Confirm source configuration for {sourceLabel}?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                These audited settings can enable or disable collection from
+                this source. Confirm that its access and compliance review are
+                current.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction type="submit" form={formId} disabled={pending}>
+                {pending ? "Saving…" : "Confirm source changes"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {state.kind !== "idle" ? (
           <p
             role={state.kind === "success" ? "status" : "alert"}

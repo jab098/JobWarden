@@ -170,16 +170,25 @@ function unavailable(): AdminRepositoryError {
 }
 
 function parseIntervalMinutes(value: string): number {
-  const match = value.match(
-    /^(?:(\d+)\s+days?\s+)?(\d{1,3}):(\d{2}):\d{2}(?:\.\d+)?$/,
+  const dayOnly = value.match(/^(\d+)\s+days?$/);
+  const dayAndTime = value.match(
+    /^(?:(\d+)\s+days?\s+)?(\d{1,3}):([0-5]\d):([0-5]\d)(?:\.(\d+))?$/,
   );
-  if (!match) throw unavailable();
 
-  const days = Number(match[1] ?? 0);
-  const hours = Number(match[2]);
-  const minutes = Number(match[3]);
+  const days = Number(dayOnly?.[1] ?? dayAndTime?.[1] ?? 0);
+  const hours = Number(dayAndTime?.[2] ?? 0);
+  const minutes = Number(dayAndTime?.[3] ?? 0);
+  const seconds = Number(dayAndTime?.[4] ?? 0);
+  const fractionalSeconds = Number(`0.${dayAndTime?.[5] ?? 0}`);
   const total = days * 1_440 + hours * 60 + minutes;
-  if (!Number.isInteger(total) || total < 15 || total > 10_080) {
+  if (
+    (!dayOnly && !dayAndTime) ||
+    seconds !== 0 ||
+    fractionalSeconds !== 0 ||
+    !Number.isInteger(total) ||
+    total < 15 ||
+    total > 10_080
+  ) {
     throw unavailable();
   }
   return total;

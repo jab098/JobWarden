@@ -66,19 +66,19 @@ export function AccessRequestList({
                 </div>
                 <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 xl:grid-cols-3">
                   <div>
-                    <dt className="text-xs text-[#687183]">Requested</dt>
+                    <dt className="text-xs text-[#596173]">Requested</dt>
                     <dd className="mt-0.5 font-mono text-xs">
                       {formatAdminDate(request.requestedAt)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-[#687183]">Member reference</dt>
+                    <dt className="text-xs text-[#596173]">Member reference</dt>
                     <dd className="mt-0.5 font-mono text-xs">
                       {shortId(request.userId)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-[#687183]">Last decision</dt>
+                    <dt className="text-xs text-[#596173]">Last decision</dt>
                     <dd className="mt-0.5 text-sm">
                       {request.decisionReason ?? "Awaiting review"}
                     </dd>

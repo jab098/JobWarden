@@ -21,6 +21,24 @@ describe("fictional administrator preview data", () => {
       expect.arrayContaining(["succeeded", "failed", "running"]),
     );
     expect(snapshot.ingestionRequests[0]).toMatchObject({ status: "pending" });
+    expect(
+      snapshot.accessRequests.every((item) =>
+        item.displayName.startsWith("Fictional "),
+      ),
+    ).toBe(true);
+    expect(
+      snapshot.sources.every(
+        (source) =>
+          source.employerName.startsWith("Fictional ") &&
+          source.boardToken.startsWith("fictional-") &&
+          source.allowedHosts.every((host) => host.endsWith(".example.test")),
+      ),
+    ).toBe(true);
+    expect(
+      snapshot.runs
+        .filter((run) => run.errorCode)
+        .every((run) => run.errorCode?.startsWith("fictional_")),
+    ).toBe(true);
     expect(serialised).toMatch(/fictional|example\.test/i);
     expect(serialised).not.toMatch(/@|curriculum|resume|cv text|phone/i);
     expect(snapshot).not.toHaveProperty("decideAccess");

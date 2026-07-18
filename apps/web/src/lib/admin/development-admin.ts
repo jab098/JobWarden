@@ -65,7 +65,7 @@ const snapshot = deepFreeze<DevelopmentAdminSnapshot>({
       termsReviewState: "current",
       robotsReviewState: "current",
       complianceNotes: "Fictional documented public GET endpoint review.",
-      allowedHosts: ["boards.greenhouse.io", "fictional.example.test"],
+      allowedHosts: ["boards.fictional.example.test", "fictional.example.test"],
     },
     {
       sourceId: "52000000-0000-4000-8000-000000000002",
@@ -120,7 +120,7 @@ const snapshot = deepFreeze<DevelopmentAdminSnapshot>({
       closedCount: 0,
       durationMs: 10_000,
       retryCount: 2,
-      errorCode: "upstream_timeout",
+      errorCode: "fictional_upstream_timeout",
       startedAt: "2026-07-17T15:00:00.000Z",
       completedAt: "2026-07-17T15:00:10.000Z",
     },
