@@ -1,7 +1,9 @@
 # Reed Ingestion Operations
 
-**Provider record reviewed:** 2026-07-18  
-**Live state:** implemented but disabled  
+**Provider record reviewed:** 2026-07-18
+
+**Live state:** implemented but disabled
+
 **Prerequisite:** complete the [shared ingestion setup](ingestion.md), real database reset, and pgTAP suite first
 
 This runbook activates the credential-ready Reed Jobseeker API adapter. It does not grant permission to use Reed data. Before activation, the owner must read the terms shown during API registration and confirm that the intended private-beta indexing, display, retention, attribution, and deletion behaviour is permitted. The public [Jobseeker API page](https://www.reed.co.uk/developers/jobseeker) does not state those grants.

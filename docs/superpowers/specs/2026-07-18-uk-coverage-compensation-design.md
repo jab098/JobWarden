@@ -113,7 +113,7 @@ No owner input is needed for fixture implementation. To activate Reed later, the
 ## Verification
 
 - Adapter tests cover authentication, paging/detail bounds, schema rejection, dates, structured compensation, aborts, retries, and secret redaction.
-- Normalisation tests cover explicit UK evidence, provider overrides, canonical URL keys, advertised/unknown provenance, and unsafe external URLs.
+- Normalisation tests cover explicit UK evidence, provider overrides, canonical URL identity, advertised/unknown provenance, and unsafe external URLs.
 - Handler/repository tests cover provider dispatch, missing credentials, incremental success, transactional occurrence batches, and isolation.
 - pgTAP covers provider restrictions, occurrence RLS/grants, exact-key deduplication, source provenance, incremental non-omission, complete two-run omission, expiry closure, and compensation constraints.
 - Web tests cover default inclusion of unknown compensation, all provenance filters, truthful labels, and source-health counts.
