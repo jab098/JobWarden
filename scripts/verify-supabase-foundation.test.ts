@@ -190,4 +190,20 @@ describe("Supabase foundation static verifier", () => {
       ]),
     );
   });
+
+  it("requires durable onboarding signals and owner-derived save and deletion RPCs", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "career profile must persist target role families",
+        "missing owner-derived atomic career profile save",
+        "missing owner-derived named search save",
+        "missing race-safe current CV deletion",
+        "missing owner-derived profile deletion",
+      ]),
+    );
+  });
 });

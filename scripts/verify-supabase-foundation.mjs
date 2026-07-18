@@ -11,6 +11,7 @@ export const requiredMigrationFiles = [
   "202607180003_uk_coverage_compensation.sql",
   "202607180004_career_profiles.sql",
   "202607180005_career_extraction_runtime.sql",
+  "202607180006_career_profile_workflow.sql",
 ];
 
 const publicTables = [
@@ -80,6 +81,26 @@ export function verifyFoundationSql(files) {
   }
 
   const requiredFragments = [
+    [
+      "add column target_role_families jsonb not null default '[]'::jsonb",
+      "career profile must persist target role families",
+    ],
+    [
+      "create or replace function public.save_career_profile_draft(draft_value jsonb)",
+      "missing owner-derived atomic career profile save",
+    ],
+    [
+      "create or replace function public.save_search_profile(draft_value jsonb)",
+      "missing owner-derived named search save",
+    ],
+    [
+      "create or replace function public.delete_current_cv( target_document_id uuid, expected_storage_path text )",
+      "missing race-safe current CV deletion",
+    ],
+    [
+      "create or replace function public.delete_career_profile_data()",
+      "missing owner-derived profile deletion",
+    ],
     [
       "create table public.career_ai_daily_usage",
       "missing auditable career AI daily usage counter",

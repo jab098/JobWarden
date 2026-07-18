@@ -1,0 +1,161 @@
+import "server-only";
+
+import type { ProfileRepository } from "./repository";
+import { ProfileRepositoryError } from "./repository";
+import type { ProfileSnapshot } from "./types";
+
+function deepFreeze<T>(value: T): Readonly<T> {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const child of Object.values(value as object)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+const evidenceIds = [
+  "61000000-0000-4000-8000-000000000001",
+  "61000000-0000-4000-8000-000000000002",
+  "61000000-0000-4000-8000-000000000003",
+] as const;
+
+const snapshot = deepFreeze<ProfileSnapshot>({
+  dataMode: "fixtures",
+  uploadCapability: { enabled: false, reason: "fictional_preview" },
+  currentCv: {
+    id: "60000000-0000-4000-8000-000000000001",
+    fileName: "fictional-career-notes.docx",
+    kind: "docx",
+    lifecycleStatus: "ready",
+    uploadedAt: "2026-07-18T09:00:00.000Z",
+  },
+  draft: {
+    cvDocumentId: "60000000-0000-4000-8000-000000000001",
+    currentSeniority: "senior",
+    targetSeniority: "lead",
+    targetRoleFamilies: [
+      {
+        normalizedConcept: "analytics implementation consulting",
+        label: "Analytics implementation consulting",
+      },
+    ],
+    industries: [
+      {
+        normalizedConcept: "professional services",
+        label: "Professional services",
+      },
+    ],
+    domains: [{ normalizedConcept: "martech", label: "Marketing technology" }],
+    keywords: ["measurement strategy", "data governance"],
+    evidence: [
+      {
+        id: evidenceIds[0],
+        normalizedConcept: "analytics implementation",
+        label: "Analytics implementation",
+        category: "responsibility",
+        origin: "cv",
+        confidence: 0.96,
+        evidenceReference: "character:44-68",
+        evidenceExcerpt:
+          "Fictional evidence: delivered governed analytics implementation programmes.",
+        proficiencySignal: "advanced",
+        lastUsedAt: "2026-06-30",
+        confirmationState: "confirmed",
+      },
+      {
+        id: evidenceIds[1],
+        normalizedConcept: "stakeholder management",
+        label: "Stakeholder management",
+        category: "skill",
+        origin: "cv",
+        confidence: 0.96,
+        evidenceReference: "character:112-134",
+        evidenceExcerpt:
+          "Fictional evidence: facilitated stakeholder decisions across delivery teams.",
+        proficiencySignal: "advanced",
+        lastUsedAt: "2026-06-30",
+        confirmationState: "confirmed",
+      },
+      {
+        id: evidenceIds[2],
+        normalizedConcept: "sql",
+        label: "SQL",
+        category: "tool",
+        origin: "cv",
+        confidence: 0.99,
+        evidenceReference: "character:188-191",
+        evidenceExcerpt:
+          "Fictional evidence: used SQL for implementation validation and analysis.",
+        proficiencySignal: "demonstrated",
+        lastUsedAt: null,
+        confirmationState: "proposed",
+      },
+    ],
+  },
+  suggestions: [
+    {
+      id: "62000000-0000-4000-8000-000000000001",
+      kind: "role_family",
+      normalizedConcept: "analytics implementation consulting",
+      label: "Analytics implementation consulting",
+      confidence: 0.82,
+      evidenceItemIds: [evidenceIds[0], evidenceIds[1]],
+      state: "proposed",
+      proposedAt: "2026-07-18T09:00:04.000Z",
+    },
+  ],
+  searches: [
+    {
+      id: "63000000-0000-4000-8000-000000000001",
+      name: "Implementation leadership",
+      enabled: true,
+      roleFamilies: [
+        {
+          normalizedConcept: "analytics implementation consulting",
+          label: "Analytics implementation consulting",
+        },
+      ],
+      includeTerms: ["implementation", "measurement"],
+      excludeTerms: [],
+      industries: [],
+      domains: [
+        { normalizedConcept: "martech", label: "Marketing technology" },
+      ],
+      skillConcepts: ["stakeholder management", "sql"],
+      responsibilityConcepts: ["analytics implementation"],
+      currentSeniority: "senior",
+      targetSeniority: "lead",
+      employmentTypes: ["permanent", "contract"],
+      workingTimes: ["full_time"],
+      workplaceTypes: ["hybrid", "remote"],
+      ukLocations: ["London", "Remote within the United Kingdom"],
+      ir35Statuses: ["outside", "not_applicable", "unknown"],
+      compensation: {
+        minimum: null,
+        maximum: null,
+        period: "unknown",
+        allowUnknown: true,
+      },
+      recencyDays: 14,
+      notificationsEnabled: false,
+    },
+  ],
+});
+
+function readOnly(): Promise<never> {
+  return Promise.reject(new ProfileRepositoryError("read_only"));
+}
+
+export function createDevelopmentProfileRepository(): ProfileRepository {
+  return {
+    uploadCapability: snapshot.uploadCapability,
+    async getSnapshot() {
+      return snapshot;
+    },
+    saveDraft: readOnly,
+    acceptSuggestion: readOnly,
+    rejectSuggestion: readOnly,
+    saveSearch: readOnly,
+    deleteCv: readOnly,
+    deleteProfileData: readOnly,
+  };
+}
