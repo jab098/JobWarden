@@ -15,6 +15,7 @@ import type {
   IngestionRequestView,
   IngestionRunView,
   JobSourceView,
+  SourceHealthView,
 } from "./types";
 
 export type MutationContext = MutationOriginInput;
@@ -36,6 +37,7 @@ export interface AdminRepository {
   listAccessRequests(): Promise<AccessRequestView[]>;
   getAccessRequestsEnabled(): Promise<boolean>;
   listSources(): Promise<JobSourceView[]>;
+  listSourceHealth(): Promise<SourceHealthView[]>;
   listIngestionRuns(limit: number): Promise<IngestionRunView[]>;
   listIngestionRequests(limit: number): Promise<IngestionRequestView[]>;
   decideAccess(input: {

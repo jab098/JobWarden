@@ -41,6 +41,7 @@ const job: JobDetail = {
   compensationMaximum: null,
   compensationCurrency: null,
   compensationPeriod: "unknown",
+  compensationProvenance: "unknown",
   postedAt: null,
   descriptionText: "A fictional UK role.",
   applicationUrl: "https://example.test/apply/senior-software-engineer",
@@ -82,6 +83,7 @@ describe("jobs routes", () => {
       workingTime: "all",
       workplace: "hybrid",
       ir35: "all",
+      compensation: "all",
       page: 2,
     });
     expect(

@@ -13,6 +13,7 @@ const allFilters = {
   workingTime: "all" as const,
   workplace: "all" as const,
   ir35: "all" as const,
+  compensation: "all" as const,
   page: 1,
 };
 

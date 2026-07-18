@@ -287,6 +287,14 @@ export function verifyFoundationSql(files) {
       "incremental source completion must not advance omissions",
     ],
     ["limit 500", "missing bounded closing-date lifecycle maintenance"],
+    [
+      "create or replace function public.get_job_source_health()",
+      "missing bounded administrator source-health function",
+    ],
+    [
+      "grant execute on function public.get_job_source_health() to authenticated",
+      "source-health function must have its narrow authenticated grant",
+    ],
   ];
 
   for (const [fragment, message] of requiredFragments) {

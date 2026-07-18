@@ -543,4 +543,55 @@ grant execute on function public.finish_source_ingestion(
   uuid, text, boolean, integer, integer, integer, integer, integer, integer, integer, text
 ) to service_role;
 
+create or replace function public.get_job_source_health()
+returns table (
+  source_id uuid,
+  employer_name text,
+  provider text,
+  coverage_mode text,
+  last_successful_sync_at timestamptz,
+  active_occurrences integer,
+  advertised_compensation integer,
+  estimated_compensation integer,
+  unknown_compensation integer,
+  permanent_roles integer,
+  contract_roles integer,
+  part_time_roles integer
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_admin() then
+    raise exception using errcode = '42501', message = 'administrator access required';
+  end if;
+
+  return query
+  select
+    source.id,
+    source.employer_name,
+    source.provider,
+    source.coverage_mode,
+    source.last_successful_sync_at,
+    count(occurrence.id) filter (where occurrence.lifecycle_status = 'active')::integer,
+    count(occurrence.id) filter (where occurrence.lifecycle_status = 'active' and job.compensation_provenance = 'advertised')::integer,
+    count(occurrence.id) filter (where occurrence.lifecycle_status = 'active' and job.compensation_provenance = 'estimated')::integer,
+    count(occurrence.id) filter (where occurrence.lifecycle_status = 'active' and job.compensation_provenance = 'unknown')::integer,
+    count(occurrence.id) filter (where occurrence.lifecycle_status = 'active' and job.employment_type = 'permanent')::integer,
+    count(occurrence.id) filter (where occurrence.lifecycle_status = 'active' and job.employment_type = 'contract')::integer,
+    count(occurrence.id) filter (where occurrence.lifecycle_status = 'active' and job.working_time = 'part_time')::integer
+  from public.job_sources as source
+  left join public.job_source_occurrences as occurrence on occurrence.source_id = source.id
+  left join public.jobs as job on job.id = occurrence.job_id
+  group by source.id
+  order by source.employer_name
+  limit 200;
+end;
+$$;
+
+revoke all on function public.get_job_source_health() from public, anon;
+grant execute on function public.get_job_source_health() to authenticated;
+
 commit;

@@ -10,6 +10,7 @@ const defaults = {
   workingTime: "all" as const,
   workplace: "all" as const,
   ir35: "all" as const,
+  compensation: "all" as const,
   page: 1,
 };
 
@@ -22,6 +23,7 @@ describe("job URL filters", () => {
         workingTime: "part_time",
         workplace: "remote",
         ir35: "outside",
+        compensation: "advertised",
         page: "2",
       }),
     ).toEqual({
@@ -30,6 +32,7 @@ describe("job URL filters", () => {
       workingTime: "part_time",
       workplace: "remote",
       ir35: "outside",
+      compensation: "advertised",
       page: 2,
     });
   });
@@ -42,6 +45,7 @@ describe("job URL filters", () => {
         workingTime: ["full_time"],
         workplace: ["remote"],
         ir35: ["inside"],
+        compensation: ["advertised"],
         page: ["2"],
       }),
     ).toEqual(defaults);
@@ -54,6 +58,7 @@ describe("job URL filters", () => {
         workingTime: "weekends",
         workplace: "moon",
         ir35: "guessed",
+        compensation: "invented",
       }),
     ).toEqual(defaults);
   });
@@ -87,10 +92,11 @@ describe("canonical jobs query strings", () => {
         workingTime: "part_time",
         workplace: "remote",
         ir35: "outside",
+        compensation: "unknown",
         page: 3,
       }),
     ).toBe(
-      "q=platform+%26+data&employment=contract&workingTime=part_time&workplace=remote&ir35=outside&page=3",
+      "q=platform+%26+data&employment=contract&workingTime=part_time&workplace=remote&ir35=outside&compensation=unknown&page=3",
     );
   });
 

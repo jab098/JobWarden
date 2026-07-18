@@ -55,7 +55,8 @@ export function SourceList({
                     />
                   </div>
                   <p className="mt-1 font-mono text-xs text-[#596173]">
-                    greenhouse / {source.boardToken}
+                    {source.provider} / {source.boardToken} ·{" "}
+                    {source.coverageMode} coverage
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -96,7 +97,7 @@ export function SourceList({
               <p className="mt-4 max-w-3xl text-sm leading-6 text-[#4f5869]">
                 {source.complianceNotes}
               </p>
-              {!readOnly && saveAction ? (
+              {!readOnly && saveAction && source.provider === "greenhouse" ? (
                 <details className="mt-4 border-t border-[#e3dfd7] pt-4">
                   <summary className="cursor-pointer text-sm font-medium text-[#2458a6]">
                     Edit source configuration
@@ -105,6 +106,11 @@ export function SourceList({
                     <SourceForm action={saveAction} source={source} />
                   </div>
                 </details>
+              ) : source.provider === "reed" ? (
+                <p className="mt-4 border-t border-[#e3dfd7] pt-4 text-xs text-[#596173]">
+                  Reed discovery settings are environment-managed and read-only
+                  here.
+                </p>
               ) : null}
             </article>
           ))}

@@ -10,6 +10,7 @@ import { AccessRequestList } from "./access-request-list";
 import { AdminShell } from "./admin-shell";
 import { IngestionRequestList } from "./ingestion-request-list";
 import { IngestionRunList } from "./ingestion-run-list";
+import { SourceHealthList } from "./source-health-list";
 import { SourceList } from "./source-list";
 import { SourceForm } from "./source-form";
 import { getDevelopmentAdminSnapshot } from "@/lib/admin/development-admin";
@@ -136,6 +137,20 @@ describe("administrator workspace", () => {
     rerender(<IngestionRequestList requests={snapshot.ingestionRequests} />);
     expect(screen.getByText("Pending request")).toBeInTheDocument();
     expect(screen.getByText(/54100000/)).toBeInTheDocument();
+  });
+
+  it("shows compact source freshness, salary provenance, and work-pattern counts", () => {
+    render(<SourceHealthList sources={snapshot.sourceHealth} />);
+
+    const source = screen
+      .getByText("Fictional Northstar UK Ltd")
+      .closest("article");
+    expect(source).toHaveTextContent("greenhouse · complete coverage");
+    expect(source).toHaveTextContent("42 active occurrences");
+    expect(source).toHaveTextContent("Advertised salary31");
+    expect(source).toHaveTextContent("Salary not stated11");
+    expect(source).toHaveTextContent("Contract13");
+    expect(source).toHaveTextContent("Part time5");
   });
 
   it("requires explicit confirmation before a source can change state", async () => {

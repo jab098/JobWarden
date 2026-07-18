@@ -113,13 +113,13 @@
 **Interfaces:**
 - Produces URL-backed `compensation=all|advertised|estimated|unknown`, explicit provenance labels, and bounded source-health aggregates.
 
-- [ ] Write failing filter/repository tests proving unknown is included by default and each provenance filter generates the correct server query.
-- [ ] Implement filter parsing/querying and rerun to green.
-- [ ] Write failing component tests for truthful provenance labels and keyboard/mobile-safe filter controls.
-- [ ] Implement the existing-design-system UI without adding a new visual language.
-- [ ] Write failing admin repository/component tests for freshness, coverage mode, compensation mix, and work-pattern counts.
-- [ ] Implement bounded source-health reads and UI, then rerun the web suite and accessibility tests.
-- [ ] Commit `feat: expose compensation and source coverage`.
+- [x] Write failing filter/repository tests proving unknown is included by default and each provenance filter generates the correct server query.
+- [x] Implement filter parsing/querying and rerun to green.
+- [x] Write failing component tests for truthful provenance labels and keyboard/mobile-safe filter controls.
+- [x] Implement the existing-design-system UI without adding a new visual language.
+- [x] Write failing admin repository/component tests for freshness, coverage mode, compensation mix, and work-pattern counts.
+- [x] Implement bounded source-health reads and UI, then rerun the web suite and accessibility tests.
+- [x] Commit `feat: expose compensation and source coverage`.
 
 ### Task 5: Compliance documentation, full verification, and delivery
 

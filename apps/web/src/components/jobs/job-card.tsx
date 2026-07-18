@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import {
   formatCompensation,
+  formatCompensationProvenance,
   formatIr35,
   formatJobLabel,
   formatPostedAge,
@@ -10,6 +11,7 @@ import type { JobListItem } from "@/lib/jobs/types";
 
 export function JobCard({ job }: { job: JobListItem }) {
   const compensation = formatCompensation(job);
+  const compensationProvenance = formatCompensationProvenance(job);
   const ir35 = formatIr35(job);
   return (
     <article className="border-b border-[#dedbd2] px-5 py-6 [overflow-wrap:anywhere] transition-colors hover:bg-[#fbfaf7] sm:px-7">
@@ -29,11 +31,14 @@ export function JobCard({ job }: { job: JobListItem }) {
         <span>
           {formatJobLabel(job.workingTime, "Working time not stated")}
         </span>
+        <span aria-hidden="true">·</span>
+        <span className="font-medium text-[#263248]">
+          {compensation ?? "Salary not stated"}
+        </span>
         {compensation && (
-          <>
-            <span aria-hidden="true">·</span>
-            <span className="font-medium text-[#263248]">{compensation}</span>
-          </>
+          <span className="font-mono text-[0.66rem] uppercase tracking-[0.1em] text-[#697181]">
+            {compensationProvenance}
+          </span>
         )}
         {ir35 && (
           <>

@@ -55,6 +55,7 @@ function repository(): AdminRepository {
       .fn()
       .mockResolvedValue(snapshot.accessRequestsEnabled),
     listSources: vi.fn().mockResolvedValue(snapshot.sources),
+    listSourceHealth: vi.fn().mockResolvedValue(snapshot.sourceHealth),
     listIngestionRuns: vi.fn().mockResolvedValue(snapshot.runs),
     listIngestionRequests: vi
       .fn()

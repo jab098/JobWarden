@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { JobsRepository } from "./repository";
 import {
   compensationPeriods,
+  compensationProvenances,
   employmentTypes,
   ir35Statuses,
   workplaceTypes,
@@ -30,6 +31,7 @@ const listRowSchema = z.object({
   compensation_maximum: z.number().int().nonnegative().nullable(),
   compensation_currency: z.literal("GBP").nullable(),
   compensation_period: z.enum(compensationPeriods),
+  compensation_provenance: z.enum(compensationProvenances),
   posted_at: z.iso.datetime().nullable(),
   last_seen_at: z.iso.datetime(),
   job_locations: z.array(locationSchema).nullable(),
@@ -55,6 +57,7 @@ const listColumns = [
   "compensation_maximum",
   "compensation_currency",
   "compensation_period",
+  "compensation_provenance",
   "posted_at",
   "last_seen_at",
   "job_locations(raw_location)",
@@ -118,6 +121,7 @@ function toListItem(row: ListRow): JobListItem {
     compensationMaximum: row.compensation_maximum,
     compensationCurrency: row.compensation_currency,
     compensationPeriod: row.compensation_period,
+    compensationProvenance: row.compensation_provenance,
     postedAt: row.posted_at,
   };
 }
@@ -181,6 +185,9 @@ export function createSupabaseJobsRepository(client: object): JobsRepository {
         }
         if (filters.ir35 !== "all") {
           query = query.eq("ir35_status", filters.ir35);
+        }
+        if (filters.compensation !== "all") {
+          query = query.eq("compensation_provenance", filters.compensation);
         }
         if (filters.q) query = query.or(createSearchFilter(filters.q));
 

@@ -3,6 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 
 import {
   formatCompensation,
+  formatCompensationProvenance,
   formatIr35,
   formatJobLabel,
   formatPostedAge,
@@ -17,6 +18,7 @@ export function JobDetailView({
   dataMode: "supabase" | "fixtures";
 }) {
   const compensation = formatCompensation(job);
+  const compensationProvenance = formatCompensationProvenance(job);
   const ir35 = formatIr35(job);
   return (
     <article className="mx-auto max-w-4xl bg-white px-5 py-8 [overflow-wrap:anywhere] sm:px-8 lg:px-12 lg:py-12">
@@ -45,11 +47,12 @@ export function JobDetailView({
         <span>
           {formatJobLabel(job.workingTime, "Working time not stated")}
         </span>
+        <span aria-hidden="true">·</span>
+        <span>{compensation ?? "Salary not stated"}</span>
         {compensation && (
-          <>
-            <span aria-hidden="true">·</span>
-            <span>{compensation}</span>
-          </>
+          <span className="font-mono text-[0.66rem] uppercase tracking-[0.1em] text-[#697181]">
+            {compensationProvenance}
+          </span>
         )}
         {ir35 && (
           <>

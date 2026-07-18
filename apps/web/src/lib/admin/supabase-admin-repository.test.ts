@@ -44,6 +44,7 @@ const sourceRow = {
   allowed_method: "GET",
   compliance_notes: "Reviewed fictional public endpoint.",
   allowed_hosts: ["boards.greenhouse.io"],
+  coverage_mode: "complete",
 };
 
 const runRow = {
@@ -116,6 +117,42 @@ function createClient(
 }
 
 describe("Supabase administrator repository", () => {
+  it("loads bounded source health aggregates without provider payloads", async () => {
+    const { client } = createClient({});
+    client.rpc.mockResolvedValue({
+      data: [
+        {
+          source_id: sourceRow.id,
+          employer_name: sourceRow.employer_name,
+          provider: "greenhouse",
+          coverage_mode: "complete",
+          last_successful_sync_at: sourceRow.last_successful_sync_at,
+          active_occurrences: 12,
+          advertised_compensation: 8,
+          estimated_compensation: 0,
+          unknown_compensation: 4,
+          permanent_roles: 7,
+          contract_roles: 4,
+          part_time_roles: 1,
+        },
+      ],
+      error: null,
+    });
+
+    await expect(
+      createSupabaseAdminRepository(client).listSourceHealth(),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        sourceId: sourceRow.id,
+        coverageMode: "complete",
+        activeOccurrences: 12,
+        advertisedCompensation: 8,
+        unknownCompensation: 4,
+      }),
+    ]);
+    expect(client.rpc).toHaveBeenCalledWith("get_job_source_health");
+  });
+
   it("loads access requests and display names without querying auth users or emails", async () => {
     const { client, builders } = createClient({
       access_requests: { data: accessRows, error: null },

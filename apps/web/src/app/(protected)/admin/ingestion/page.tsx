@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { IngestionRequestForm } from "@/components/admin/ingestion-request-form";
 import { IngestionRequestList } from "@/components/admin/ingestion-request-list";
 import { IngestionRunList } from "@/components/admin/ingestion-run-list";
+import { SourceHealthList } from "@/components/admin/source-health-list";
 import { getAdminRepository } from "@/lib/admin/get-repository";
 import { requestIngestionAction } from "./actions";
 
@@ -12,8 +13,9 @@ export const metadata: Metadata = {
 
 export default async function IngestionPage() {
   const repository = await getAdminRepository();
-  const [sources, runs, requests] = await Promise.all([
+  const [sources, sourceHealth, runs, requests] = await Promise.all([
     repository.listSources(),
+    repository.listSourceHealth(),
     repository.listIngestionRuns(50),
     repository.listIngestionRequests(20),
   ]);
@@ -34,6 +36,7 @@ export default async function IngestionPage() {
         </p>
       </header>
       <div className="space-y-12">
+        <SourceHealthList sources={sourceHealth} />
         <section aria-labelledby="request-sync-heading" className="space-y-4">
           <div>
             <h2

@@ -47,6 +47,12 @@ const options = {
     ["not_applicable", "Not applicable"],
     ["unknown", "Not stated"],
   ],
+  compensation: [
+    ["all", "All salary information"],
+    ["advertised", "Advertised salary"],
+    ["estimated", "Estimated salary"],
+    ["unknown", "Salary not stated"],
+  ],
 } as const;
 
 function FilterForm({ filters }: { filters: JobFilters }) {
@@ -72,6 +78,7 @@ function FilterForm({ filters }: { filters: JobFilters }) {
           ["workingTime", "Working time"],
           ["workplace", "Workplace"],
           ["ir35", "IR35 status"],
+          ["compensation", "Salary information"],
         ] as const
       ).map(([name, label]) => (
         <label key={name} className="block space-y-2 text-sm font-medium">

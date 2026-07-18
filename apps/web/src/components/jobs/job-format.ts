@@ -53,6 +53,17 @@ export function formatCompensation(job: JobListItem): string | null {
   return `${amount} per ${job.compensationPeriod}`;
 }
 
+export function formatCompensationProvenance(job: JobListItem): string {
+  switch (job.compensationProvenance) {
+    case "advertised":
+      return "Advertised salary";
+    case "estimated":
+      return "Estimated salary";
+    case "unknown":
+      return "Salary not stated";
+  }
+}
+
 export function formatIr35(job: JobListItem): string | null {
   if (job.employmentType !== "contract") return null;
   switch (job.ir35Status) {

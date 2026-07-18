@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(29);
+select plan(31);
 
 select has_table('public', 'job_source_occurrences', 'source occurrences are persisted');
 select has_column('public', 'job_sources', 'coverage_mode', 'sources declare coverage mode');
@@ -18,6 +18,14 @@ select ok(
 select ok(
   not has_table_privilege('authenticated', 'public.job_source_occurrences', 'INSERT'),
   'authenticated callers cannot mutate occurrence provenance'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.get_job_source_health()', 'EXECUTE'),
+  'authenticated administrators can call the RLS-gated source-health function'
+);
+select ok(
+  not has_function_privilege('anon', 'public.get_job_source_health()', 'EXECUTE'),
+  'anonymous callers cannot inspect source health'
 );
 
 select throws_ok(

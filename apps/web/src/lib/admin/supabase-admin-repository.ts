@@ -17,6 +17,7 @@ import type {
   IngestionRequestView,
   IngestionRunView,
   JobSourceView,
+  SourceHealthView,
 } from "./types";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -37,7 +38,7 @@ const profileRowSchema = z.object({
 
 const sourceRowSchema = z.object({
   id: z.string().uuid(),
-  provider: z.literal("greenhouse"),
+  provider: z.enum(["greenhouse", "reed"]),
   board_token: z.string().min(1).max(200),
   employer_name: z.string().min(1).max(300),
   enabled: z.boolean(),
@@ -48,11 +49,12 @@ const sourceRowSchema = z.object({
   allowed_method: z.literal("GET"),
   compliance_notes: z.string().min(3).max(5_000),
   allowed_hosts: z.array(z.string().min(1)).min(1).max(10),
+  coverage_mode: z.enum(["complete", "incremental"]),
 });
 
 const sourceJoinSchema = z.object({
   id: z.string().uuid(),
-  provider: z.literal("greenhouse"),
+  provider: z.enum(["greenhouse", "reed"]),
   employer_name: z.string().min(1).max(300),
 });
 
@@ -104,6 +106,21 @@ const requestResultSchema = z
   )
   .length(1);
 
+const sourceHealthRowSchema = z.object({
+  source_id: z.string().uuid(),
+  employer_name: z.string().min(1).max(300),
+  provider: z.enum(["greenhouse", "reed"]),
+  coverage_mode: z.enum(["complete", "incremental"]),
+  last_successful_sync_at: timestampSchema.nullable(),
+  active_occurrences: z.number().int().nonnegative(),
+  advertised_compensation: z.number().int().nonnegative(),
+  estimated_compensation: z.number().int().nonnegative(),
+  unknown_compensation: z.number().int().nonnegative(),
+  permanent_roles: z.number().int().nonnegative(),
+  contract_roles: z.number().int().nonnegative(),
+  part_time_roles: z.number().int().nonnegative(),
+});
+
 type QueryResponse = { data: unknown; error: unknown };
 
 type QueryBuilder = {
@@ -133,6 +150,7 @@ const sourceColumns = [
   "allowed_method",
   "compliance_notes",
   "allowed_hosts",
+  "coverage_mode",
 ].join(",");
 const runColumns = [
   "id",
@@ -308,6 +326,7 @@ export function createSupabaseAdminRepository(
         return rows.map<JobSourceView>((row) => ({
           sourceId: row.id,
           provider: row.provider,
+          coverageMode: row.coverage_mode,
           boardToken: row.board_token,
           employerName: row.employer_name,
           enabled: row.enabled,
@@ -325,6 +344,33 @@ export function createSupabaseAdminRepository(
           ),
           complianceNotes: row.compliance_notes,
           allowedHosts: row.allowed_hosts,
+        }));
+      } catch (error) {
+        if (error instanceof AdminRepositoryError) throw error;
+        throw unavailable();
+      }
+    },
+
+    async listSourceHealth() {
+      try {
+        const response = await supabase.rpc("get_job_source_health");
+        const rows = z
+          .array(sourceHealthRowSchema)
+          .max(200)
+          .parse(assertResponse(response));
+        return rows.map<SourceHealthView>((row) => ({
+          sourceId: row.source_id,
+          employerName: row.employer_name,
+          provider: row.provider,
+          coverageMode: row.coverage_mode,
+          lastSuccessfulSyncAt: row.last_successful_sync_at,
+          activeOccurrences: row.active_occurrences,
+          advertisedCompensation: row.advertised_compensation,
+          estimatedCompensation: row.estimated_compensation,
+          unknownCompensation: row.unknown_compensation,
+          permanentRoles: row.permanent_roles,
+          contractRoles: row.contract_roles,
+          partTimeRoles: row.part_time_roles,
         }));
       } catch (error) {
         if (error instanceof AdminRepositoryError) throw error;
