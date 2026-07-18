@@ -53,11 +53,19 @@ export function SearchProfileForm({
     domains: profile?.domains ?? [],
     skillConcepts:
       profile?.evidence
-        .filter((item) => item.category === "skill" || item.category === "tool")
+        .filter(
+          (item) =>
+            item.confirmationState === "confirmed" &&
+            (item.category === "skill" || item.category === "tool"),
+        )
         .map((item) => item.normalizedConcept) ?? [],
     responsibilityConcepts:
       profile?.evidence
-        .filter((item) => item.category === "responsibility")
+        .filter(
+          (item) =>
+            item.confirmationState === "confirmed" &&
+            item.category === "responsibility",
+        )
         .map((item) => item.normalizedConcept) ?? [],
     currentSeniority: profile?.currentSeniority ?? "unspecified",
     targetSeniority: profile?.targetSeniority ?? "unspecified",

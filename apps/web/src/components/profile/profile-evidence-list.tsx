@@ -1,5 +1,14 @@
+"use client";
+
+import { useActionState } from "react";
+
+import { decideEvidenceAction } from "@/app/(protected)/profile/actions";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { CareerEvidenceItem } from "@jobwarden/domain";
+import type { ProfileActionState } from "@/lib/profile/types";
+
+const initialState: ProfileActionState = { kind: "idle" };
 
 function evidenceState(item: CareerEvidenceItem): string {
   if (item.confirmationState === "confirmed") return "Confirmed";
@@ -7,10 +16,60 @@ function evidenceState(item: CareerEvidenceItem): string {
   return "Needs review";
 }
 
+function EvidenceDecision({
+  item,
+  readOnly,
+}: {
+  item: CareerEvidenceItem;
+  readOnly: boolean;
+}) {
+  const [state, action, pending] = useActionState(
+    decideEvidenceAction,
+    initialState,
+  );
+  return (
+    <form action={action} className="flex flex-wrap gap-2 sm:justify-end">
+      <input type="hidden" name="evidenceId" value={item.id} />
+      <Button
+        type="submit"
+        name="decision"
+        value="confirmed"
+        variant="outline"
+        size="sm"
+        aria-label={`Confirm ${item.label}`}
+        disabled={readOnly || pending}
+      >
+        Confirm
+      </Button>
+      <Button
+        type="submit"
+        name="decision"
+        value="rejected"
+        variant="ghost"
+        size="sm"
+        aria-label={`Exclude ${item.label}`}
+        disabled={readOnly || pending}
+      >
+        Exclude
+      </Button>
+      {state.kind !== "idle" ? (
+        <span
+          role={state.kind === "success" ? "status" : "alert"}
+          className="basis-full text-right text-xs text-[#596173]"
+        >
+          {state.message}
+        </span>
+      ) : null}
+    </form>
+  );
+}
+
 export function ProfileEvidenceList({
   evidence,
+  readOnly,
 }: {
   evidence: readonly CareerEvidenceItem[];
+  readOnly: boolean;
 }) {
   return (
     <section
@@ -65,16 +124,20 @@ export function ProfileEvidenceList({
                   {item.proficiencySignal}
                 </p>
               </div>
-              <Badge
-                variant={
-                  item.confirmationState === "rejected"
-                    ? "destructive"
-                    : "secondary"
-                }
-                className="rounded-sm"
-              >
-                {evidenceState(item)}
-              </Badge>
+              {item.confirmationState === "proposed" ? (
+                <EvidenceDecision item={item} readOnly={readOnly} />
+              ) : (
+                <Badge
+                  variant={
+                    item.confirmationState === "rejected"
+                      ? "destructive"
+                      : "secondary"
+                  }
+                  className="rounded-sm"
+                >
+                  {evidenceState(item)}
+                </Badge>
+              )}
             </li>
           ))}
         </ul>

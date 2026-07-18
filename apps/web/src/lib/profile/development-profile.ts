@@ -152,6 +152,8 @@ export function createDevelopmentProfileRepository(): ProfileRepository {
       return snapshot;
     },
     saveDraft: readOnly,
+    acceptEvidence: readOnly,
+    rejectEvidence: readOnly,
     acceptSuggestion: readOnly,
     rejectSuggestion: readOnly,
     saveSearch: readOnly,

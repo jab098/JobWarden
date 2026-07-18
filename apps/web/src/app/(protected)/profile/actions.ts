@@ -20,6 +20,12 @@ const suggestionDecisionSchema = z
     decision: z.enum(["accepted", "rejected"]),
   })
   .strict();
+const evidenceDecisionSchema = z
+  .object({
+    evidenceId: z.string().uuid(),
+    decision: z.enum(["confirmed", "rejected"]),
+  })
+  .strict();
 
 function value(formData: FormData, key: string): string {
   const result = formData.get(key);
@@ -95,6 +101,30 @@ export async function decideSuggestionAction(
     }
     revalidatePath("/profile");
     return { kind: "success", message: "Suggestion reviewed." };
+  } catch (error) {
+    return mapError(error);
+  }
+}
+
+export async function decideEvidenceAction(
+  _previousState: ProfileActionState,
+  formData: FormData,
+): Promise<ProfileActionState> {
+  if (!(await trusted())) return forbidden;
+  const parsed = evidenceDecisionSchema.safeParse({
+    evidenceId: value(formData, "evidenceId"),
+    decision: value(formData, "decision"),
+  });
+  if (!parsed.success) return invalid;
+  try {
+    const repository = await getProfileRepository();
+    if (parsed.data.decision === "confirmed") {
+      await repository.acceptEvidence(parsed.data.evidenceId);
+    } else {
+      await repository.rejectEvidence(parsed.data.evidenceId);
+    }
+    revalidatePath("/profile");
+    return { kind: "success", message: "Evidence reviewed." };
   } catch (error) {
     return mapError(error);
   }

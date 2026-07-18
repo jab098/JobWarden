@@ -46,6 +46,7 @@ function harness(
     aiResult?: unknown | Error;
     logs?: CareerRuntimeLog[];
     allowance?: number;
+    succeedError?: Error;
   } = {},
 ) {
   const claimResult = options.claim ?? claimed();
@@ -59,7 +60,9 @@ function harness(
       if (bytesResult instanceof Error) throw bytesResult;
       return bytesResult;
     }),
-    succeed: vi.fn(async () => undefined),
+    succeed: vi.fn(async () => {
+      if (options.succeedError) throw options.succeedError;
+    }),
     fail: vi.fn(async () => undefined),
   };
   const dependencies: CareerExtractionDependencies = {
@@ -194,6 +197,40 @@ describe("career extraction handler", () => {
       evidenceCount: 1,
     });
     expect(repository.download).not.toHaveBeenCalled();
+  });
+
+  it("does not try to re-finalise an existing failed run", async () => {
+    const existing = {
+      ...claimed(),
+      disposition: "existing" as const,
+      status: "failed" as const,
+      errorCode: "invalid_file",
+    };
+    const { dependencies, repository } = harness({ claim: existing });
+
+    const response = await createCareerExtractionHandler(dependencies)(
+      request({ token: "valid-user-token" }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(repository.fail).not.toHaveBeenCalled();
+  });
+
+  it("stores the bounded internal code when successful persistence fails", async () => {
+    const { dependencies, repository } = harness({
+      succeedError: new CareerExtractionError("persistence_failed"),
+    });
+
+    const response = await createCareerExtractionHandler(dependencies)(
+      request({ token: "valid-user-token" }),
+    );
+
+    expect(response.status).toBe(503);
+    expect(await json(response)).toEqual({
+      correlationId,
+      error: "persistence_failed",
+    });
+    expect(repository.fail).toHaveBeenCalledWith(runId, "internal_error");
   });
 
   it("does not call AI when disabled or quota-denied", async () => {

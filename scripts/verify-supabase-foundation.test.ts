@@ -151,6 +151,9 @@ describe("Supabase foundation static verifier", () => {
         "public table search_profiles must enable and force RLS",
         "public table cv_documents must enable and force RLS",
         "public table cv_extraction_runs must enable and force RLS",
+        "real CV uploads must remain database-disabled by default",
+        "missing server-derived career CV activation gate",
+        "career-document writes must require the database activation gate",
         "missing private career-document Storage bucket",
         "career-document Storage bucket must be private and capped at 5 MiB",
         "career-document objects must be isolated by owner path",
@@ -183,7 +186,10 @@ describe("Supabase foundation static verifier", () => {
         "public table career_ai_daily_usage must enable and force RLS",
         "missing auditable career AI daily usage counter",
         "career AI daily usage must have a hard free-tier ceiling",
+        "career AI must reserve its application-wide daily ceiling atomically",
+        "career AI must enforce the application-wide daily allowance",
         "missing atomic owner-derived career extraction claim",
+        "career extraction claims must fail while real CV uploads are disabled",
         "career extraction claim must use a per-user transaction lock",
         "career extraction claim must enforce one concurrent run per user",
         "career extraction completion must be service-role only",
@@ -200,9 +206,30 @@ describe("Supabase foundation static verifier", () => {
       expect.arrayContaining([
         "career profile must persist target role families",
         "missing owner-derived atomic career profile save",
+        "career profile CV references must remain owner-bound and current",
         "missing owner-derived named search save",
         "missing race-safe current CV deletion",
         "missing owner-derived profile deletion",
+        "career profile deletion must not bypass Storage-first cleanup",
+      ]),
+    );
+  });
+
+  it("requires materialised evidence review and 24-hour raw proposal expiry", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "successful extraction proposals must expire after 24 hours",
+        "successful extraction must materialise reviewable evidence",
+        "CV extraction must not overwrite explicit user evidence",
+        "missing owner-only career evidence decision function",
+        "missing bounded raw proposal expiry function",
+        "missing storage-first inactive CV cleanup function",
+        "missing hourly raw proposal expiry schedule",
+        "failed CV replacement must restore the last usable document",
       ]),
     );
   });

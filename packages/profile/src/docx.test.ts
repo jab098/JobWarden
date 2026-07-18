@@ -114,6 +114,31 @@ describe("bounded DOCX extraction", () => {
     expect(result.text).toBe("Visible fictional evidence");
   });
 
+  it("rejects comments that could masquerade as visible WordprocessingML", async () => {
+    await expect(
+      extractDocxText(
+        createDocx({
+          "word/document.xml": documentXml(
+            "<!-- <w:p><w:r><w:t>Injected SQL</w:t></w:r></w:p> -->" +
+              "<w:p><w:r><w:t>Visible fictional evidence</w:t></w:r></w:p>",
+          ),
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "unsafe_archive" });
+  });
+
+  it("rejects a nested redefinition of the WordprocessingML prefix", async () => {
+    await expect(
+      extractDocxText(
+        createDocx({
+          "word/document.xml": documentXml(
+            '<w:p xmlns:w="urn:fictional:foreign"><w:r><w:t>Injected SQL</w:t></w:r></w:p>',
+          ),
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "unsafe_archive" });
+  });
+
   it.each(["../outside.xml", "/absolute.xml", "word\\escape.xml"])(
     "rejects unsafe archive path %s before extraction",
     async (unsafePath) => {

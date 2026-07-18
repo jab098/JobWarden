@@ -16,7 +16,11 @@ vi.mock("./action-context", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 
-import { decideSuggestionAction, saveProfileDraftAction } from "./actions";
+import {
+  decideEvidenceAction,
+  decideSuggestionAction,
+  saveProfileDraftAction,
+} from "./actions";
 
 const trustedContext = {
   requestOrigin: "https://jobwarden.example",
@@ -109,5 +113,22 @@ describe("career profile server actions", () => {
     );
     expect(acceptSuggestion).toHaveBeenCalledWith(suggestionId);
     expect(rejectSuggestion).not.toHaveBeenCalled();
+  });
+
+  it("routes evidence confirmation through the repository boundary", async () => {
+    const acceptEvidence = vi.fn(async () => undefined);
+    const rejectEvidence = vi.fn(async () => undefined);
+    mocks.getProfileRepository.mockResolvedValue({
+      acceptEvidence,
+      rejectEvidence,
+    });
+    const evidenceId = "10000000-0000-4000-8000-000000000001";
+
+    await decideEvidenceAction(
+      { kind: "idle" },
+      form({ evidenceId, decision: "confirmed" }),
+    );
+    expect(acceptEvidence).toHaveBeenCalledWith(evidenceId);
+    expect(rejectEvidence).not.toHaveBeenCalled();
   });
 });

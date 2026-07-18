@@ -241,7 +241,9 @@ export function ProfileOnboarding({ snapshot }: { snapshot: ProfileSnapshot }) {
     if (!label) return;
     const normalizedConcept = label.toLocaleLowerCase("en-GB");
     if (
-      userEvidence.some((item) => item.normalizedConcept === normalizedConcept)
+      [...cvEvidence, ...userEvidence].some(
+        (item) => item.normalizedConcept === normalizedConcept,
+      )
     ) {
       setSkill("");
       return;
@@ -475,14 +477,15 @@ export function ProfileOnboarding({ snapshot }: { snapshot: ProfileSnapshot }) {
             </p>
             {snapshot.currentCv ? (
               <p className="mt-3 font-mono text-xs text-[#697181] [overflow-wrap:anywhere]">
-                Fictional source: {snapshot.currentCv.fileName}
+                {readOnly ? "Fictional" : "Current private"} source:{" "}
+                {snapshot.currentCv.fileName}
               </p>
             ) : null}
           </div>
         </div>
       </section>
 
-      <ProfileEvidenceList evidence={draft.evidence} />
+      <ProfileEvidenceList evidence={draft.evidence} readOnly={readOnly} />
       <ProfileSuggestionList
         suggestions={snapshot.suggestions}
         readOnly={readOnly}

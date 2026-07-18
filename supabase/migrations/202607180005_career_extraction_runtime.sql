@@ -44,6 +44,9 @@ begin
   if actor_user_id is null or not public.has_approved_access() then
     raise exception using errcode = '42501', message = 'approved access required';
   end if;
+  if not public.career_cv_uploads_enabled() then
+    raise exception using errcode = '42501', message = 'CV uploads disabled';
+  end if;
   if ai_daily_allowance not between 0 and 25 then
     raise exception using errcode = '22023', message = 'invalid AI daily allowance';
   end if;
@@ -113,16 +116,25 @@ begin
   end if;
 
   if ai_daily_allowance > 0 then
-    insert into public.career_ai_daily_usage (
-      user_id, usage_date, attempt_count, updated_at
-    ) values (
-      actor_user_id, current_date, 1, clock_timestamp()
-    )
-    on conflict (user_id, usage_date) do update set
-      attempt_count = public.career_ai_daily_usage.attempt_count + 1,
-      updated_at = clock_timestamp()
-    where public.career_ai_daily_usage.attempt_count < ai_daily_allowance
-    returning true into may_use_ai;
+    perform pg_catalog.pg_advisory_xact_lock(
+      pg_catalog.hashtextextended('career-ai:' || current_date::text, 11)
+    );
+    if (
+      select coalesce(sum(usage.attempt_count), 0) < ai_daily_allowance
+      from public.career_ai_daily_usage as usage
+      where usage.usage_date = current_date
+    ) then
+      insert into public.career_ai_daily_usage (
+        user_id, usage_date, attempt_count, updated_at
+      ) values (
+        actor_user_id, current_date, 1, clock_timestamp()
+      )
+      on conflict (user_id, usage_date) do update set
+        attempt_count = public.career_ai_daily_usage.attempt_count + 1,
+        updated_at = clock_timestamp()
+      where public.career_ai_daily_usage.attempt_count < ai_daily_allowance
+      returning true into may_use_ai;
+    end if;
     may_use_ai := coalesce(may_use_ai, false);
   end if;
 

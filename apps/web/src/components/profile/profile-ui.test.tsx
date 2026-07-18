@@ -7,6 +7,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/app/(protected)/profile/actions", () => ({
   saveProfileDraftAction: vi.fn(async () => ({ kind: "success" })),
   decideSuggestionAction: vi.fn(async () => ({ kind: "success" })),
+  decideEvidenceAction: vi.fn(async () => ({ kind: "success" })),
   saveSearchProfileAction: vi.fn(async () => ({ kind: "success" })),
   deleteCvAction: vi.fn(async () => ({ kind: "success" })),
   deleteProfileDataAction: vi.fn(async () => ({ kind: "success" })),
@@ -57,6 +58,17 @@ describe("career profile onboarding", () => {
       screen.getByRole("heading", { name: "Evidence to review" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Analytics implementation")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm SQL" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Exclude SQL" })).toBeDisabled();
+    const searchDraft = JSON.parse(
+      (container.querySelector('input[name="search"]') as HTMLInputElement)
+        .value,
+    ) as { skillConcepts: string[]; responsibilityConcepts: string[] };
+    expect(searchDraft.skillConcepts).toEqual(["stakeholder management"]);
+    expect(searchDraft.responsibilityConcepts).toEqual([
+      "analytics implementation",
+    ]);
+    expect(searchDraft.skillConcepts).not.toContain("sql");
     expect(
       screen.getByRole("heading", { name: "Suggested direction" }),
     ).toBeInTheDocument();
@@ -81,6 +93,29 @@ describe("career profile onboarding", () => {
     expect(
       screen.getByRole("button", { name: "Remove Data governance" }),
     ).toBeInTheDocument();
+  });
+
+  it("does not duplicate a concept that already exists as extracted evidence", async () => {
+    const user = userEvent.setup();
+    const editableSnapshot: ProfileSnapshot = {
+      ...fictionalSnapshot,
+      dataMode: "supabase",
+      uploadCapability: {
+        enabled: false,
+        reason: "live_auth_and_storage_verification_required",
+      },
+    };
+    const { container } = render(
+      <ProfileOnboarding snapshot={editableSnapshot} />,
+    );
+
+    await user.type(screen.getByLabelText("Add a skill"), "SQL");
+    await user.click(screen.getByRole("button", { name: "Add skill" }));
+    const profileDraft = JSON.parse(
+      (container.querySelector('input[name="draft"]') as HTMLInputElement)
+        .value,
+    ) as { evidence: unknown[] };
+    expect(profileDraft.evidence).toHaveLength(3);
   });
 
   it("wraps long user-controlled concepts instead of widening the page", () => {

@@ -176,7 +176,12 @@ function decodeXmlText(value: string): string {
 }
 
 function ensurePassiveXml(xml: string): void {
-  if (/<!DOCTYPE\b|<!ENTITY\b/iu.test(xml)) fail("unsafe_archive");
+  const withoutDeclaration = xml.replace(/^\uFEFF?\s*<\?xml\b[^>]*\?>/iu, "");
+  if (
+    /<!DOCTYPE\b|<!ENTITY\b|<!--|<!\[CDATA\[|<\?/iu.test(withoutDeclaration)
+  ) {
+    fail("unsafe_archive");
+  }
 }
 
 function attributesFromTag(tag: string): Map<string, string> {
@@ -252,8 +257,10 @@ function extractTextFromDocumentXml(xml: string): {
 } {
   ensurePassiveXml(xml);
   const documentTag = xml.match(/<w:document\b[^>]*>/u)?.[0];
+  const wordNamespaceDeclarations = xml.match(/\bxmlns:w\s*=/gu) ?? [];
   if (
     !documentTag ||
+    wordNamespaceDeclarations.length !== 1 ||
     !/\bxmlns:w\s*=\s*(["'])http:\/\/schemas\.openxmlformats\.org\/wordprocessingml\/2006\/main\1/u.test(
       documentTag,
     )

@@ -291,6 +291,20 @@ export function createSupabaseProfileRepository(
       await call(supabase, "save_career_profile_draft", { draft_value: draft });
     },
 
+    async acceptEvidence(evidenceId) {
+      await call(supabase, "decide_career_evidence", {
+        target_evidence_id: z.string().uuid().parse(evidenceId),
+        target_state: "confirmed",
+      });
+    },
+
+    async rejectEvidence(evidenceId) {
+      await call(supabase, "decide_career_evidence", {
+        target_evidence_id: z.string().uuid().parse(evidenceId),
+        target_state: "rejected",
+      });
+    },
+
     async acceptSuggestion(suggestionId) {
       await call(supabase, "decide_profile_suggestion", {
         target_suggestion_id: z.string().uuid().parse(suggestionId),

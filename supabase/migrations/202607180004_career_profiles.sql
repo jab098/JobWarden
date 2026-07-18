@@ -1,5 +1,22 @@
 begin;
 
+alter table private.app_settings
+  add column career_cv_uploads_enabled boolean not null default false;
+
+create or replace function public.career_cv_uploads_enabled()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce((
+    select settings.career_cv_uploads_enabled
+    from private.app_settings as settings
+    where settings.singleton = true
+  ), false);
+$$;
+
 create table public.career_profiles (
   user_id uuid primary key references auth.users (id) on delete cascade,
   current_seniority text not null default 'unspecified' check (
@@ -367,6 +384,9 @@ begin
   if actor_user_id is null or not public.has_approved_access() then
     raise exception using errcode = '42501', message = 'approved access required';
   end if;
+  if not public.career_cv_uploads_enabled() then
+    raise exception using errcode = '42501', message = 'CV uploads disabled';
+  end if;
 
   perform pg_catalog.pg_advisory_xact_lock(
     pg_catalog.hashtextextended(actor_user_id::text, 0)
@@ -461,16 +481,19 @@ revoke all on function public.register_cv_document(text, text, text, text, integ
   from public, anon;
 revoke all on function public.decide_profile_suggestion(uuid, text)
   from public, anon;
+revoke all on function public.career_cv_uploads_enabled()
+  from public, anon;
 grant execute on function public.register_cv_document(text, text, text, text, integer, text)
   to authenticated;
 grant execute on function public.decide_profile_suggestion(uuid, text) to authenticated;
+grant execute on function public.career_cv_uploads_enabled() to authenticated;
 
 revoke all on public.career_profiles, public.career_evidence_items,
   public.profile_suggestions, public.search_profiles, public.cv_documents,
   public.cv_extraction_runs from public, anon, authenticated;
 
-grant select, insert, update, delete on public.career_profiles,
-  public.search_profiles to authenticated;
+grant select, insert, update on public.career_profiles to authenticated;
+grant select, insert, update, delete on public.search_profiles to authenticated;
 grant select, insert, delete on public.career_evidence_items to authenticated;
 grant update (confirmation_state, proficiency_signal, last_used_at)
   on public.career_evidence_items to authenticated;
@@ -510,6 +533,7 @@ with check (
   bucket_id = 'career-documents'
   and (storage.foldername(name))[1] = auth.uid()::text
   and public.has_approved_access()
+  and public.career_cv_uploads_enabled()
 );
 
 create policy "approved users replace own career documents"
@@ -518,11 +542,13 @@ using (
   bucket_id = 'career-documents'
   and (storage.foldername(name))[1] = auth.uid()::text
   and public.has_approved_access()
+  and public.career_cv_uploads_enabled()
 )
 with check (
   bucket_id = 'career-documents'
   and (storage.foldername(name))[1] = auth.uid()::text
   and public.has_approved_access()
+  and public.career_cv_uploads_enabled()
 );
 
 create policy "approved users delete own career documents"

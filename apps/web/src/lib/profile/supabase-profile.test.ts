@@ -110,6 +110,25 @@ describe("caller-bound Supabase career profile repository", () => {
     },
   );
 
+  it.each([
+    ["acceptEvidence", "confirmed"],
+    ["rejectEvidence", "rejected"],
+  ] as const)(
+    "%s uses the owner-derived evidence decision RPC",
+    async (method, state) => {
+      const fake = client();
+      const repository = createSupabaseProfileRepository(fake.client);
+      const id = "10000000-0000-4000-8000-000000000001";
+
+      await repository[method](id);
+
+      expect(fake.rpc).toHaveBeenCalledWith("decide_career_evidence", {
+        target_evidence_id: id,
+        target_state: state,
+      });
+    },
+  );
+
   it("saves named searches through an owner-derived RPC", async () => {
     const fake = client();
     fake.rpc.mockResolvedValueOnce({

@@ -1,7 +1,9 @@
 import { profileSuggestionSchema } from "@jobwarden/domain";
 import {
   createDeterministicProfileProposal,
+  cvFileErrorCodes,
   extractCvText,
+  type CvFileErrorCode,
   validateCvFile,
 } from "@jobwarden/profile";
 import { z } from "zod";
@@ -39,6 +41,12 @@ function bearerToken(value: string | null): string | null {
   if (value === null) return null;
   const match = /^Bearer ([^\s]+)$/u.exec(value);
   return match?.[1] ?? null;
+}
+
+function completionErrorCode(code: string): CvFileErrorCode {
+  return cvFileErrorCodes.includes(code as CvFileErrorCode)
+    ? (code as CvFileErrorCode)
+    : "internal_error";
 }
 
 async function readBody(
@@ -160,6 +168,7 @@ export function createCareerExtractionHandler(
     const startedAt = dependencies.now().getTime();
     const repository = dependencies.createRepository(environment, accessToken);
     let runId: string | null = null;
+    let claimedByThisRequest = false;
     try {
       const claim = await repository.claim(
         input.cvDocumentId,
@@ -183,6 +192,7 @@ export function createCareerExtractionHandler(
           200,
         );
       }
+      claimedByThisRequest = true;
 
       const bytes = await repository.download(claim);
       const validated = validateCvFile({
@@ -243,9 +253,9 @@ export function createCareerExtractionHandler(
       );
     } catch (error) {
       const code = safeCareerErrorCode(error);
-      if (runId !== null && code !== "already_running") {
+      if (runId !== null && claimedByThisRequest) {
         try {
-          await repository.fail(runId, code);
+          await repository.fail(runId, completionErrorCode(code));
         } catch {
           // The response and log remain sanitised if finalisation is unavailable.
         }

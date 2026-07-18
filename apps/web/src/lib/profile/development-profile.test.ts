@@ -32,6 +32,8 @@ describe("fictional career profile repository", () => {
     ["saveDraft", [{}]],
     ["acceptSuggestion", ["10000000-0000-4000-8000-000000000001"]],
     ["rejectSuggestion", ["10000000-0000-4000-8000-000000000001"]],
+    ["acceptEvidence", ["10000000-0000-4000-8000-000000000001"]],
+    ["rejectEvidence", ["10000000-0000-4000-8000-000000000001"]],
     ["saveSearch", [{}]],
     ["deleteCv", []],
     ["deleteProfileData", []],

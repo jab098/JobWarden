@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(37);
+select plan(40);
 
 select has_table('public', 'career_profiles', 'career profiles are persisted');
 select has_table('public', 'career_evidence_items', 'career evidence is persisted');
@@ -10,6 +10,19 @@ select has_table('public', 'profile_suggestions', 'profile suggestions are persi
 select has_table('public', 'search_profiles', 'named searches are persisted');
 select has_table('public', 'cv_documents', 'CV metadata is persisted');
 select has_table('public', 'cv_extraction_runs', 'CV extraction runs are persisted');
+select has_column(
+  'private', 'app_settings', 'career_cv_uploads_enabled',
+  'real CV upload has a database-owned activation gate'
+);
+select is(
+  (
+    select career_cv_uploads_enabled
+    from private.app_settings
+    where singleton = true
+  ),
+  false,
+  'real CV upload is disabled by default'
+);
 
 select is(
   (
@@ -63,6 +76,14 @@ select ok(
   not has_table_privilege('authenticated', 'public.cv_documents', 'INSERT'),
   'authenticated callers register CV metadata through the atomic function'
 );
+select ok(
+  not has_table_privilege('authenticated', 'public.career_profiles', 'DELETE'),
+  'full profile deletion cannot bypass Storage-first cleanup'
+);
+
+update private.app_settings
+set career_cv_uploads_enabled = true
+where singleton = true;
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -249,12 +270,13 @@ select lives_ok(
       insert into public.cv_extraction_runs (
         id, user_id, cv_document_id, status, extractor_version,
         idempotency_key, proposal, evidence_count, suggestion_count,
-        input_character_count, completed_at
+        input_character_count, completed_at, proposal_expires_at
       ) values (
         '73000000-0000-4000-8000-000000000001',
         '70000000-0000-4000-8000-000000000001',
         %L, 'succeeded', 'deterministic-v1', 'profile-owner-run-1',
-        '{"version":"deterministic-v1"}'::jsonb, 1, 1, 1200, now()
+        '{"version":"deterministic-v1"}'::jsonb, 1, 1, 1200, now(),
+        now() + interval '24 hours'
       )
     $sql$,
     (select id from second_cv)
@@ -309,8 +331,8 @@ select throws_ok(
 
 select set_config('request.jwt.claim.sub', '70000000-0000-4000-8000-000000000001', true);
 select lives_ok(
-  $$ delete from public.career_profiles where user_id = '70000000-0000-4000-8000-000000000001' $$,
-  'the owner can delete their career profile'
+  $$ select public.delete_career_profile_data() $$,
+  'the owner can delete their career profile through the reviewed RPC'
 );
 select is(
   (

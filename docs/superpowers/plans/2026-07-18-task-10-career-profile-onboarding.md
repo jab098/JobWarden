@@ -129,6 +129,8 @@ export const cvFileLimits = {
 
 ### Task 4: Authenticated extraction runtime
 
+**Progress (2026-07-18):** Complete locally. The authenticated runtime is deterministic-first, idempotent, one-run-per-user, service-finalised, and sanitised. Optional Workers AI is schema-validated, bounded, and disabled by default.
+
 **Files:**
 - Create: `supabase/functions/extract-career-profile/contracts.ts`
 - Create: `supabase/functions/extract-career-profile/errors.ts`
@@ -146,13 +148,15 @@ export const cvFileLimits = {
 - Optional Workers AI is capped at one call, 60,000 input characters, 4,000 output tokens, 30 seconds, one concurrent request per user, and a configurable daily allowance defaulting to zero.
 - Logs only correlation ID, counts, duration, model identifier, and sanitised error code.
 
-- [ ] Write failing tests for unauthenticated/wrong-owner access, missing object, unsafe file, deterministic success, AI disabled/quota/schema failure/timeout, idempotency, and redacted logs.
-- [ ] Run the new function tests; expect missing runtime failures.
-- [ ] Implement deterministic-first extraction. Parse any model result with `profileSuggestionSchema.safeParse`; discard invalid AI output without discarding deterministic evidence.
-- [ ] Run all function tests, function typecheck, and Deno graph; expect green.
-- [ ] Commit `feat: add career profile extraction runtime`.
+- [x] Write failing tests for unauthenticated/wrong-owner access, missing object, unsafe file, deterministic success, AI disabled/quota/schema failure/timeout, idempotency, and redacted logs.
+- [x] Run the new function tests; expect missing runtime failures.
+- [x] Implement deterministic-first extraction. Parse any model result with `profileSuggestionSchema.safeParse`; discard invalid AI output without discarding deterministic evidence.
+- [x] Run all function tests, function typecheck, and Deno graph; expect green.
+- [x] Commit `feat: add career profile extraction runtime`.
 
 ### Task 5: Profile repositories and fictional workflow
+
+**Progress (2026-07-18):** Complete locally. Caller-bound Supabase repositories derive identity from the session/RPC boundary; the development repository is deeply immutable, fictional, and rejects every mutation.
 
 **Files:**
 - Create: `apps/web/src/lib/profile/types.ts`
@@ -170,13 +174,15 @@ export const cvFileLimits = {
 - Produces `getSnapshot`, `saveDraft`, `acceptSuggestion`, `rejectSuggestion`, `deleteCv`, and `deleteProfileData`.
 - Supabase derives user identity from the cookie-bound client and RLS. Development returns immutable fictional analytics-implementation evidence and rejects mutation/file operations.
 
-- [ ] Write failing repository, action-origin, actor-derivation, and development fail-closed tests.
-- [ ] Run focused tests; expect missing module failures.
-- [ ] Implement the minimal caller-bound repositories and fictional read-only repository.
-- [ ] Run focused tests and web typecheck; expect green.
-- [ ] Commit `feat: add career profile repositories`.
+- [x] Write failing repository, action-origin, actor-derivation, and development fail-closed tests.
+- [x] Run focused tests; expect missing module failures.
+- [x] Implement the minimal caller-bound repositories and fictional read-only repository.
+- [x] Run focused tests and web typecheck; expect green.
+- [x] Commit `feat: add career profile repositories`.
 
 ### Task 6: Editorial onboarding and review UI
+
+**Progress (2026-07-18):** Complete locally. The editorial profile flow covers all onboarding inputs, evidence and suggestion review, named searches, explicit deletion, and designed empty/loading/error states without exposing a real upload control.
 
 **Files:**
 - Create: `apps/web/src/app/(protected)/profile/page.tsx`
@@ -195,13 +201,15 @@ export const cvFileLimits = {
 - `/profile` handles role, industry/domain, skill, keyword, current/target seniority, evidence/suggestion review, and named-search creation.
 - Fictional mode shows the designed flow but labels upload unavailable and performs no mutation. Production upload renders only from a server-derived live-private-Storage capability.
 
-- [ ] Read UI direction and load web-artifacts-builder, shadcn, and React review skills.
-- [ ] Write failing responsive interaction and axe tests for all designed states.
-- [ ] Implement the existing warm editorial language with one mobile/desktop hierarchy and no dashboard-card clutter.
-- [ ] Verify keyboard flow, true 390 px and 1440 px layouts, long tokens, loading, empty, incomplete, and error states.
-- [ ] Commit `feat: add career profile onboarding`.
+- [x] Read UI direction and load web-artifacts-builder, shadcn, and React review skills.
+- [x] Write failing responsive interaction and axe tests for all designed states.
+- [x] Implement the existing warm editorial language with one mobile/desktop hierarchy and no dashboard-card clutter.
+- [x] Verify keyboard flow, true 390 px and 1440 px layouts, long tokens, loading, empty, incomplete, and error states.
+- [x] Commit `feat: add career profile onboarding`.
 
 ### Task 7: Deletion, operations, review, and delivery
+
+**Progress (2026-07-18):** Operations, privacy inventory, storage-first cleanup, failed-replacement rollback, reviewable evidence materialisation, and hourly raw-proposal expiry are complete locally. Full verification is in progress; independent PR review and publication deliberately remain after the owner's completion checkpoint.
 
 **Files:**
 - Create: `docs/operations/career-profile-data.md`
@@ -211,7 +219,7 @@ export const cvFileLimits = {
 - Modify: `docs/product/roadmap.md`
 - Modify: `docs/privacy/data-inventory.md`
 
-- [ ] Document and verify replace/delete ordering, failed extraction cleanup, 24-hour unsaved-proposal expiry, AI counters, incidents, and live activation.
+- [x] Document and verify replace/delete ordering, failed extraction cleanup, 24-hour unsaved-proposal expiry, AI counters, incidents, and live activation.
 - [ ] Run frozen install, formatting, lint, all typechecks, Deno graph, all tests, guardrails, Supabase checks, production build, audits, diff check, and exact-range Gitleaks.
 - [ ] Run real `supabase db reset` and pgTAP when Docker is available; otherwise preserve the explicit pre-live blocker.
 - [ ] Request independent full-range review and remediate every Critical, Important, and Minor finding.

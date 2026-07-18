@@ -28,6 +28,7 @@ set search_path = ''
 as $$
 declare
   actor_user_id uuid := auth.uid();
+  cv_document_id_value uuid;
   current_seniority_value text;
   target_seniority_value text;
 begin
@@ -51,6 +52,7 @@ begin
 
   current_seniority_value := draft_value ->> 'currentSeniority';
   target_seniority_value := draft_value ->> 'targetSeniority';
+  cv_document_id_value := nullif(draft_value ->> 'cvDocumentId', '')::uuid;
   if current_seniority_value not in (
     'entry', 'junior', 'mid', 'senior', 'lead', 'principal',
     'head', 'director', 'executive', 'unspecified'
@@ -76,6 +78,29 @@ begin
     where char_length(keyword) not between 1 and 80
   ) then
     raise exception using errcode = '22023', message = 'invalid profile concept';
+  end if;
+
+  if cv_document_id_value is not null and not exists (
+    select 1
+    from public.cv_documents as document
+    where document.id = cv_document_id_value
+      and document.user_id = actor_user_id
+      and document.is_current
+      and document.deleted_at is null
+  ) then
+    raise exception using errcode = '22023', message = 'invalid CV reference';
+  end if;
+  if cv_document_id_value is null
+    and jsonb_array_length(draft_value -> 'targetRoleFamilies') = 0
+    and jsonb_array_length(draft_value -> 'industries') = 0
+    and jsonb_array_length(draft_value -> 'domains') = 0
+    and jsonb_array_length(draft_value -> 'keywords') = 0
+    and not exists (
+      select 1
+      from jsonb_array_elements(draft_value -> 'evidence') as item
+      where item ->> 'origin' = 'user'
+    ) then
+    raise exception using errcode = '22023', message = 'profile signal required';
   end if;
 
   insert into public.career_profiles (

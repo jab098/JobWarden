@@ -12,6 +12,7 @@ export const requiredMigrationFiles = [
   "202607180004_career_profiles.sql",
   "202607180005_career_extraction_runtime.sql",
   "202607180006_career_profile_workflow.sql",
+  "202607180007_career_profile_review_and_retention.sql",
 ];
 
 const publicTables = [
@@ -82,12 +83,48 @@ export function verifyFoundationSql(files) {
 
   const requiredFragments = [
     [
+      "proposal_expires_at = case when requested_status = 'succeeded' then clock_timestamp() + interval '24 hours' else null end",
+      "successful extraction proposals must expire after 24 hours",
+    ],
+    [
+      "insert into public.career_evidence_items ( id, user_id, cv_document_id",
+      "successful extraction must materialise reviewable evidence",
+    ],
+    [
+      "where public.career_evidence_items.origin = 'cv'",
+      "CV extraction must not overwrite explicit user evidence",
+    ],
+    [
+      "create or replace function public.decide_career_evidence(",
+      "missing owner-only career evidence decision function",
+    ],
+    [
+      "create or replace function public.expire_career_profile_proposals()",
+      "missing bounded raw proposal expiry function",
+    ],
+    [
+      "create or replace function public.purge_inactive_cv_document( target_document_id uuid, expected_storage_path text )",
+      "missing storage-first inactive CV cleanup function",
+    ],
+    [
+      "'jobwarden-career-proposal-expiry', '17 * * * *', 'select public.expire_career_profile_proposals()'",
+      "missing hourly raw proposal expiry schedule",
+    ],
+    [
+      "create trigger restore_cv_after_failed_extraction after update of status on public.cv_extraction_runs",
+      "failed CV replacement must restore the last usable document",
+    ],
+    [
       "add column target_role_families jsonb not null default '[]'::jsonb",
       "career profile must persist target role families",
     ],
     [
       "create or replace function public.save_career_profile_draft(draft_value jsonb)",
       "missing owner-derived atomic career profile save",
+    ],
+    [
+      "where document.id = cv_document_id_value and document.user_id = actor_user_id and document.is_current",
+      "career profile CV references must remain owner-bound and current",
     ],
     [
       "create or replace function public.save_search_profile(draft_value jsonb)",
@@ -102,6 +139,10 @@ export function verifyFoundationSql(files) {
       "missing owner-derived profile deletion",
     ],
     [
+      "grant select, insert, update on public.career_profiles to authenticated",
+      "career profile deletion must not bypass Storage-first cleanup",
+    ],
+    [
       "create table public.career_ai_daily_usage",
       "missing auditable career AI daily usage counter",
     ],
@@ -110,8 +151,20 @@ export function verifyFoundationSql(files) {
       "career AI daily usage must have a hard free-tier ceiling",
     ],
     [
+      "pg_catalog.hashtextextended('career-ai:' || current_date::text, 11)",
+      "career AI must reserve its application-wide daily ceiling atomically",
+    ],
+    [
+      "select coalesce(sum(usage.attempt_count), 0) < ai_daily_allowance",
+      "career AI must enforce the application-wide daily allowance",
+    ],
+    [
       "create or replace function public.claim_career_profile_extraction(",
       "missing atomic owner-derived career extraction claim",
+    ],
+    [
+      "if not public.career_cv_uploads_enabled() then raise exception using errcode = '42501', message = 'cv uploads disabled'",
+      "career extraction claims must fail while real CV uploads are disabled",
     ],
     [
       "pg_catalog.hashtextextended(actor_user_id::text, 10)",
@@ -394,6 +447,18 @@ export function verifyFoundationSql(files) {
     [
       "insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)",
       "missing private career-document Storage bucket",
+    ],
+    [
+      "add column career_cv_uploads_enabled boolean not null default false",
+      "real CV uploads must remain database-disabled by default",
+    ],
+    [
+      "create or replace function public.career_cv_uploads_enabled()",
+      "missing server-derived career CV activation gate",
+    ],
+    [
+      "and public.career_cv_uploads_enabled()",
+      "career-document writes must require the database activation gate",
     ],
     [
       "'career-documents', 'career-documents', false, 5242880",
