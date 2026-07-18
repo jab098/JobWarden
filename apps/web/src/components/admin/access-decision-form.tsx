@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -44,18 +44,25 @@ const decisions = {
   ],
 } as const;
 
+type Decision = (typeof decisions)[keyof typeof decisions][number];
+
 function InteractiveDecision({
   request,
-  action,
   decision,
+  formAction,
+  open,
+  onOpenChange,
+  pending,
 }: {
   request: AccessRequestView;
-  action: AdminFormAction;
-  decision: (typeof decisions)[keyof typeof decisions][number];
+  decision: Decision;
+  formAction: (formData: FormData) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  pending: boolean;
 }) {
-  const [state, formAction, pending] = useActionState(action, initialState);
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogTrigger
         render={
           <Button
@@ -93,17 +100,7 @@ function InteractiveDecision({
               maxLength={500}
               required
               placeholder={`Why is ${decision.nextStatus} the correct access state?`}
-              aria-invalid={state.kind === "invalid" || undefined}
             />
-            {state.kind === "success" ? (
-              <p role="status" className="text-sm text-[#245d43]">
-                {state.message}
-              </p>
-            ) : state.kind !== "idle" ? (
-              <p role="alert" className="text-sm text-[#8a3030]">
-                {state.message}
-              </p>
-            ) : null}
           </div>
           <AlertDialogFooter className="mt-5">
             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -114,6 +111,60 @@ function InteractiveDecision({
         </form>
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+function InteractiveAccessDecisions({
+  request,
+  action,
+}: {
+  request: AccessRequestView;
+  action: AdminFormAction;
+}) {
+  const [openDecision, setOpenDecision] = useState<string | null>(null);
+  const closingAction = useCallback<AdminFormAction>(
+    async (previousState, formData) => {
+      const result = await action(previousState, formData);
+      setOpenDecision(null);
+      return result;
+    },
+    [action],
+  );
+  const [state, formAction, pending] = useActionState(
+    closingAction,
+    initialState,
+  );
+
+  return (
+    <div className="space-y-2 lg:justify-self-end">
+      <div className="flex flex-wrap gap-2">
+        {decisions[request.status].map((decision) => (
+          <InteractiveDecision
+            key={decision.nextStatus}
+            request={request}
+            decision={decision}
+            formAction={formAction}
+            open={openDecision === decision.nextStatus}
+            onOpenChange={(open) =>
+              setOpenDecision(open ? decision.nextStatus : null)
+            }
+            pending={pending}
+          />
+        ))}
+      </div>
+      {state.kind !== "idle" ? (
+        <p
+          role={state.kind === "success" ? "status" : "alert"}
+          className={
+            state.kind === "success"
+              ? "text-sm text-[#245d43]"
+              : "text-sm text-[#8a3030]"
+          }
+        >
+          {state.message}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -144,16 +195,5 @@ export function AccessDecisionForm({
     );
   }
 
-  return (
-    <div className="flex flex-wrap gap-2">
-      {decisions[request.status].map((decision) => (
-        <InteractiveDecision
-          key={decision.nextStatus}
-          request={request}
-          action={action}
-          decision={decision}
-        />
-      ))}
-    </div>
-  );
+  return <InteractiveAccessDecisions request={request} action={action} />;
 }

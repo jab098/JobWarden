@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useCallback, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import type { AdminFormAction, JobSourceView } from "@/lib/admin/types";
 
@@ -146,20 +145,41 @@ export function SourceForm({
   action: AdminFormAction;
   source?: JobSourceView;
 }) {
-  const [state, formAction, pending] = useActionState(action, initialState);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const confirmedAction = useCallback<AdminFormAction>(
+    async (previousState, formData) => {
+      const result = await action(previousState, formData);
+      setConfirmationOpen(false);
+      return result;
+    },
+    [action],
+  );
+  const [state, formAction, pending] = useActionState(
+    confirmedAction,
+    initialState,
+  );
+  const formRef = useRef<HTMLFormElement>(null);
   const formId = `source-form-${source?.sourceId ?? "new"}`;
   const sourceLabel = source?.employerName ?? "this new source";
 
+  function reviewSource() {
+    const form = formRef.current;
+    if (!form) return;
+    if (!form.reportValidity()) {
+      form.querySelector<HTMLElement>(":invalid")?.focus();
+      return;
+    }
+    setConfirmationOpen(true);
+  }
+
   return (
-    <form id={formId} action={formAction} className="space-y-5">
+    <form ref={formRef} id={formId} action={formAction} className="space-y-5">
       <SourceFields source={source} />
       <div className="flex flex-wrap items-center gap-3">
-        <AlertDialog>
-          <AlertDialogTrigger
-            render={<Button type="button" disabled={pending} />}
-          >
+        <AlertDialog open={confirmationOpen} onOpenChange={setConfirmationOpen}>
+          <Button type="button" disabled={pending} onClick={reviewSource}>
             {pending ? "Saving…" : source ? "Save source" : "Add source"}
-          </AlertDialogTrigger>
+          </Button>
           <AlertDialogContent
             aria-label={`Confirm source configuration for ${sourceLabel}?`}
             className="max-w-md"

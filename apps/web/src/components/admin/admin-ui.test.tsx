@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "vitest-axe";
 import { describe, expect, it, vi } from "vitest";
@@ -140,7 +140,11 @@ describe("administrator workspace", () => {
 
   it("requires explicit confirmation before a source can change state", async () => {
     const user = userEvent.setup();
-    render(<SourceForm source={snapshot.sources[0]} action={successAction} />);
+    const sourceAction = vi.fn(async (): Promise<AdminActionState> => ({
+      kind: "success",
+      message: "Source configuration saved.",
+    }));
+    render(<SourceForm source={snapshot.sources[0]} action={sourceAction} />);
 
     await user.click(screen.getByRole("button", { name: "Save source" }));
 
@@ -152,14 +156,50 @@ describe("administrator workspace", () => {
     expect(
       screen.getByText(/enable or disable collection from this source/i),
     ).toBeInTheDocument();
-    expect(
+    const confirm = screen.getByRole("button", {
+      name: "Confirm source changes",
+    });
+    expect(confirm).toHaveAttribute("type", "submit");
+    await user.click(confirm);
+    await waitFor(() => expect(sourceAction).toHaveBeenCalledOnce());
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Source configuration saved.",
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("does not open source confirmation over invalid fields", async () => {
+    const user = userEvent.setup();
+    render(<SourceForm action={successAction} />);
+
+    await user.click(screen.getByRole("button", { name: "Add source" }));
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Employer")).toHaveFocus();
+  });
+
+  it("closes source confirmation and exposes server errors beside the fields", async () => {
+    const user = userEvent.setup();
+    const invalidAction = vi.fn(async (): Promise<AdminActionState> => ({
+      kind: "invalid",
+      message: "Check the highlighted fields and try again.",
+    }));
+    render(<SourceForm source={snapshot.sources[0]} action={invalidAction} />);
+
+    await user.click(screen.getByRole("button", { name: "Save source" }));
+    await user.click(
       screen.getByRole("button", { name: "Confirm source changes" }),
-    ).toHaveAttribute("type", "submit");
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Check the highlighted fields and try again.",
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
   it("announces a completed access decision", async () => {
     const user = userEvent.setup();
-    render(
+    const { rerender } = render(
       <AccessDecisionForm
         request={snapshot.accessRequests[0]}
         action={successAction}
@@ -174,6 +214,17 @@ describe("administrator workspace", () => {
     await user.click(screen.getByRole("button", { name: "Confirm approval" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent(
+      "Access decision recorded.",
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+
+    rerender(
+      <AccessDecisionForm
+        request={{ ...snapshot.accessRequests[0], status: "approved" }}
+        action={successAction}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
       "Access decision recorded.",
     );
   });
