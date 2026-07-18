@@ -26,6 +26,7 @@ const evidenceDecisionSchema = z
     decision: z.enum(["confirmed", "rejected"]),
   })
   .strict();
+const generationSchema = z.coerce.number().int().nonnegative().safe();
 
 function value(formData: FormData, key: string): string {
   const result = formData.get(key);
@@ -74,7 +75,10 @@ export async function saveProfileDraftAction(
     const draft = careerProfileDraftSchema.parse(
       parseJson(value(formData, "draft")),
     );
-    await (await getProfileRepository()).saveDraft(draft);
+    const generation = generationSchema.parse(
+      value(formData, "profileGeneration"),
+    );
+    await (await getProfileRepository()).saveDraft(generation, draft);
     revalidatePath("/profile");
     return { kind: "success", message: "Career direction saved." };
   } catch (error) {
@@ -136,12 +140,21 @@ export async function saveSearchProfileAction(
 ): Promise<ProfileActionState> {
   if (!(await trusted())) return forbidden;
   try {
+    const searchIdValue = value(formData, "searchId");
+    const searchId = searchIdValue
+      ? z.string().uuid().parse(searchIdValue)
+      : null;
     const search = namedSearchProfileDraftSchema.parse(
       parseJson(value(formData, "search")),
     );
-    await (await getProfileRepository()).saveSearch(search);
+    const generation = generationSchema.parse(
+      value(formData, "profileGeneration"),
+    );
+    const resourceId = await (
+      await getProfileRepository()
+    ).saveSearch(generation, searchId, search);
     revalidatePath("/profile");
-    return { kind: "success", message: "Named search saved." };
+    return { kind: "success", message: "Named search saved.", resourceId };
   } catch (error) {
     return mapError(error);
   }

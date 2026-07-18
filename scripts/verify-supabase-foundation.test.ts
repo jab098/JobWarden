@@ -170,6 +170,7 @@ describe("Supabase foundation static verifier", () => {
     expect(verifyFoundationSql(files)).toEqual(
       expect.arrayContaining([
         "public table career_profiles must enable and force RLS",
+        "public table career_profile_generations must enable and force RLS",
         "public table career_evidence_items must enable and force RLS",
         "public table profile_suggestions must enable and force RLS",
         "public table search_profiles must enable and force RLS",
@@ -181,11 +182,10 @@ describe("Supabase foundation static verifier", () => {
         "missing private career-document Storage bucket",
         "career-document Storage bucket must be private and capped at 5 MiB",
         "career-document objects must be isolated by owner path",
-        "missing approved-owner career-profile policy",
+        "missing approved-owner career-profile read policy",
         "missing user-origin career-evidence insert policy",
         "authenticated users must not forge CV-derived evidence",
-        "career-evidence review must use a column-limited update grant",
-        "missing approved-owner search-profile policy",
+        "missing approved-owner search-profile read policy",
         "missing approved-owner suggestion read policy",
         "missing approved-owner CV metadata policy",
         "missing approved-owner extraction-run read policy",
@@ -196,6 +196,45 @@ describe("Supabase foundation static verifier", () => {
         "missing atomic current-CV registration function",
         "missing owner-only suggestion decision function",
         "suggestion decisions must have a narrow authenticated grant",
+      ]),
+    );
+  });
+
+  it("forbids direct profile/search writes, evidence confirmation, and immutable owner-path updates", () => {
+    const files = migrations();
+    const profileMigration = migration("202607180004_career_profiles.sql");
+
+    expect(profileMigration).not.toMatch(
+      /grant update \([^)]*confirmation_state[^)]*\) on public\.career_evidence_items to authenticated/u,
+    );
+    expect(profileMigration).not.toContain(
+      'create policy "approved users replace own career documents"',
+    );
+    expect(profileMigration).not.toMatch(
+      /grant (?:insert|update|all)[^;]*on public\.search_profiles to authenticated/u,
+    );
+    expect(profileMigration).not.toMatch(
+      /grant (?:insert|update|all)[^;]*on public\.career_profiles to authenticated/u,
+    );
+
+    const profileFile = "202607180004_career_profiles.sql";
+    files.set(
+      profileFile,
+      `${files.get(profileFile)}
+        grant update (confirmation_state) on public.career_evidence_items to authenticated;
+        create policy "unsafe career document replacement"
+        on storage.objects for update to authenticated
+        using (bucket_id = 'career-documents');
+        grant insert, update on public.search_profiles to authenticated;
+        grant insert, update on public.career_profiles to authenticated;`,
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "authenticated callers must not directly update evidence confirmation state",
+        "career-document owner paths must not have an UPDATE policy",
+        "authenticated callers must save named searches through the evidence-bound RPC",
+        "authenticated callers must save career profiles through the generation-fenced RPC",
       ]),
     );
   });
@@ -294,13 +333,97 @@ describe("Supabase foundation static verifier", () => {
       expect.arrayContaining([
         "career profile must persist target role families",
         "missing owner-derived atomic career profile save",
+        "missing transactionally consistent career profile snapshot",
+        "career profile snapshot must return a durable generation tombstone",
+        "career profile snapshot must return searches in stable creation and ID order",
+        "career profile saves must lock and compare the snapshot generation",
+        "profile deletion must advance the generation tombstone before cascading data",
         "career profile CV references must remain owner-bound and current",
         "missing owner-derived named search save",
+        "named search saves must lock and compare the snapshot generation",
+        "saved search evidence must be pruned after evidence removal",
+        "evidence-only searches must be invalidated when their final signal is removed",
+        "search skill arrays must enforce unique concepts",
+        "search responsibility arrays must enforce unique concepts",
+        "crafted named-search RPC input must reject duplicate evidence concepts",
+        "evidence pruning must share the generation mutex with named search saves",
+        "direct evidence deletion must lock the generation before row mutation",
+        "evidence decisions must lock the generation before the evidence row",
+        "inactive CV purge must lock the generation before checking Storage",
+        "extraction completion must lock the generation before the run row",
+        "named search saves must atomically establish the owner profile root",
         "missing race-safe current CV deletion",
         "missing owner-derived profile deletion",
         "career profile deletion must not bypass Storage-first cleanup",
+        "CV uploads must use generation-bound upload intents",
+        "career-document Storage inserts must hold the generation mutex",
+        "CV registration must require matching generation-bound upload intent",
+        "profile deletion must lock the generation before checking Storage",
       ]),
     );
+  });
+
+  it("requires one lock order for evidence, search, upload, registration, and deletion races", () => {
+    const files = migrations();
+    const profileFile = "202607180004_career_profiles.sql";
+    const workflowFile = "202607180006_career_profile_workflow.sql";
+    const retentionFile =
+      "202607180007_career_profile_review_and_retention.sql";
+    files.set(
+      profileFile,
+      (files.get(profileFile) ?? "")
+        .replace(/career_cv_upload_intents/gu, "removed_upload_intents")
+        .replace(/career_cv_upload_intent_allows/gu, "removed_upload_guard")
+        .replace(/for update/gu, "for share"),
+    );
+    files.set(
+      workflowFile,
+      (files.get(workflowFile) ?? "")
+        .replace(
+          /insert into public\.career_profiles \(user_id\)/gu,
+          "insert into public.removed_profile_root (user_id)",
+        )
+        .replace(/for update/gu, "for share"),
+    );
+    files.set(
+      retentionFile,
+      (files.get(retentionFile) ?? "").replace(/for update/gu, "for share"),
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "evidence pruning must share the generation mutex with named search saves",
+        "direct evidence deletion must lock the generation before row mutation",
+        "evidence decisions must lock the generation before the evidence row",
+        "inactive CV purge must lock the generation before checking Storage",
+        "extraction completion must lock the generation before the run row",
+        "named search saves must atomically establish the owner profile root",
+        "CV uploads must use generation-bound upload intents",
+        "career-document Storage inserts must hold the generation mutex",
+        "CV registration must require matching generation-bound upload intent",
+        "profile deletion must lock the generation before checking Storage",
+      ]),
+    );
+  });
+
+  it("requires both first-search sessions to overlap at a shared concurrency barrier", () => {
+    const sql = readFileSync(
+      new URL(
+        "../supabase/tests/011_career_profile_concurrency.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    )
+      .toLowerCase()
+      .replace(/\s+/gu, " ");
+
+    expect(sql).toContain("pg_advisory_lock(20260718001100)");
+    expect(
+      sql.match(/pg_advisory_xact_lock_shared\(20260718001100\)/gu),
+    ).toHaveLength(2);
+    expect(sql).toContain("connection_name = 'first_search_a'");
+    expect(sql).toContain("connection_name = 'first_search_b'");
+    expect(sql).toContain("pg_advisory_unlock(20260718001100)");
   });
 
   it("requires materialised evidence review and 24-hour raw proposal expiry", () => {

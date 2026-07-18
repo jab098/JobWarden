@@ -2,14 +2,34 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(40);
+select plan(54);
 
 select has_table('public', 'career_profiles', 'career profiles are persisted');
+select has_table(
+  'public', 'career_profile_generations',
+  'durable profile generation tombstones are persisted'
+);
 select has_table('public', 'career_evidence_items', 'career evidence is persisted');
 select has_table('public', 'profile_suggestions', 'profile suggestions are persisted');
 select has_table('public', 'search_profiles', 'named searches are persisted');
 select has_table('public', 'cv_documents', 'CV metadata is persisted');
 select has_table('public', 'cv_extraction_runs', 'CV extraction runs are persisted');
+select has_table(
+  'public', 'career_cv_upload_intents',
+  'generation-bound CV upload intents are persisted'
+);
+select has_function(
+  'public', 'begin_career_cv_upload', array['bigint', 'text'],
+  'owners must reserve a generation-bound CV upload intent'
+);
+select has_function(
+  'public', 'career_cv_upload_intent_allows', array['text'],
+  'the Storage policy has a generation-locking intent guard'
+);
+select has_function(
+  'public', 'lock_career_profile_generation', array['uuid'],
+  'direct evidence deletion has an owner-derived generation mutex'
+);
 select has_column(
   'private', 'app_settings', 'career_cv_uploads_enabled',
   'real CV upload has a database-owned activation gate'
@@ -31,13 +51,14 @@ select is(
     join pg_catalog.pg_namespace on pg_namespace.oid = pg_class.relnamespace
     where pg_namespace.nspname = 'public'
       and pg_class.relname in (
-        'career_profiles', 'career_evidence_items', 'profile_suggestions',
-        'search_profiles', 'cv_documents', 'cv_extraction_runs'
+        'career_profiles', 'career_profile_generations',
+        'career_evidence_items', 'profile_suggestions', 'search_profiles',
+        'cv_documents', 'cv_extraction_runs', 'career_cv_upload_intents'
       )
       and pg_class.relrowsecurity
       and pg_class.relforcerowsecurity
   ),
-  6,
+  8,
   'every career-data table enables and forces RLS'
 );
 
@@ -55,7 +76,7 @@ select is(
 select ok(
   not has_function_privilege(
     'anon',
-    'public.register_cv_document(text,text,text,text,integer,text)',
+    'public.register_cv_document(bigint,text,text,text,text,integer,text)',
     'EXECUTE'
   ),
   'anonymous callers cannot register CV metadata'
@@ -79,6 +100,40 @@ select ok(
 select ok(
   not has_table_privilege('authenticated', 'public.career_profiles', 'DELETE'),
   'full profile deletion cannot bypass Storage-first cleanup'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.career_profiles', 'INSERT')
+    and not has_table_privilege('authenticated', 'public.career_profiles', 'UPDATE'),
+  'authenticated callers cannot bypass the generation-fenced profile RPC'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.search_profiles', 'INSERT')
+    and not has_table_privilege('authenticated', 'public.search_profiles', 'UPDATE'),
+  'authenticated callers cannot bypass the evidence-bound named-search RPC'
+);
+select ok(
+  not has_column_privilege(
+    'authenticated', 'public.career_evidence_items', 'confirmation_state', 'UPDATE'
+  ),
+  'authenticated callers cannot directly update evidence confirmation state'
+);
+select is(
+  (
+    select count(*)::integer
+    from pg_catalog.pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and cmd = 'UPDATE'
+      and coalesce(qual, '') like '%career-documents%'
+  ),
+  0,
+  'the immutable owner path has no Storage UPDATE policy'
+);
+select ok(
+  has_column_privilege(
+    'authenticated', 'public.career_evidence_items', 'proficiency_signal', 'UPDATE'
+  ),
+  'authenticated owners retain the narrow non-decision evidence edit grant'
 );
 
 update private.app_settings
@@ -123,13 +178,24 @@ select set_config('request.jwt.claim.sub', '70000000-0000-4000-8000-000000000001
 
 select lives_ok(
   $$
-    insert into public.career_profiles (
-      user_id, current_seniority, target_seniority, explore_enabled
-    ) values (
-      '70000000-0000-4000-8000-000000000001', 'senior', 'lead', true
+    select public.save_career_profile_draft(
+      0,
+      '{
+        "cvDocumentId":null,
+        "currentSeniority":"senior",
+        "targetSeniority":"lead",
+        "targetRoleFamilies":[{
+          "normalizedConcept":"analytics implementation",
+          "label":"Analytics implementation"
+        }],
+        "industries":[],
+        "domains":[],
+        "keywords":[],
+        "evidence":[]
+      }'::jsonb
     )
   $$,
-  'an approved owner can create their career profile'
+  'an approved owner can create their career profile through the fenced RPC'
 );
 
 select lives_ok(
@@ -147,7 +213,7 @@ select lives_ok(
   'an approved owner can add confirmed user evidence'
 );
 
-select lives_ok(
+select throws_ok(
   $$
     insert into public.search_profiles (
       id, user_id, name, role_families, target_seniority,
@@ -161,13 +227,38 @@ select lives_ok(
       array['outside', 'unknown']
     )
   $$,
-  'an approved owner can create a named search'
+  '42501',
+  null,
+  'an approved owner cannot create a named search outside the evidence-bound RPC'
 );
 
 select set_config('request.jwt.claim.sub', '70000000-0000-4000-8000-000000000002', true);
 select is((select count(*)::integer from public.career_profiles), 0, 'another approved user cannot read the owner profile');
 select is((select count(*)::integer from public.career_evidence_items), 0, 'another approved user cannot read owner evidence');
 select is((select count(*)::integer from public.search_profiles), 0, 'another approved user cannot read owner searches');
+select lives_ok(
+  $$ select public.begin_career_cv_upload(
+    0, '70000000-0000-4000-8000-000000000002/stale.pdf'
+  ) $$,
+  'an approved owner can reserve an upload against generation zero'
+);
+reset role;
+set local role service_role;
+update public.career_profile_generations
+set generation = generation + 1
+where user_id = '70000000-0000-4000-8000-000000000002';
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '70000000-0000-4000-8000-000000000002', true);
+select throws_ok(
+  $$ insert into storage.objects (bucket_id, name) values (
+    'career-documents',
+    '70000000-0000-4000-8000-000000000002/stale.pdf'
+  ) $$,
+  '42501',
+  null,
+  'a queued Storage insert cannot use an intent from a deleted generation'
+);
 
 select set_config('request.jwt.claim.sub', '70000000-0000-4000-8000-000000000003', true);
 select is(
@@ -178,8 +269,20 @@ select is(
 
 select set_config('request.jwt.claim.sub', '70000000-0000-4000-8000-000000000001', true);
 
+select lives_ok(
+  $$ select public.begin_career_cv_upload(
+    0, '70000000-0000-4000-8000-000000000001/first.docx'
+  ) $$,
+  'the owner can reserve the first upload against the current generation'
+);
+insert into storage.objects (bucket_id, name)
+values (
+  'career-documents',
+  '70000000-0000-4000-8000-000000000001/first.docx'
+);
 create temporary table first_cv as
 select public.register_cv_document(
+  0,
   '70000000-0000-4000-8000-000000000001/first.docx',
   'first.docx',
   'docx',
@@ -190,8 +293,20 @@ select public.register_cv_document(
 
 select ok((select id is not null from first_cv), 'the owner can register a current CV');
 
+select lives_ok(
+  $$ select public.begin_career_cv_upload(
+    0, '70000000-0000-4000-8000-000000000001/second.pdf'
+  ) $$,
+  'the owner can reserve a replacement upload against the current generation'
+);
+insert into storage.objects (bucket_id, name)
+values (
+  'career-documents',
+  '70000000-0000-4000-8000-000000000001/second.pdf'
+);
 create temporary table second_cv as
 select public.register_cv_document(
+  0,
   '70000000-0000-4000-8000-000000000001/second.pdf',
   'second.pdf',
   'pdf',

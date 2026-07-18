@@ -20,6 +20,7 @@ import {
   decideEvidenceAction,
   decideSuggestionAction,
   saveProfileDraftAction,
+  saveSearchProfileAction,
 } from "./actions";
 
 const trustedContext = {
@@ -44,6 +45,32 @@ const draft = {
   domains: [],
   keywords: [],
 };
+const searchDraft = {
+  name: "Implementation roles",
+  enabled: true,
+  roleFamilies: draft.targetRoleFamilies,
+  includeTerms: [],
+  excludeTerms: [],
+  industries: [],
+  domains: [],
+  skillConcepts: ["sql"],
+  responsibilityConcepts: [],
+  currentSeniority: "senior",
+  targetSeniority: "lead",
+  employmentTypes: ["permanent"],
+  workingTimes: ["full_time"],
+  workplaceTypes: ["hybrid"],
+  ukLocations: ["London"],
+  ir35Statuses: ["not_applicable"],
+  compensation: {
+    minimum: null,
+    maximum: null,
+    period: "unknown",
+    allowUnknown: true,
+  },
+  recencyDays: 14,
+  notificationsEnabled: false,
+};
 
 function form(values: Record<string, string>): FormData {
   const result = new FormData();
@@ -66,7 +93,7 @@ describe("career profile server actions", () => {
     await expect(
       saveProfileDraftAction(
         { kind: "idle" },
-        form({ draft: JSON.stringify(draft) }),
+        form({ profileGeneration: "7", draft: JSON.stringify(draft) }),
       ),
     ).resolves.toMatchObject({ kind: "forbidden" });
     expect(mocks.getProfileRepository).not.toHaveBeenCalled();
@@ -83,7 +110,7 @@ describe("career profile server actions", () => {
     await expect(
       saveProfileDraftAction(
         { kind: "idle" },
-        form({ draft: JSON.stringify(malicious) }),
+        form({ profileGeneration: "7", draft: JSON.stringify(malicious) }),
       ),
     ).resolves.toMatchObject({ kind: "invalid" });
     expect(saveDraft).not.toHaveBeenCalled();
@@ -91,10 +118,10 @@ describe("career profile server actions", () => {
     await expect(
       saveProfileDraftAction(
         { kind: "idle" },
-        form({ draft: JSON.stringify(draft) }),
+        form({ profileGeneration: "7", draft: JSON.stringify(draft) }),
       ),
     ).resolves.toMatchObject({ kind: "success" });
-    expect(saveDraft).toHaveBeenCalledWith(draft);
+    expect(saveDraft).toHaveBeenCalledWith(7, draft);
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/profile");
   });
 
@@ -130,5 +157,40 @@ describe("career profile server actions", () => {
     );
     expect(acceptEvidence).toHaveBeenCalledWith(evidenceId);
     expect(rejectEvidence).not.toHaveBeenCalled();
+  });
+
+  it("validates and passes an explicit selected search ID without treating it as owner authority", async () => {
+    const saveSearch = vi.fn(
+      async () => "20000000-0000-4000-8000-000000000001",
+    );
+    mocks.getProfileRepository.mockResolvedValue({ saveSearch });
+    const searchId = "20000000-0000-4000-8000-000000000002";
+
+    await expect(
+      saveSearchProfileAction(
+        { kind: "idle" },
+        form({
+          profileGeneration: "7",
+          searchId,
+          search: JSON.stringify(searchDraft),
+        }),
+      ),
+    ).resolves.toMatchObject({
+      kind: "success",
+      resourceId: "20000000-0000-4000-8000-000000000001",
+    });
+    expect(saveSearch).toHaveBeenCalledWith(7, searchId, searchDraft);
+
+    await expect(
+      saveSearchProfileAction(
+        { kind: "idle" },
+        form({
+          profileGeneration: "7",
+          searchId: "not-a-uuid",
+          search: JSON.stringify(searchDraft),
+        }),
+      ),
+    ).resolves.toMatchObject({ kind: "invalid" });
+    expect(saveSearch).toHaveBeenCalledTimes(1);
   });
 });

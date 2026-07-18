@@ -115,8 +115,10 @@
 ### Task 3: Owner-derived evidence and complete deletion state
 
 **Files:**
+- Modify: `supabase/migrations/202607180004_career_profiles.sql`
 - Modify: `supabase/migrations/202607180006_career_profile_workflow.sql`
 - Modify: `supabase/migrations/202607180007_career_profile_review_and_retention.sql`
+- Modify: `supabase/tests/007_career_profiles.sql`
 - Modify: `supabase/tests/009_career_profile_workflow.sql`
 - Modify: `supabase/tests/010_career_profile_review_and_retention.sql`
 - Modify: `apps/web/src/lib/profile/repository.ts`
@@ -125,41 +127,49 @@
 - Modify: `apps/web/src/lib/profile/development-profile.ts`
 - Modify: `apps/web/src/lib/profile/development-profile.test.ts`
 - Modify: `apps/web/src/components/profile/profile-onboarding.tsx`
+- Modify: `apps/web/src/components/profile/profile-suggestion-list.tsx`
 - Modify: `apps/web/src/components/profile/profile-ui.test.tsx`
 - Modify: `apps/web/src/components/profile/search-profile-form.tsx`
 - Modify: `apps/web/src/app/(protected)/profile/page.tsx`
+- Modify: `apps/web/src/app/(protected)/profile/actions.ts`
+- Modify: `apps/web/src/app/(protected)/profile/actions.test.ts`
+- Modify: `scripts/verify-supabase-foundation.mjs`
+- Modify: `scripts/verify-supabase-foundation.test.ts`
 
 **Interfaces:**
 - Search-profile upsert accepts user preferences but the database intersects/validates skill and responsibility concepts against that owner's `confirmed` evidence of the matching kind.
 - Full-profile deletion inventories every authenticated owner object in `career-documents`, including uploaded-but-unregistered objects, removes Storage first, and only then calls the database delete RPC.
+- Direct deletion RPCs fail while any matching Storage object remains, and the immutable owner path has no Storage UPDATE policy.
+- Authenticated callers cannot bypass the proposed-only evidence decision RPC by directly updating `confirmation_state`.
 - The onboarding component remounts or explicitly resets when the snapshot identity is deleted; deleted personal data cannot remain visible or be resubmitted from stale state.
 - Search selection is ordered by `created_at, id` and edits an explicit stable search ID rather than an arbitrary first row.
+- Accepted/rejected suggestions remain visibly labelled instead of disappearing, so acceptance is an explicit durable state for later deterministic consumers.
 
-- [ ] **Step 1: Add failing database, repository, and rerender tests**
+- [x] **Step 1: Add failing database, repository, and rerender tests**
 
-  Prove invented/unconfirmed evidence is rejected, owner Storage listing is paginated and includes unregistered objects, database deletion is not called after any Storage failure, deletion changes the component identity and clears all controlled state, and multiple searches choose deterministically.
+  Prove invented/unconfirmed evidence is rejected, direct evidence-state UPDATE is unavailable, Storage object UPDATE is unavailable, direct deletion RPCs reject while a Storage row remains, owner Storage listing is paginated and includes unregistered objects, database deletion is not called after any Storage failure, deletion changes the component identity and clears all controlled state, decided suggestions stay visible, and multiple searches choose deterministically.
 
-- [ ] **Step 2: Run focused tests and confirm RED**
+- [x] **Step 2: Run focused tests and confirm RED**
 
   Run: `pnpm --filter @jobwarden/web test && pnpm check:supabase`
 
   Expected: the new evidence, orphan-object, stale-state, and deterministic-selection tests fail on the current code.
 
-- [ ] **Step 3: Implement server/database authority and Storage-first deletion**
+- [x] **Step 3: Implement server/database authority and Storage-first deletion**
 
-  Enforce confirmed evidence in the RPC even for crafted clients. List the caller's owner prefix in bounded pages, union those paths with registered documents, remove all unique paths, and fail closed before structured deletion when listing or removal is incomplete.
+  Enforce confirmed evidence in the RPC even for crafted clients. Remove direct authenticated evidence-state and Storage-object-update authority. Require object absence at the database deletion boundary. List the caller's owner prefix in bounded pages, union those paths with registered documents, remove all unique paths, and fail closed before structured deletion when listing or removal is incomplete.
 
-- [ ] **Step 4: Reset client state and make search selection explicit**
+- [x] **Step 4: Reset client state and make search selection explicit**
 
-  Key the onboarding subtree by snapshot identity/version after deletion, clear every personal field when the snapshot becomes empty, order repository rows stably, and submit/update an explicit selected search ID.
+  Key the onboarding subtree by snapshot identity/version after deletion, clear every personal field when the snapshot becomes empty, keep decided suggestions visible with semantic state labels, order repository rows stably, and submit/update an explicit selected search ID.
 
-- [ ] **Step 5: Run focused tests and confirm GREEN**
+- [x] **Step 5: Run focused tests and confirm GREEN**
 
   Run: `pnpm --filter @jobwarden/web test && pnpm --filter @jobwarden/web typecheck && pnpm --filter @jobwarden/web lint && pnpm check:supabase`
 
   Expected: all selected web and static Supabase checks pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Commit message: `fix: enforce career profile ownership boundaries`
 

@@ -28,6 +28,8 @@ const publicTables = [
   "ingestion_requests",
   "job_source_occurrences",
   "career_profiles",
+  "career_profile_generations",
+  "career_cv_upload_intents",
   "career_evidence_items",
   "profile_suggestions",
   "search_profiles",
@@ -119,16 +121,68 @@ export function verifyFoundationSql(files) {
       "career profile must persist target role families",
     ],
     [
-      "create or replace function public.save_career_profile_draft(draft_value jsonb)",
+      "create or replace function public.save_career_profile_draft( expected_generation bigint, draft_value jsonb )",
       "missing owner-derived atomic career profile save",
+    ],
+    [
+      "create or replace function public.get_career_profile_snapshot()",
+      "missing transactionally consistent career profile snapshot",
+    ],
+    [
+      "'generation', coalesce(( select fence.generation from public.career_profile_generations as fence where fence.user_id = actor_user_id ), 0)",
+      "career profile snapshot must return a durable generation tombstone",
+    ],
+    [
+      "jsonb_agg(to_jsonb(search) order by search.created_at, search.id)",
+      "career profile snapshot must return searches in stable creation and ID order",
     ],
     [
       "where document.id = cv_document_id_value and document.user_id = actor_user_id and document.is_current",
       "career profile CV references must remain owner-bound and current",
     ],
     [
-      "create or replace function public.save_search_profile(draft_value jsonb)",
+      "create or replace function public.save_search_profile( target_search_id uuid, expected_generation bigint, draft_value jsonb )",
       "missing owner-derived named search save",
+    ],
+    [
+      "create trigger prune_search_profile_evidence_after_change after delete or update of confirmation_state, category, normalized_concept on public.career_evidence_items",
+      "saved search evidence must be pruned after evidence removal",
+    ],
+    [
+      "delete from public.search_profiles as search",
+      "evidence-only searches must be invalidated when their final signal is removed",
+    ],
+    [
+      "public.text_array_has_unique_values(skill_concepts)",
+      "search skill arrays must enforce unique concepts",
+    ],
+    [
+      "public.text_array_has_unique_values(responsibility_concepts)",
+      "search responsibility arrays must enforce unique concepts",
+    ],
+    [
+      "message = 'search evidence concepts must be unique'",
+      "crafted named-search RPC input must reject duplicate evidence concepts",
+    ],
+    [
+      "using (public.lock_career_profile_generation(user_id))",
+      "direct evidence deletion must lock the generation before row mutation",
+    ],
+    [
+      "create table public.career_cv_upload_intents",
+      "CV uploads must use generation-bound upload intents",
+    ],
+    [
+      "create or replace function public.begin_career_cv_upload( expected_generation bigint, storage_path_value text )",
+      "CV uploads must use generation-bound upload intents",
+    ],
+    [
+      "and public.career_cv_upload_intent_allows(name)",
+      "career-document Storage inserts must hold the generation mutex",
+    ],
+    [
+      "create or replace function public.register_cv_document( expected_generation bigint",
+      "CV registration must require matching generation-bound upload intent",
     ],
     [
       "create or replace function public.delete_current_cv( target_document_id uuid, expected_storage_path text )",
@@ -139,7 +193,7 @@ export function verifyFoundationSql(files) {
       "missing owner-derived profile deletion",
     ],
     [
-      "grant select, insert, update on public.career_profiles to authenticated",
+      "grant select on public.career_profiles, public.career_profile_generations, public.search_profiles to authenticated",
       "career profile deletion must not bypass Storage-first cleanup",
     ],
     [
@@ -469,8 +523,8 @@ export function verifyFoundationSql(files) {
       "career-document objects must be isolated by owner path",
     ],
     [
-      'create policy "approved users manage own career profiles"',
-      "missing approved-owner career-profile policy",
+      'create policy "approved users read own career profiles"',
+      "missing approved-owner career-profile read policy",
     ],
     [
       'create policy "approved users add own career evidence"',
@@ -481,12 +535,8 @@ export function verifyFoundationSql(files) {
       "authenticated users must not forge CV-derived evidence",
     ],
     [
-      "grant update (confirmation_state, proficiency_signal, last_used_at) on public.career_evidence_items to authenticated",
-      "career-evidence review must use a column-limited update grant",
-    ],
-    [
-      'create policy "approved users manage own search profiles"',
-      "missing approved-owner search-profile policy",
+      'create policy "approved users read own search profiles"',
+      "missing approved-owner search-profile read policy",
     ],
     [
       'create policy "approved users read own profile suggestions"',
@@ -532,6 +582,281 @@ export function verifyFoundationSql(files) {
 
   for (const [fragment, message] of requiredFragments) {
     if (!normalised.includes(fragment.toLowerCase())) failures.push(message);
+  }
+
+  const definerFunctions = securityDefinerFunctions(sql);
+  const profileSaveDefinition = definerFunctions.find(
+    ({ name }) => name === "public.save_career_profile_draft",
+  )?.definition;
+  const searchSaveDefinition = definerFunctions.find(
+    ({ name }) => name === "public.save_search_profile",
+  )?.definition;
+  const deleteProfileDefinition = definerFunctions.find(
+    ({ name }) => name === "public.delete_career_profile_data",
+  )?.definition;
+  const pruneEvidenceDefinition = definerFunctions.find(
+    ({ name }) => name === "private.prune_search_profile_evidence",
+  )?.definition;
+  const uploadIntentGuardDefinition = definerFunctions.find(
+    ({ name }) => name === "public.career_cv_upload_intent_allows",
+  )?.definition;
+  const registerCvDefinition = definerFunctions.find(
+    ({ name }) => name === "public.register_cv_document",
+  )?.definition;
+  const lockGenerationDefinition = definerFunctions.find(
+    ({ name }) => name === "public.lock_career_profile_generation",
+  )?.definition;
+  const decideEvidenceDefinition = definerFunctions.find(
+    ({ name }) => name === "public.decide_career_evidence",
+  )?.definition;
+  const purgeInactiveCvDefinition = definerFunctions.find(
+    ({ name }) => name === "public.purge_inactive_cv_document",
+  )?.definition;
+  const completeExtractionDefinition = definerFunctions
+    .filter(({ name }) => name === "public.complete_career_profile_extraction")
+    .at(-1)?.definition;
+  const generationFenceFragments = [
+    "insert into public.career_profile_generations",
+    "fence.generation = expected_generation",
+    "for update",
+    "message = 'stale career profile snapshot'",
+  ];
+  if (
+    !profileSaveDefinition ||
+    !generationFenceFragments.every((fragment) =>
+      compact(profileSaveDefinition).includes(fragment),
+    )
+  ) {
+    failures.push(
+      "career profile saves must lock and compare the snapshot generation",
+    );
+  }
+  if (
+    !searchSaveDefinition ||
+    !generationFenceFragments.every((fragment) =>
+      compact(searchSaveDefinition).includes(fragment),
+    )
+  ) {
+    failures.push(
+      "named search saves must lock and compare the snapshot generation",
+    );
+  }
+  const pruneEvidence = compact(pruneEvidenceDefinition ?? "");
+  const pruneFenceIndex = pruneEvidence.indexOf(
+    "insert into public.career_profile_generations",
+  );
+  const pruneLockIndex = pruneEvidence.indexOf("for update");
+  const pruneSearchIndex = pruneEvidence.indexOf(
+    "delete from public.search_profiles",
+  );
+  if (
+    pruneFenceIndex === -1 ||
+    pruneLockIndex < pruneFenceIndex ||
+    pruneSearchIndex < pruneLockIndex
+  ) {
+    failures.push(
+      "evidence pruning must share the generation mutex with named search saves",
+    );
+  }
+
+  const lockGeneration = compact(lockGenerationDefinition ?? "");
+  if (
+    ![
+      "insert into public.career_profile_generations",
+      "where fence.user_id = actor_user_id",
+      "for update",
+    ].every((fragment) => lockGeneration.includes(fragment))
+  ) {
+    failures.push(
+      "direct evidence deletion must lock the generation before row mutation",
+    );
+  }
+
+  const decideEvidence = compact(decideEvidenceDefinition ?? "");
+  const decisionLockIndex = decideEvidence.indexOf("for update");
+  const evidenceRowIndex = decideEvidence.indexOf(
+    "select confirmation_state into current_state",
+  );
+  if (
+    decisionLockIndex === -1 ||
+    evidenceRowIndex === -1 ||
+    decisionLockIndex > evidenceRowIndex
+  ) {
+    failures.push(
+      "evidence decisions must lock the generation before the evidence row",
+    );
+  }
+
+  const purgeInactiveCv = compact(purgeInactiveCvDefinition ?? "");
+  const purgeLockIndex = purgeInactiveCv.indexOf("for update");
+  const purgeStorageIndex = purgeInactiveCv.indexOf(
+    "if exists ( select 1 from storage.objects",
+  );
+  if (
+    purgeLockIndex === -1 ||
+    purgeStorageIndex === -1 ||
+    purgeLockIndex > purgeStorageIndex
+  ) {
+    failures.push(
+      "inactive CV purge must lock the generation before checking Storage",
+    );
+  }
+
+  const completeExtraction = compact(completeExtractionDefinition ?? "");
+  const completionLockIndex = completeExtraction.indexOf("for update");
+  const completionRunRowIndex = completeExtraction.indexOf(
+    "select run.* into run_record",
+  );
+  if (
+    completionLockIndex === -1 ||
+    completionRunRowIndex === -1 ||
+    completionLockIndex > completionRunRowIndex
+  ) {
+    failures.push(
+      "extraction completion must lock the generation before the run row",
+    );
+  }
+
+  const searchSave = compact(searchSaveDefinition ?? "");
+  const searchLockIndex = searchSave.indexOf("for update");
+  const profileRootIndex = searchSave.indexOf(
+    "insert into public.career_profiles (user_id)",
+  );
+  const searchInsertIndex = searchSave.indexOf(
+    "insert into public.search_profiles",
+  );
+  if (
+    searchLockIndex === -1 ||
+    profileRootIndex < searchLockIndex ||
+    searchInsertIndex < profileRootIndex
+  ) {
+    failures.push(
+      "named search saves must atomically establish the owner profile root",
+    );
+  }
+
+  const uploadIntentGuard = compact(uploadIntentGuardDefinition ?? "");
+  if (
+    ![
+      "insert into public.career_profile_generations",
+      "for update",
+      "from public.career_cv_upload_intents",
+      "intent.generation = current_generation",
+    ].every((fragment) => uploadIntentGuard.includes(fragment))
+  ) {
+    failures.push(
+      "career-document Storage inserts must hold the generation mutex",
+    );
+  }
+
+  const registerCv = compact(registerCvDefinition ?? "");
+  if (
+    ![
+      "fence.generation = expected_generation",
+      "for update",
+      "from public.career_cv_upload_intents",
+      "intent.generation = expected_generation",
+      "from storage.objects",
+    ].every((fragment) => registerCv.includes(fragment))
+  ) {
+    failures.push(
+      "CV registration must require matching generation-bound upload intent",
+    );
+  }
+  if (deleteProfileDefinition) {
+    const deletion = compact(deleteProfileDefinition);
+    const lockIndex = deletion.indexOf("for update");
+    const storageCheckIndex = deletion.indexOf(
+      "if exists ( select 1 from storage.objects",
+    );
+    if (
+      lockIndex === -1 ||
+      storageCheckIndex === -1 ||
+      lockIndex > storageCheckIndex
+    ) {
+      failures.push(
+        "profile deletion must lock the generation before checking Storage",
+      );
+    }
+    const advanceIndex = deletion.indexOf(
+      "update public.career_profile_generations set generation = generation + 1",
+    );
+    const cascadeIndex = deletion.indexOf(
+      "delete from public.career_profiles where user_id = actor_user_id",
+    );
+    if (
+      advanceIndex === -1 ||
+      cascadeIndex === -1 ||
+      advanceIndex > cascadeIndex
+    ) {
+      failures.push(
+        "profile deletion must advance the generation tombstone before cascading data",
+      );
+    }
+  } else {
+    failures.push(
+      "profile deletion must lock the generation before checking Storage",
+    );
+    failures.push(
+      "profile deletion must advance the generation tombstone before cascading data",
+    );
+  }
+
+  if (
+    /grant\s+update\s*\([^)]*\bconfirmation_state\b[^)]*\)\s+on\s+public\.career_evidence_items\s+to\s+authenticated/i.test(
+      sql,
+    )
+  ) {
+    failures.push(
+      "authenticated callers must not directly update evidence confirmation state",
+    );
+  }
+
+  const hasAuthenticatedMutationGrant = (table) => {
+    const grants = [
+      ...sql.matchAll(
+        /grant\s+([^;]+?)\s+on\s+([^;]+?)\s+to\s+authenticated/gi,
+      ),
+    ];
+    return grants.some(
+      (grant) =>
+        /(?:^|[\s,])(all|insert|update)(?:[\s,(]|$)/i.test(grant[1] ?? "") &&
+        new RegExp(`\\bpublic\\.${table}\\b`, "i").test(grant[2] ?? ""),
+    );
+  };
+  const hasAuthenticatedMutationPolicy = (table) =>
+    new RegExp(
+      `create\\s+policy[\\s\\S]*?on\\s+public\\.${table}\\s+for\\s+(?:all|insert|update)\\b`,
+      "i",
+    ).test(sql);
+
+  if (
+    hasAuthenticatedMutationGrant("search_profiles") ||
+    hasAuthenticatedMutationPolicy("search_profiles")
+  ) {
+    failures.push(
+      "authenticated callers must save named searches through the evidence-bound RPC",
+    );
+  }
+  if (
+    hasAuthenticatedMutationGrant("career_profiles") ||
+    hasAuthenticatedMutationPolicy("career_profiles")
+  ) {
+    failures.push(
+      "authenticated callers must save career profiles through the generation-fenced RPC",
+    );
+  }
+
+  const storageUpdatePolicies =
+    sql.match(
+      /create\s+policy[\s\S]*?on\s+storage\.objects\s+for\s+update\s+to\s+authenticated[\s\S]*?;/gi,
+    ) ?? [];
+  if (
+    storageUpdatePolicies.some((policy) =>
+      /bucket_id\s*=\s*'career-documents'/i.test(policy),
+    )
+  ) {
+    failures.push("career-document owner paths must not have an UPDATE policy");
   }
 
   const runtimeMigration = files.get(
@@ -589,7 +914,7 @@ export function verifyFoundationSql(files) {
     );
   }
 
-  for (const { name, definition } of securityDefinerFunctions(sql)) {
+  for (const { name, definition } of definerFunctions) {
     if (!/set\s+search_path\s*=\s*''/i.test(definition)) {
       failures.push(
         `security-definer function ${name} must set search_path to empty`,

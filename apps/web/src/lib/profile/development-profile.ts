@@ -19,6 +19,7 @@ const evidenceIds = [
 ] as const;
 
 const snapshot = deepFreeze<ProfileSnapshot>({
+  generation: 0,
   dataMode: "fixtures",
   uploadCapability: { enabled: false, reason: "fictional_preview" },
   currentCv: {
@@ -101,6 +102,26 @@ const snapshot = deepFreeze<ProfileSnapshot>({
       evidenceItemIds: [evidenceIds[0], evidenceIds[1]],
       state: "proposed",
       proposedAt: "2026-07-18T09:00:04.000Z",
+    },
+    {
+      id: "62000000-0000-4000-8000-000000000002",
+      kind: "skill",
+      normalizedConcept: "measurement strategy",
+      label: "Measurement strategy",
+      confidence: 0.88,
+      evidenceItemIds: [evidenceIds[0]],
+      state: "accepted",
+      proposedAt: "2026-07-18T09:00:05.000Z",
+    },
+    {
+      id: "62000000-0000-4000-8000-000000000003",
+      kind: "career_pathway",
+      normalizedConcept: "data science",
+      label: "Data science",
+      confidence: 0.61,
+      evidenceItemIds: [evidenceIds[2]],
+      state: "rejected",
+      proposedAt: "2026-07-18T09:00:06.000Z",
     },
   ],
   searches: [

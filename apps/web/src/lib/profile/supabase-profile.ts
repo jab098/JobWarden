@@ -19,20 +19,41 @@ import type {
 } from "./types";
 
 type QueryResponse = { data: unknown; error: unknown };
+type ProfileQuery = PromiseLike<QueryResponse> & {
+  order(column: string, options: { ascending: boolean }): ProfileQuery;
+};
+type StorageBucket = {
+  list(
+    prefix: string,
+    options: {
+      limit: number;
+      offset: number;
+      sortBy: { column: "name"; order: "asc" };
+    },
+  ): Promise<QueryResponse>;
+  remove(paths: string[]): Promise<QueryResponse>;
+};
 type ProfileClient = {
   from(table: string): {
-    select(columns: string): Promise<QueryResponse>;
+    select(columns: string): ProfileQuery;
   };
   rpc(
     name: string,
     parameters?: Record<string, unknown>,
   ): Promise<QueryResponse>;
+  auth: {
+    getUser(): Promise<{
+      data: { user: { id: string } | null };
+      error: unknown;
+    }>;
+  };
   storage: {
-    from(bucket: string): {
-      remove(paths: string[]): Promise<QueryResponse>;
-    };
+    from(bucket: string): StorageBucket;
   };
 };
+
+const storagePageSize = 100;
+const maximumStoragePages = 100;
 
 const conceptSchema = z.object({
   normalizedConcept: z.string(),
@@ -109,16 +130,21 @@ const searchRowSchema = z.object({
   recency_days: z.number(),
   notifications_enabled: z.boolean(),
 });
+const storageObjectSchema = z.object({
+  name: z.string().min(1).max(500),
+  id: z.string().nullable().optional(),
+  metadata: z.unknown().nullable().optional(),
+});
+const snapshotRowSchema = z.object({
+  generation: z.coerce.number().int().nonnegative(),
+  profile: profileRowSchema.nullable(),
+  evidence: z.array(evidenceRowSchema),
+  suggestions: z.array(suggestionRowSchema),
+  searches: z.array(searchRowSchema),
+  cvs: z.array(cvRowSchema),
+});
 
 const columns = {
-  profile:
-    "current_seniority,target_seniority,target_role_families,industries,domains,keywords",
-  evidence:
-    "id,normalized_concept,label,category,origin,confidence,evidence_reference,evidence_excerpt,proficiency_signal,last_used_at,confirmation_state",
-  suggestions:
-    "id,kind,normalized_concept,label,confidence,evidence_item_ids,state,proposed_at",
-  searches:
-    "id,name,enabled,role_families,include_terms,exclude_terms,industries,domains,skill_concepts,responsibility_concepts,current_seniority,target_seniority,employment_types,working_times,workplace_types,uk_locations,ir35_statuses,compensation_minimum,compensation_maximum,compensation_period,allow_unknown_compensation,recency_days,notifications_enabled",
   cv: "id,storage_path,original_file_name,file_kind,lifecycle_status,is_current,uploaded_at",
 } as const;
 
@@ -141,6 +167,66 @@ async function call(
 ): Promise<unknown> {
   const response = await client.rpc(name, parameters);
   return data(response);
+}
+
+async function authenticatedOwnerId(client: ProfileClient): Promise<string> {
+  const response = await client.auth.getUser();
+  if (response.error !== null && response.error !== undefined) {
+    throw new ProfileRepositoryError("unavailable");
+  }
+  const user = z
+    .object({ id: z.string().uuid() })
+    .nullable()
+    .parse(response.data.user);
+  if (!user) throw new ProfileRepositoryError("unavailable");
+  return user.id;
+}
+
+async function listOwnerStoragePaths(
+  bucket: StorageBucket,
+  ownerId: string,
+): Promise<string[]> {
+  const paths: string[] = [];
+  const prefixes = [ownerId];
+  let pagesRead = 0;
+  for (let prefixIndex = 0; prefixIndex < prefixes.length; prefixIndex += 1) {
+    const prefix = prefixes[prefixIndex];
+    if (!prefix) throw new ProfileRepositoryError("unavailable");
+    for (let offset = 0; ; offset += storagePageSize) {
+      if (pagesRead >= maximumStoragePages) {
+        throw new ProfileRepositoryError("unavailable");
+      }
+      const objects = z.array(storageObjectSchema).parse(
+        data(
+          await bucket.list(prefix, {
+            limit: storagePageSize,
+            offset,
+            sortBy: { column: "name", order: "asc" },
+          }),
+        ),
+      );
+      pagesRead += 1;
+      for (const object of objects) {
+        const path = `${prefix}/${object.name}`;
+        if (object.id === null && object.metadata === null) {
+          prefixes.push(path);
+        } else {
+          paths.push(path);
+        }
+      }
+      if (objects.length < storagePageSize) break;
+    }
+  }
+  return paths;
+}
+
+async function removeStoragePaths(
+  bucket: StorageBucket,
+  paths: readonly string[],
+): Promise<void> {
+  for (let offset = 0; offset < paths.length; offset += storagePageSize) {
+    data(await bucket.remove(paths.slice(offset, offset + storagePageSize)));
+  }
 }
 
 function mapEvidence(input: unknown) {
@@ -226,25 +312,11 @@ export function createSupabaseProfileRepository(
 
     async getSnapshot(): Promise<ProfileSnapshot> {
       try {
-        const [
-          profileResponse,
-          evidenceResponse,
-          suggestionResponse,
-          searchResponse,
-          cvResponse,
-        ] = await Promise.all([
-          supabase.from("career_profiles").select(columns.profile),
-          supabase.from("career_evidence_items").select(columns.evidence),
-          supabase.from("profile_suggestions").select(columns.suggestions),
-          supabase.from("search_profiles").select(columns.searches),
-          supabase.from("cv_documents").select(columns.cv),
-        ]);
-        const profiles = z
-          .array(profileRowSchema)
-          .max(1)
-          .parse(data(profileResponse));
-        const evidence = mapEvidence(data(evidenceResponse));
-        const cvs = z.array(cvRowSchema).parse(data(cvResponse));
+        const snapshot = snapshotRowSchema.parse(
+          await call(supabase, "get_career_profile_snapshot"),
+        );
+        const evidence = mapEvidence(snapshot.evidence);
+        const cvs = snapshot.cvs;
         const currentCvRow = cvs.find(
           (item) => item.is_current && item.lifecycle_status !== "deleted",
         );
@@ -259,24 +331,33 @@ export function createSupabaseProfileRepository(
               uploadedAt: currentCvRow.uploaded_at,
             }
           : null;
-        const profile = profiles[0];
-        const draft = profile
-          ? careerProfileDraftSchema.parse({
-              cvDocumentId: currentCv?.id ?? null,
-              currentSeniority: profile.current_seniority,
-              targetSeniority: profile.target_seniority,
-              evidence,
-              targetRoleFamilies: profile.target_role_families,
-              industries: profile.industries,
-              domains: profile.domains,
-              keywords: profile.keywords,
-            })
-          : null;
+        const profile = snapshot.profile;
+        const hasProfileSignal =
+          currentCv !== null ||
+          evidence.length > 0 ||
+          (profile?.target_role_families.length ?? 0) > 0 ||
+          (profile?.industries.length ?? 0) > 0 ||
+          (profile?.domains.length ?? 0) > 0 ||
+          (profile?.keywords.length ?? 0) > 0;
+        const draft =
+          profile && hasProfileSignal
+            ? careerProfileDraftSchema.parse({
+                cvDocumentId: currentCv?.id ?? null,
+                currentSeniority: profile.current_seniority,
+                targetSeniority: profile.target_seniority,
+                evidence,
+                targetRoleFamilies: profile.target_role_families,
+                industries: profile.industries,
+                domains: profile.domains,
+                keywords: profile.keywords,
+              })
+            : null;
         return {
+          generation: snapshot.generation,
           draft,
           currentCv,
-          suggestions: mapSuggestions(data(suggestionResponse)),
-          searches: mapSearches(data(searchResponse)),
+          suggestions: mapSuggestions(snapshot.suggestions),
+          searches: mapSearches(snapshot.searches),
           uploadCapability: disabledUpload,
           dataMode: "supabase",
         };
@@ -286,9 +367,12 @@ export function createSupabaseProfileRepository(
       }
     },
 
-    async saveDraft(input: CareerProfileDraft) {
+    async saveDraft(generation: number, input: CareerProfileDraft) {
       const draft = careerProfileDraftSchema.parse(input);
-      await call(supabase, "save_career_profile_draft", { draft_value: draft });
+      await call(supabase, "save_career_profile_draft", {
+        expected_generation: z.number().int().nonnegative().parse(generation),
+        draft_value: draft,
+      });
     },
 
     async acceptEvidence(evidenceId) {
@@ -319,13 +403,28 @@ export function createSupabaseProfileRepository(
       });
     },
 
-    async saveSearch(input: NamedSearchProfileDraft) {
+    async saveSearch(
+      generation: number,
+      searchId: string | null,
+      input: NamedSearchProfileDraft,
+    ) {
       const draft = namedSearchProfileDraftSchema.parse(input);
+      const targetSearchId = searchId
+        ? z.string().uuid().parse(searchId)
+        : null;
       return z
         .string()
         .uuid()
         .parse(
-          await call(supabase, "save_search_profile", { draft_value: draft }),
+          await call(supabase, "save_search_profile", {
+            expected_generation: z
+              .number()
+              .int()
+              .nonnegative()
+              .parse(generation),
+            target_search_id: targetSearchId,
+            draft_value: draft,
+          }),
         );
     },
 
@@ -347,14 +446,20 @@ export function createSupabaseProfileRepository(
     },
 
     async deleteProfileData() {
+      const ownerId = await authenticatedOwnerId(supabase);
+      const bucket = supabase.storage.from("career-documents");
+      const listedPaths = await listOwnerStoragePaths(bucket, ownerId);
       const response = await supabase.from("cv_documents").select(columns.cv);
-      const paths = z
+      const registeredPaths = z
         .array(cvRowSchema)
         .parse(data(response))
-        .filter((row) => row.lifecycle_status !== "deleted")
         .map((row) => row.storage_path);
+      const paths = [...new Set([...listedPaths, ...registeredPaths])];
       if (paths.length > 0) {
-        data(await supabase.storage.from("career-documents").remove(paths));
+        await removeStoragePaths(bucket, paths);
+        if ((await listOwnerStoragePaths(bucket, ownerId)).length > 0) {
+          throw new ProfileRepositoryError("unavailable");
+        }
       }
       await call(supabase, "delete_career_profile_data");
     },

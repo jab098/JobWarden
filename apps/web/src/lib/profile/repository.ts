@@ -21,12 +21,16 @@ export class ProfileRepositoryError extends Error {
 export interface ProfileRepository {
   readonly uploadCapability: ProfileUploadCapability;
   getSnapshot(): Promise<ProfileSnapshot>;
-  saveDraft(draft: CareerProfileDraft): Promise<void>;
+  saveDraft(generation: number, draft: CareerProfileDraft): Promise<void>;
   acceptEvidence(evidenceId: string): Promise<void>;
   rejectEvidence(evidenceId: string): Promise<void>;
   acceptSuggestion(suggestionId: string): Promise<void>;
   rejectSuggestion(suggestionId: string): Promise<void>;
-  saveSearch(draft: NamedSearchProfileDraft): Promise<string>;
+  saveSearch(
+    generation: number,
+    searchId: string | null,
+    draft: NamedSearchProfileDraft,
+  ): Promise<string>;
   deleteCv(): Promise<void>;
   deleteProfileData(): Promise<void>;
 }

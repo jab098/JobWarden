@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { decideSuggestionAction } from "@/app/(protected)/profile/actions";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ProfileSuggestion } from "@jobwarden/domain";
 import type { ProfileActionState } from "@/lib/profile/types";
@@ -61,14 +62,13 @@ export function ProfileSuggestionList({
   suggestions: readonly ProfileSuggestion[];
   readOnly: boolean;
 }) {
-  const proposed = suggestions.filter((item) => item.state === "proposed");
   return (
     <section
       aria-labelledby="profile-suggestions-heading"
       className="border-t border-[#dedbd2] py-8"
     >
       <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#697181]">
-        Inactive until accepted
+        Proposed · accepted · rejected
       </p>
       <h2
         id="profile-suggestions-heading"
@@ -76,14 +76,14 @@ export function ProfileSuggestionList({
       >
         Suggested direction
       </h2>
-      {proposed.length === 0 ? (
+      {suggestions.length === 0 ? (
         <p className="mt-4 max-w-2xl text-sm leading-6 text-[#596173]">
-          There are no unreviewed suggestions. JobWarden never changes your
+          There are no suggestions to review. JobWarden never changes your
           seniority or search direction silently.
         </p>
       ) : (
         <ul className="mt-5 space-y-4">
-          {proposed.map((suggestion) => (
+          {suggestions.map((suggestion) => (
             <li
               key={suggestion.id}
               className="grid gap-4 border-l-2 border-[#8da8cf] bg-[#f7f9fc] px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
@@ -98,7 +98,23 @@ export function ProfileSuggestionList({
                   . Confidence is supporting metadata, not a fit score.
                 </p>
               </div>
-              <SuggestionDecision suggestion={suggestion} readOnly={readOnly} />
+              {suggestion.state === "proposed" ? (
+                <SuggestionDecision
+                  suggestion={suggestion}
+                  readOnly={readOnly}
+                />
+              ) : (
+                <Badge
+                  variant="outline"
+                  className={
+                    suggestion.state === "accepted"
+                      ? "rounded-sm border-[#9bc7ad] bg-[#f1f8f3] text-[#205f3b]"
+                      : "rounded-sm border-[#d8aaa4] bg-[#fbf3f1] text-[#8a3328]"
+                  }
+                >
+                  {suggestion.state === "accepted" ? "Accepted" : "Rejected"}
+                </Badge>
+              )}
             </li>
           ))}
         </ul>

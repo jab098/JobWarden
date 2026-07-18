@@ -19,6 +19,11 @@ describe("fictional career profile repository", () => {
     expect(snapshot.suggestions.some((item) => item.state === "proposed")).toBe(
       true,
     );
+    expect(snapshot.suggestions.map((item) => item.state)).toEqual([
+      "proposed",
+      "accepted",
+      "rejected",
+    ]);
     expect(snapshot.searches).toHaveLength(1);
     expect(Object.isFrozen(snapshot)).toBe(true);
     expect(Object.isFrozen(snapshot.draft?.evidence)).toBe(true);
@@ -34,7 +39,7 @@ describe("fictional career profile repository", () => {
     ["rejectSuggestion", ["10000000-0000-4000-8000-000000000001"]],
     ["acceptEvidence", ["10000000-0000-4000-8000-000000000001"]],
     ["rejectEvidence", ["10000000-0000-4000-8000-000000000001"]],
-    ["saveSearch", [{}]],
+    ["saveSearch", [null, {}]],
     ["deleteCv", []],
     ["deleteProfileData", []],
   ] as const)(

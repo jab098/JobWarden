@@ -36,6 +36,28 @@ create table public.career_profiles (
   updated_at timestamptz not null default now()
 );
 
+create table public.career_profile_generations (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  generation bigint not null default 0 check (generation >= 0),
+  updated_at timestamptz not null default now()
+);
+
+create table public.career_cv_upload_intents (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  storage_path text not null check (
+    char_length(storage_path) between 38 and 500
+    and split_part(storage_path, '/', 1) = user_id::text
+    and storage_path !~ '(^|/)\.\.(/|$)'
+  ),
+  generation bigint not null check (generation >= 0),
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, storage_path)
+);
+
+create index career_cv_upload_intents_expiry_idx
+  on public.career_cv_upload_intents (expires_at);
+
 create table public.cv_documents (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.career_profiles (user_id) on delete cascade,
@@ -221,6 +243,18 @@ create table public.profile_suggestions (
 create index profile_suggestions_user_state_idx
   on public.profile_suggestions (user_id, state, proposed_at desc);
 
+create or replace function public.text_array_has_unique_values(value text[])
+returns boolean
+language sql
+immutable
+strict
+set search_path = ''
+as $$
+  select cardinality(value) = (
+    select count(distinct item) from unnest(value) as item
+  );
+$$;
+
 create table public.search_profiles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.career_profiles (user_id) on delete cascade,
@@ -248,11 +282,14 @@ create table public.search_profiles (
     and octet_length(domains::text) <= 8192
   ),
   skill_concepts text[] not null default '{}'::text[] check (
-    cardinality(skill_concepts) <= 50 and array_position(skill_concepts, null) is null
+    cardinality(skill_concepts) <= 50
+    and array_position(skill_concepts, null) is null
+    and public.text_array_has_unique_values(skill_concepts)
   ),
   responsibility_concepts text[] not null default '{}'::text[] check (
     cardinality(responsibility_concepts) <= 50
     and array_position(responsibility_concepts, null) is null
+    and public.text_array_has_unique_values(responsibility_concepts)
   ),
   current_seniority text not null default 'unspecified' check (
     current_seniority in (
@@ -312,6 +349,10 @@ create table public.search_profiles (
 
 alter table public.career_profiles enable row level security;
 alter table public.career_profiles force row level security;
+alter table public.career_profile_generations enable row level security;
+alter table public.career_profile_generations force row level security;
+alter table public.career_cv_upload_intents enable row level security;
+alter table public.career_cv_upload_intents force row level security;
 alter table public.career_evidence_items enable row level security;
 alter table public.career_evidence_items force row level security;
 alter table public.profile_suggestions enable row level security;
@@ -323,10 +364,42 @@ alter table public.cv_documents force row level security;
 alter table public.cv_extraction_runs enable row level security;
 alter table public.cv_extraction_runs force row level security;
 
-create policy "approved users manage own career profiles"
-on public.career_profiles for all to authenticated
-using (user_id = auth.uid() and public.has_approved_access())
-with check (user_id = auth.uid() and public.has_approved_access());
+create or replace function public.lock_career_profile_generation(
+  target_user_id uuid
+)
+returns boolean
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  actor_user_id uuid := auth.uid();
+begin
+  if actor_user_id is null
+    or actor_user_id <> target_user_id
+    or not public.has_approved_access() then
+    return false;
+  end if;
+
+  insert into public.career_profile_generations (user_id)
+  values (actor_user_id)
+  on conflict (user_id) do nothing;
+  perform 1
+  from public.career_profile_generations as fence
+  where fence.user_id = actor_user_id
+  for update;
+  return found;
+end;
+$$;
+
+create policy "approved users read own career profiles"
+on public.career_profiles for select to authenticated
+using (user_id = auth.uid() and public.has_approved_access());
+
+create policy "approved users read own career profile generation"
+on public.career_profile_generations for select to authenticated
+using (user_id = auth.uid() and public.has_approved_access());
 
 create policy "approved users read own career evidence"
 on public.career_evidence_items for select to authenticated
@@ -338,19 +411,18 @@ with check (
   origin = 'user' and user_id = auth.uid() and public.has_approved_access()
 );
 
-create policy "approved users review own career evidence"
+create policy "approved users edit own career evidence metadata"
 on public.career_evidence_items for update to authenticated
 using (user_id = auth.uid() and public.has_approved_access())
 with check (user_id = auth.uid() and public.has_approved_access());
 
 create policy "approved users delete own career evidence"
 on public.career_evidence_items for delete to authenticated
-using (user_id = auth.uid() and public.has_approved_access());
+using (public.lock_career_profile_generation(user_id));
 
-create policy "approved users manage own search profiles"
-on public.search_profiles for all to authenticated
-using (user_id = auth.uid() and public.has_approved_access())
-with check (user_id = auth.uid() and public.has_approved_access());
+create policy "approved users read own search profiles"
+on public.search_profiles for select to authenticated
+using (user_id = auth.uid() and public.has_approved_access());
 
 create policy "approved users read own profile suggestions"
 on public.profile_suggestions for select to authenticated
@@ -364,7 +436,104 @@ create policy "approved users read own cv extraction runs"
 on public.cv_extraction_runs for select to authenticated
 using (user_id = auth.uid() and public.has_approved_access());
 
+create or replace function public.begin_career_cv_upload(
+  expected_generation bigint,
+  storage_path_value text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  actor_user_id uuid := auth.uid();
+begin
+  if actor_user_id is null or not public.has_approved_access() then
+    raise exception using errcode = '42501', message = 'approved access required';
+  end if;
+  if not public.career_cv_uploads_enabled() then
+    raise exception using errcode = '42501', message = 'CV uploads disabled';
+  end if;
+  if expected_generation < 0
+    or char_length(storage_path_value) not between 38 and 500
+    or split_part(storage_path_value, '/', 1) <> actor_user_id::text
+    or storage_path_value ~ '(^|/)\.\.(/|$)' then
+    raise exception using errcode = '22023', message = 'invalid career document path';
+  end if;
+
+  insert into public.career_profile_generations (user_id)
+  values (actor_user_id)
+  on conflict (user_id) do nothing;
+  perform 1
+  from public.career_profile_generations as fence
+  where fence.user_id = actor_user_id
+    and fence.generation = expected_generation
+  for update;
+  if not found then
+    raise exception using errcode = '40001', message = 'stale career profile snapshot';
+  end if;
+
+  delete from public.career_cv_upload_intents
+  where user_id = actor_user_id and expires_at <= clock_timestamp();
+  insert into public.career_cv_upload_intents (
+    user_id, storage_path, generation, expires_at
+  ) values (
+    actor_user_id,
+    storage_path_value,
+    expected_generation,
+    clock_timestamp() + interval '15 minutes'
+  )
+  on conflict (user_id, storage_path) do update set
+    generation = excluded.generation,
+    expires_at = excluded.expires_at,
+    created_at = clock_timestamp();
+end;
+$$;
+
+create or replace function public.career_cv_upload_intent_allows(
+  storage_path_value text
+)
+returns boolean
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  actor_user_id uuid := auth.uid();
+  current_generation bigint;
+begin
+  if actor_user_id is null
+    or not public.has_approved_access()
+    or not public.career_cv_uploads_enabled()
+    or char_length(storage_path_value) not between 38 and 500
+    or split_part(storage_path_value, '/', 1) <> actor_user_id::text
+    or storage_path_value ~ '(^|/)\.\.(/|$)' then
+    return false;
+  end if;
+
+  insert into public.career_profile_generations (user_id)
+  values (actor_user_id)
+  on conflict (user_id) do nothing;
+  select fence.generation
+  into current_generation
+  from public.career_profile_generations as fence
+  where fence.user_id = actor_user_id
+  for update;
+
+  return exists (
+    select 1
+    from public.career_cv_upload_intents as intent
+    where intent.user_id = actor_user_id
+      and intent.storage_path = storage_path_value
+      and intent.generation = current_generation
+      and intent.expires_at > clock_timestamp()
+  );
+end;
+$$;
+
 create or replace function public.register_cv_document(
+  expected_generation bigint,
   storage_path_value text,
   original_file_name_value text,
   file_kind_value text,
@@ -387,10 +556,39 @@ begin
   if not public.career_cv_uploads_enabled() then
     raise exception using errcode = '42501', message = 'CV uploads disabled';
   end if;
+  if expected_generation < 0 then
+    raise exception using errcode = '22023', message = 'invalid profile generation';
+  end if;
 
-  perform pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtextextended(actor_user_id::text, 0)
-  );
+  insert into public.career_profile_generations (user_id)
+  values (actor_user_id)
+  on conflict (user_id) do nothing;
+  perform 1
+  from public.career_profile_generations as fence
+  where fence.user_id = actor_user_id
+    and fence.generation = expected_generation
+  for update;
+  if not found then
+    raise exception using errcode = '40001', message = 'stale career profile snapshot';
+  end if;
+  if not exists (
+    select 1
+    from public.career_cv_upload_intents as intent
+    where intent.user_id = actor_user_id
+      and intent.storage_path = storage_path_value
+      and intent.generation = expected_generation
+      and intent.expires_at > clock_timestamp()
+  ) then
+    raise exception using errcode = '42501', message = 'valid CV upload intent required';
+  end if;
+  if not exists (
+    select 1
+    from storage.objects as object
+    where object.bucket_id = 'career-documents'
+      and object.name = storage_path_value
+  ) then
+    raise exception using errcode = '23503', message = 'Storage object must exist first';
+  end if;
 
   insert into public.career_profiles (user_id)
   values (actor_user_id)
@@ -422,6 +620,9 @@ begin
     sha256_value
   )
   returning id into document_id;
+
+  delete from public.career_cv_upload_intents
+  where user_id = actor_user_id and storage_path = storage_path_value;
 
   return document_id;
 end;
@@ -477,30 +678,46 @@ begin
 end;
 $$;
 
-revoke all on function public.register_cv_document(text, text, text, text, integer, text)
+revoke all on function public.begin_career_cv_upload(bigint, text)
+  from public, anon;
+revoke all on function public.lock_career_profile_generation(uuid)
+  from public, anon;
+revoke all on function public.career_cv_upload_intent_allows(text)
+  from public, anon;
+revoke all on function public.register_cv_document(bigint, text, text, text, text, integer, text)
   from public, anon;
 revoke all on function public.decide_profile_suggestion(uuid, text)
   from public, anon;
 revoke all on function public.career_cv_uploads_enabled()
   from public, anon;
-grant execute on function public.register_cv_document(text, text, text, text, integer, text)
+grant execute on function public.begin_career_cv_upload(bigint, text)
+  to authenticated;
+grant execute on function public.lock_career_profile_generation(uuid)
+  to authenticated;
+grant execute on function public.career_cv_upload_intent_allows(text)
+  to authenticated;
+grant execute on function public.register_cv_document(bigint, text, text, text, text, integer, text)
   to authenticated;
 grant execute on function public.decide_profile_suggestion(uuid, text) to authenticated;
 grant execute on function public.career_cv_uploads_enabled() to authenticated;
 
 revoke all on public.career_profiles, public.career_evidence_items,
-  public.profile_suggestions, public.search_profiles, public.cv_documents,
+  public.career_profile_generations, public.career_cv_upload_intents,
+  public.profile_suggestions,
+  public.search_profiles, public.cv_documents,
   public.cv_extraction_runs from public, anon, authenticated;
 
-grant select, insert, update on public.career_profiles to authenticated;
-grant select, insert, update, delete on public.search_profiles to authenticated;
+grant select on public.career_profiles, public.career_profile_generations,
+  public.search_profiles to authenticated;
 grant select, insert, delete on public.career_evidence_items to authenticated;
-grant update (confirmation_state, proficiency_signal, last_used_at)
+grant update (proficiency_signal, last_used_at)
   on public.career_evidence_items to authenticated;
 grant select on public.profile_suggestions, public.cv_documents,
   public.cv_extraction_runs to authenticated;
 grant all on public.career_profiles, public.career_evidence_items,
-  public.profile_suggestions, public.search_profiles, public.cv_documents,
+  public.career_profile_generations, public.career_cv_upload_intents,
+  public.profile_suggestions,
+  public.search_profiles, public.cv_documents,
   public.cv_extraction_runs to service_role;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -534,21 +751,7 @@ with check (
   and (storage.foldername(name))[1] = auth.uid()::text
   and public.has_approved_access()
   and public.career_cv_uploads_enabled()
-);
-
-create policy "approved users replace own career documents"
-on storage.objects for update to authenticated
-using (
-  bucket_id = 'career-documents'
-  and (storage.foldername(name))[1] = auth.uid()::text
-  and public.has_approved_access()
-  and public.career_cv_uploads_enabled()
-)
-with check (
-  bucket_id = 'career-documents'
-  and (storage.foldername(name))[1] = auth.uid()::text
-  and public.has_approved_access()
-  and public.career_cv_uploads_enabled()
+  and public.career_cv_upload_intent_allows(name)
 );
 
 create policy "approved users delete own career documents"

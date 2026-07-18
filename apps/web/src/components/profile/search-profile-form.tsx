@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 
 import { saveSearchProfileAction } from "@/app/(protected)/profile/actions";
 import { Button } from "@/components/ui/button";
@@ -14,25 +14,84 @@ import type {
 
 const initialState: ProfileActionState = { kind: "idle" };
 
+function fieldsForSearch(
+  search: SavedSearchProfile | null,
+  profile: CareerProfileDraft | null,
+  searchesIdentity: string,
+) {
+  return {
+    selectedSearchId: search?.id ?? null,
+    name: search?.name ?? "My UK search",
+    terms:
+      search?.includeTerms.join(", ") ?? profile?.keywords.join(", ") ?? "",
+    locations: search?.ukLocations.join(", ") ?? "",
+    searchesIdentity,
+    optimisticSearchId: null as string | null,
+  };
+}
+
 export function SearchProfileForm({
   profile,
   searches,
+  generation,
   readOnly,
+  blocked,
+  onPendingChange,
 }: {
   profile: CareerProfileDraft | null;
   searches: readonly SavedSearchProfile[];
+  generation: number;
   readOnly: boolean;
+  blocked: boolean;
+  onPendingChange: (pending: boolean) => void;
 }) {
-  const existing = searches[0];
-  const [name, setName] = useState(existing?.name ?? "My UK search");
-  const [terms, setTerms] = useState(
-    existing?.includeTerms.join(", ") ?? profile?.keywords.join(", ") ?? "",
+  const searchesIdentity = searches.map(({ id }) => id).join(":");
+  const [fields, setFields] = useState(() =>
+    fieldsForSearch(searches[0] ?? null, profile, searchesIdentity),
   );
-  const [locations, setLocations] = useState(
-    existing?.ukLocations.join(", ") ?? "",
+  let currentFields = fields;
+  let existing = searches.find(
+    (item) => item.id === currentFields.selectedSearchId,
   );
+  if (
+    currentFields.optimisticSearchId !== null &&
+    existing?.id === currentFields.optimisticSearchId
+  ) {
+    currentFields = {
+      ...currentFields,
+      optimisticSearchId: null,
+      searchesIdentity,
+    };
+    setFields(currentFields);
+  }
+  if (
+    currentFields.selectedSearchId !== null &&
+    existing === undefined &&
+    currentFields.optimisticSearchId === null &&
+    currentFields.searchesIdentity !== searchesIdentity
+  ) {
+    existing = searches[0];
+    currentFields = fieldsForSearch(
+      existing ?? null,
+      profile,
+      searchesIdentity,
+    );
+    setFields(currentFields);
+  }
+  const { selectedSearchId, name, terms, locations } = currentFields;
   const [state, action, pending] = useActionState(
-    saveSearchProfileAction,
+    async (previousState: ProfileActionState, formData: FormData) => {
+      const result = await saveSearchProfileAction(previousState, formData);
+      if (result.kind === "success" && result.resourceId) {
+        setFields((current) => ({
+          ...current,
+          selectedSearchId: result.resourceId ?? null,
+          searchesIdentity,
+          optimisticSearchId: result.resourceId ?? null,
+        }));
+      }
+      return result;
+    },
     initialState,
   );
   const list = (value: string) => [
@@ -43,7 +102,13 @@ export function SearchProfileForm({
         .filter(Boolean),
     ),
   ];
-  const search = {
+
+  useEffect(() => onPendingChange(pending), [onPendingChange, pending]);
+  function selectSearch(search: SavedSearchProfile | null) {
+    setFields(fieldsForSearch(search, profile, searchesIdentity));
+  }
+
+  const newSearch: Omit<SavedSearchProfile, "id"> = {
     name,
     enabled: true,
     roleFamilies: profile?.targetRoleFamilies ?? [],
@@ -83,6 +148,15 @@ export function SearchProfileForm({
     recencyDays: existing?.recencyDays ?? (14 as const),
     notificationsEnabled: false,
   };
+  const search = existing
+    ? {
+        ...existing,
+        id: undefined,
+        name,
+        includeTerms: list(terms),
+        ukLocations: list(locations),
+      }
+    : newSearch;
 
   return (
     <section
@@ -90,7 +164,13 @@ export function SearchProfileForm({
       className="border-t border-[#dedbd2] py-8"
     >
       <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.72fr)]">
-        <form action={action} className="min-w-0 space-y-5">
+        <form
+          action={action}
+          className="min-w-0 space-y-5"
+          onSubmit={() => onPendingChange(true)}
+        >
+          <input type="hidden" name="searchId" value={selectedSearchId ?? ""} />
+          <input type="hidden" name="profileGeneration" value={generation} />
           <input type="hidden" name="search" value={JSON.stringify(search)} />
           <div>
             <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#697181]">
@@ -113,9 +193,14 @@ export function SearchProfileForm({
               <Input
                 id="search-name"
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(event) =>
+                  setFields((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
+                }
                 maxLength={80}
-                disabled={readOnly}
+                disabled={readOnly || pending || blocked}
               />
             </div>
             <div className="space-y-2">
@@ -123,9 +208,14 @@ export function SearchProfileForm({
               <Input
                 id="search-locations"
                 value={locations}
-                onChange={(event) => setLocations(event.target.value)}
+                onChange={(event) =>
+                  setFields((current) => ({
+                    ...current,
+                    locations: event.target.value,
+                  }))
+                }
                 placeholder="London, Manchester, Remote within the UK"
-                disabled={readOnly}
+                disabled={readOnly || pending || blocked}
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
@@ -133,14 +223,19 @@ export function SearchProfileForm({
               <Input
                 id="search-terms"
                 value={terms}
-                onChange={(event) => setTerms(event.target.value)}
+                onChange={(event) =>
+                  setFields((current) => ({
+                    ...current,
+                    terms: event.target.value,
+                  }))
+                }
                 placeholder="implementation, measurement strategy"
-                disabled={readOnly}
+                disabled={readOnly || pending || blocked}
               />
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={readOnly || pending}>
+            <Button type="submit" disabled={readOnly || pending || blocked}>
               {pending ? "Saving…" : "Save named search"}
             </Button>
             {state.kind !== "idle" ? (
@@ -154,9 +249,20 @@ export function SearchProfileForm({
           </div>
         </form>
         <div className="border-l border-[#ece9e2] pl-0 lg:pl-6">
-          <h3 className="text-sm font-semibold text-[#263248]">
-            Saved searches
-          </h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-[#263248]">
+              Saved searches
+            </h3>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={readOnly || pending || blocked}
+              onClick={() => selectSearch(null)}
+            >
+              New search
+            </Button>
+          </div>
           {searches.length === 0 ? (
             <p className="mt-3 text-sm leading-6 text-[#596173]">
               No named searches yet.
@@ -165,11 +271,25 @@ export function SearchProfileForm({
             <ul className="mt-3 divide-y divide-[#ece9e2] border-y border-[#ece9e2]">
               {searches.map((item) => (
                 <li key={item.id} className="py-3 [overflow-wrap:anywhere]">
-                  <p className="font-medium text-[#263248]">{item.name}</p>
-                  <p className="mt-1 text-xs text-[#697181]">
-                    {item.roleFamilies.length} role families ·{" "}
-                    {item.ukLocations.length} locations · notifications off
-                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    aria-label={`Edit ${item.name}`}
+                    aria-pressed={item.id === selectedSearchId}
+                    disabled={readOnly || pending || blocked}
+                    onClick={() => selectSearch(item)}
+                    className="h-auto w-full justify-start px-1 py-1 text-left"
+                  >
+                    <span className="min-w-0">
+                      <span className="block font-medium text-[#263248]">
+                        {item.name}
+                      </span>
+                      <span className="mt-1 block text-xs font-normal text-[#697181]">
+                        {item.roleFamilies.length} role families ·{" "}
+                        {item.ukLocations.length} locations · notifications off
+                      </span>
+                    </span>
+                  </Button>
                 </li>
               ))}
             </ul>

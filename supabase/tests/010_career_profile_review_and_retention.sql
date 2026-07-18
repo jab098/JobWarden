@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(34);
+select plan(37);
 
 select has_column(
   'public', 'cv_extraction_runs', 'claim_token',
@@ -460,6 +460,53 @@ select is(
   'stale replacement recovery restores the previous usable document'
 );
 
+reset role;
+insert into storage.objects (bucket_id, name)
+values
+  (
+    'career-documents',
+    '80000000-0000-4000-8000-000000000003/previous.docx'
+  ),
+  (
+    'career-documents',
+    '80000000-0000-4000-8000-000000000003/replacement.pdf'
+  ),
+  (
+    'career-documents',
+    '80000000-0000-4000-8000-000000000003/unregistered-orphan.pdf'
+  );
+set local role service_role;
+select set_config('request.jwt.claim.role', 'service_role', true);
+select throws_ok(
+  $$ select public.purge_inactive_cv_document(
+    '82000000-0000-4000-8000-000000000006',
+    '80000000-0000-4000-8000-000000000003/replacement.pdf'
+  ) $$,
+  '23503',
+  'Storage object must be removed first',
+  'inactive metadata cannot be purged while its Storage object remains'
+);
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '80000000-0000-4000-8000-000000000003', true);
+select throws_ok(
+  $$ select public.delete_current_cv(
+    '82000000-0000-4000-8000-000000000005',
+    '80000000-0000-4000-8000-000000000003/previous.docx'
+  ) $$,
+  '23503',
+  'Storage object must be removed first',
+  'current-CV metadata deletion fails while its matching Storage object remains'
+);
+select throws_ok(
+  $$ select public.delete_career_profile_data() $$,
+  '23503',
+  'Storage objects must be removed first',
+  'full profile deletion fails while any registered or orphan owner object remains'
+);
+
+reset role;
+set local role service_role;
 delete from public.career_profiles
 where user_id = '80000000-0000-4000-8000-000000000001';
 select is(

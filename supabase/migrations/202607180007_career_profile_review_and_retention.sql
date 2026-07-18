@@ -56,6 +56,7 @@ set search_path = ''
 as $$
 declare
   run_record public.cv_extraction_runs%rowtype;
+  target_user_id uuid;
 begin
   if auth.role() is distinct from 'service_role' then
     raise exception using errcode = '42501', message = 'service role required';
@@ -93,6 +94,20 @@ begin
   ) then
     raise exception using errcode = '22023', message = 'invalid failure result';
   end if;
+
+  select run.user_id into target_user_id
+  from public.cv_extraction_runs as run
+  where run.id = target_run_id;
+  if not found then
+    raise exception using errcode = 'P0002', message = 'active extraction claim not found';
+  end if;
+  insert into public.career_profile_generations (user_id)
+  values (target_user_id)
+  on conflict (user_id) do nothing;
+  perform 1
+  from public.career_profile_generations as fence
+  where fence.user_id = target_user_id
+  for update;
 
   select run.* into run_record
   from public.cv_extraction_runs as run
@@ -339,9 +354,39 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  target_user_id uuid;
 begin
   if auth.role() is distinct from 'service_role' then
     raise exception using errcode = '42501', message = 'service role required';
+  end if;
+
+  select document.user_id into target_user_id
+  from public.cv_documents as document
+  where document.id = target_document_id
+    and document.storage_path = expected_storage_path
+    and not document.is_current;
+  if not found then
+    raise exception using errcode = 'P0002', message = 'inactive CV not found';
+  end if;
+
+  insert into public.career_profile_generations (user_id)
+  values (target_user_id)
+  on conflict (user_id) do nothing;
+  perform 1
+  from public.career_profile_generations as fence
+  where fence.user_id = target_user_id
+  for update;
+
+  if exists (
+    select 1
+    from storage.objects as object
+    where object.bucket_id = 'career-documents'
+      and object.name = expected_storage_path
+  ) then
+    raise exception using
+      errcode = '23503',
+      message = 'Storage object must be removed first';
   end if;
 
   delete from public.cv_documents
@@ -373,6 +418,14 @@ begin
   if target_state not in ('confirmed', 'rejected') then
     raise exception using errcode = '22023', message = 'invalid evidence decision';
   end if;
+
+  insert into public.career_profile_generations (user_id)
+  values (actor_user_id)
+  on conflict (user_id) do nothing;
+  perform 1
+  from public.career_profile_generations as fence
+  where fence.user_id = actor_user_id
+  for update;
 
   select confirmation_state into current_state
   from public.career_evidence_items

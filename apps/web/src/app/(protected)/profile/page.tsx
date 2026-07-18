@@ -8,9 +8,12 @@ export const metadata: Metadata = { title: "Career profile" };
 
 export default async function ProfilePage() {
   const snapshot = await (await getProfileRepository()).getSnapshot();
+  const snapshotIdentity = snapshot.draft
+    ? `profile:${snapshot.currentCv?.id ?? "without-cv"}`
+    : "profile:empty";
   return (
     <AppShell dataMode={snapshot.dataMode} activePath="profile">
-      <ProfileOnboarding snapshot={snapshot} />
+      <ProfileOnboarding key={snapshotIdentity} snapshot={snapshot} />
     </AppShell>
   );
 }

@@ -22,6 +22,7 @@ export type ProfileUploadCapability = Readonly<{
 }>;
 
 export type ProfileSnapshot = Readonly<{
+  generation: number;
   draft: CareerProfileDraft | null;
   currentCv: CvDocumentView | null;
   suggestions: readonly ProfileSuggestion[];
@@ -32,7 +33,7 @@ export type ProfileSnapshot = Readonly<{
 
 export type ProfileActionState =
   | { kind: "idle" }
-  | { kind: "success"; message: string }
+  | { kind: "success"; message: string; resourceId?: string }
   | { kind: "invalid"; message: string }
   | { kind: "forbidden"; message: string }
   | { kind: "unavailable"; message: string };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { FileLock2, Plus, Trash2, X } from "lucide-react";
 
 import {
@@ -74,9 +74,13 @@ async function deleteProfileFormAction(
 function PrivacyControls({
   readOnly,
   hasCv,
+  blocked,
+  onPendingChange,
 }: {
   readOnly: boolean;
   hasCv: boolean;
+  blocked: boolean;
+  onPendingChange: (pending: boolean) => void;
 }) {
   const [cvState, cvAction, cvPending] = useActionState(
     deleteCvFormAction,
@@ -85,6 +89,10 @@ function PrivacyControls({
   const [profileState, profileAction, profilePending] = useActionState(
     deleteProfileFormAction,
     initialState,
+  );
+  useEffect(
+    () => onPendingChange(cvPending || profilePending),
+    [cvPending, onPendingChange, profilePending],
   );
   return (
     <section
@@ -108,7 +116,7 @@ function PrivacyControls({
             render={
               <Button
                 variant="outline"
-                disabled={readOnly || !hasCv || cvPending}
+                disabled={readOnly || !hasCv || cvPending || blocked}
               />
             }
           >
@@ -126,7 +134,7 @@ function PrivacyControls({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <form action={cvAction}>
+              <form action={cvAction} onSubmit={() => onPendingChange(true)}>
                 <AlertDialogAction
                   type="submit"
                   variant="destructive"
@@ -143,7 +151,7 @@ function PrivacyControls({
             render={
               <Button
                 variant="destructive"
-                disabled={readOnly || profilePending}
+                disabled={readOnly || profilePending || blocked}
               />
             }
           >
@@ -161,7 +169,10 @@ function PrivacyControls({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <form action={profileAction}>
+              <form
+                action={profileAction}
+                onSubmit={() => onPendingChange(true)}
+              >
                 <AlertDialogAction
                   type="submit"
                   variant="destructive"
@@ -189,7 +200,7 @@ function PrivacyControls({
   );
 }
 
-export function ProfileOnboarding({ snapshot }: { snapshot: ProfileSnapshot }) {
+function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
   const profile = snapshot.draft;
   const readOnly = snapshot.dataMode === "fixtures";
   const [currentSeniority, setCurrentSeniority] = useState(
@@ -216,6 +227,8 @@ export function ProfileOnboarding({ snapshot }: { snapshot: ProfileSnapshot }) {
     saveProfileDraftAction,
     initialState,
   );
+  const [searchPending, setSearchPending] = useState(false);
+  const [privacyPending, setPrivacyPending] = useState(false);
   const cvEvidence =
     profile?.evidence.filter((item) => item.origin === "cv") ?? [];
   const draft = {
@@ -307,6 +320,11 @@ export function ProfileOnboarding({ snapshot }: { snapshot: ProfileSnapshot }) {
           </h2>
         </div>
         <form action={action} className="mt-6 space-y-6">
+          <input
+            type="hidden"
+            name="profileGeneration"
+            value={snapshot.generation}
+          />
           <input type="hidden" name="draft" value={JSON.stringify(draft)} />
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
@@ -439,7 +457,10 @@ export function ProfileOnboarding({ snapshot }: { snapshot: ProfileSnapshot }) {
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={readOnly || pending}>
+            <Button
+              type="submit"
+              disabled={readOnly || pending || searchPending || privacyPending}
+            >
               {pending ? "Saving…" : "Save career direction"}
             </Button>
             {state.kind !== "idle" ? (
@@ -493,12 +514,24 @@ export function ProfileOnboarding({ snapshot }: { snapshot: ProfileSnapshot }) {
       <SearchProfileForm
         profile={draft}
         searches={snapshot.searches}
+        generation={snapshot.generation}
         readOnly={readOnly}
+        blocked={pending || privacyPending}
+        onPendingChange={setSearchPending}
       />
       <PrivacyControls
         readOnly={readOnly}
         hasCv={snapshot.currentCv !== null}
+        blocked={pending || searchPending}
+        onPendingChange={setPrivacyPending}
       />
     </div>
   );
+}
+
+export function ProfileOnboarding({ snapshot }: { snapshot: ProfileSnapshot }) {
+  const snapshotIdentity = snapshot.draft
+    ? `profile:${snapshot.generation}:${snapshot.currentCv?.id ?? "without-cv"}`
+    : `profile:empty:${snapshot.generation}`;
+  return <ProfileOnboardingEditor key={snapshotIdentity} snapshot={snapshot} />;
 }

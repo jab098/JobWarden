@@ -20,7 +20,153 @@ alter table public.career_profiles
     cardinality(keywords) <= 30 and array_position(keywords, null) is null
   );
 
-create or replace function public.save_career_profile_draft(draft_value jsonb)
+create or replace function private.prune_search_profile_evidence(target_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.career_profile_generations (user_id)
+  values (target_user_id)
+  on conflict (user_id) do nothing;
+  perform 1
+  from public.career_profile_generations as fence
+  where fence.user_id = target_user_id
+  for update;
+
+  delete from public.search_profiles as search
+  where search.user_id = target_user_id
+    and jsonb_array_length(search.role_families) = 0
+    and cardinality(search.include_terms) = 0
+    and jsonb_array_length(search.industries) = 0
+    and jsonb_array_length(search.domains) = 0
+    and not exists (
+      select 1
+      from unnest(search.skill_concepts) as concept
+      join public.career_evidence_items as evidence
+        on evidence.user_id = target_user_id
+        and evidence.confirmation_state = 'confirmed'
+        and evidence.category in ('skill', 'tool')
+        and evidence.normalized_concept = concept
+    )
+    and not exists (
+      select 1
+      from unnest(search.responsibility_concepts) as concept
+      join public.career_evidence_items as evidence
+        on evidence.user_id = target_user_id
+        and evidence.confirmation_state = 'confirmed'
+        and evidence.category = 'responsibility'
+        and evidence.normalized_concept = concept
+    );
+
+  update public.search_profiles as search
+  set
+    skill_concepts = array(
+      select concept
+      from unnest(search.skill_concepts) as concept
+      where exists (
+        select 1 from public.career_evidence_items as evidence
+        where evidence.user_id = target_user_id
+          and evidence.confirmation_state = 'confirmed'
+          and evidence.category in ('skill', 'tool')
+          and evidence.normalized_concept = concept
+      )
+    ),
+    responsibility_concepts = array(
+      select concept
+      from unnest(search.responsibility_concepts) as concept
+      where exists (
+        select 1 from public.career_evidence_items as evidence
+        where evidence.user_id = target_user_id
+          and evidence.confirmation_state = 'confirmed'
+          and evidence.category = 'responsibility'
+          and evidence.normalized_concept = concept
+      )
+    ),
+    updated_at = clock_timestamp()
+  where search.user_id = target_user_id;
+end;
+$$;
+
+create or replace function private.prune_search_profile_evidence_after_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform private.prune_search_profile_evidence(old.user_id);
+  if tg_op = 'UPDATE' and new.user_id <> old.user_id then
+    perform private.prune_search_profile_evidence(new.user_id);
+  end if;
+  return null;
+end;
+$$;
+
+create trigger prune_search_profile_evidence_after_change
+after delete or update of confirmation_state, category, normalized_concept
+on public.career_evidence_items
+for each row execute function private.prune_search_profile_evidence_after_change();
+
+revoke all on function private.prune_search_profile_evidence(uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function private.prune_search_profile_evidence_after_change()
+  from public, anon, authenticated, service_role;
+
+create or replace function public.get_career_profile_snapshot()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  actor_user_id uuid := auth.uid();
+begin
+  if actor_user_id is null or not public.has_approved_access() then
+    raise exception using errcode = '42501', message = 'approved access required';
+  end if;
+
+  return jsonb_build_object(
+    'generation', coalesce((
+      select fence.generation
+      from public.career_profile_generations as fence
+      where fence.user_id = actor_user_id
+    ), 0),
+    'profile', (
+      select to_jsonb(profile)
+      from public.career_profiles as profile
+      where profile.user_id = actor_user_id
+    ),
+    'evidence', coalesce((
+      select jsonb_agg(to_jsonb(evidence) order by evidence.created_at, evidence.id)
+      from public.career_evidence_items as evidence
+      where evidence.user_id = actor_user_id
+    ), '[]'::jsonb),
+    'suggestions', coalesce((
+      select jsonb_agg(to_jsonb(suggestion) order by suggestion.proposed_at, suggestion.id)
+      from public.profile_suggestions as suggestion
+      where suggestion.user_id = actor_user_id
+    ), '[]'::jsonb),
+    'searches', coalesce((
+      select jsonb_agg(to_jsonb(search) order by search.created_at, search.id)
+      from public.search_profiles as search
+      where search.user_id = actor_user_id
+    ), '[]'::jsonb),
+    'cvs', coalesce((
+      select jsonb_agg(to_jsonb(document) order by document.uploaded_at, document.id)
+      from public.cv_documents as document
+      where document.user_id = actor_user_id
+    ), '[]'::jsonb)
+  );
+end;
+$$;
+
+create or replace function public.save_career_profile_draft(
+  expected_generation bigint,
+  draft_value jsonb
+)
 returns void
 language plpgsql
 security definer
@@ -34,6 +180,20 @@ declare
 begin
   if actor_user_id is null or not public.has_approved_access() then
     raise exception using errcode = '42501', message = 'approved access required';
+  end if;
+  if expected_generation < 0 then
+    raise exception using errcode = '22023', message = 'invalid profile generation';
+  end if;
+  insert into public.career_profile_generations (user_id)
+  values (actor_user_id)
+  on conflict (user_id) do nothing;
+  perform 1
+  from public.career_profile_generations as fence
+  where fence.user_id = actor_user_id
+    and fence.generation = expected_generation
+  for update;
+  if not found then
+    raise exception using errcode = '40001', message = 'stale career profile snapshot';
   end if;
   if jsonb_typeof(draft_value) <> 'object'
     or octet_length(draft_value::text) > 131072
@@ -131,8 +291,15 @@ begin
     keywords = excluded.keywords,
     updated_at = clock_timestamp();
 
-  delete from public.career_evidence_items
-  where user_id = actor_user_id and origin = 'user';
+  delete from public.career_evidence_items as evidence
+  where evidence.user_id = actor_user_id
+    and evidence.origin = 'user'
+    and not exists (
+      select 1
+      from jsonb_array_elements(draft_value -> 'evidence') as item
+      where item ->> 'origin' = 'user'
+        and (item ->> 'id')::uuid = evidence.id
+    );
 
   insert into public.career_evidence_items (
     id,
@@ -176,11 +343,28 @@ begin
   )
   where item."origin" = 'user'
     and item."evidenceReference" is null
-  on conflict do nothing;
+  on conflict (id) do update set
+    normalized_concept = excluded.normalized_concept,
+    label = excluded.label,
+    category = excluded.category,
+    confidence = excluded.confidence,
+    evidence_excerpt = excluded.evidence_excerpt,
+    proficiency_signal = excluded.proficiency_signal,
+    last_used_at = excluded.last_used_at,
+    confirmation_state = excluded.confirmation_state,
+    updated_at = clock_timestamp()
+  where career_evidence_items.user_id = actor_user_id
+    and career_evidence_items.origin = 'user';
+
+  perform private.prune_search_profile_evidence(actor_user_id);
 end;
 $$;
 
-create or replace function public.save_search_profile(draft_value jsonb)
+create or replace function public.save_search_profile(
+  target_search_id uuid,
+  expected_generation bigint,
+  draft_value jsonb
+)
 returns uuid
 language plpgsql
 security definer
@@ -189,17 +373,87 @@ as $$
 declare
   actor_user_id uuid := auth.uid();
   saved_search_id uuid;
+  requested_skill_concepts text[];
+  requested_responsibility_concepts text[];
 begin
   if actor_user_id is null or not public.has_approved_access() then
     raise exception using errcode = '42501', message = 'approved access required';
   end if;
+  if expected_generation < 0 then
+    raise exception using errcode = '22023', message = 'invalid profile generation';
+  end if;
+  insert into public.career_profile_generations (user_id)
+  values (actor_user_id)
+  on conflict (user_id) do nothing;
+  perform 1
+  from public.career_profile_generations as fence
+  where fence.user_id = actor_user_id
+    and fence.generation = expected_generation
+  for update;
+  if not found then
+    raise exception using errcode = '40001', message = 'stale career profile snapshot';
+  end if;
+  insert into public.career_profiles (user_id)
+  values (actor_user_id)
+  on conflict (user_id) do nothing;
   if jsonb_typeof(draft_value) <> 'object'
     or octet_length(draft_value::text) > 65536
-    or char_length(draft_value ->> 'name') not between 1 and 80 then
+    or char_length(draft_value ->> 'name') not between 1 and 80
+    or jsonb_typeof(draft_value -> 'skillConcepts') <> 'array'
+    or jsonb_typeof(draft_value -> 'responsibilityConcepts') <> 'array' then
     raise exception using errcode = '22023', message = 'invalid search profile';
   end if;
 
-  insert into public.search_profiles (
+  requested_skill_concepts := array(
+    select jsonb_array_elements_text(draft_value -> 'skillConcepts')
+  );
+  requested_responsibility_concepts := array(
+    select jsonb_array_elements_text(draft_value -> 'responsibilityConcepts')
+  );
+
+  if not public.text_array_has_unique_values(requested_skill_concepts)
+    or not public.text_array_has_unique_values(requested_responsibility_concepts) then
+    raise exception using errcode = '22023', message = 'search evidence concepts must be unique';
+  end if;
+
+  if exists (
+    select 1
+    from unnest(requested_skill_concepts) as requested(concept)
+    where not exists (
+      select 1
+      from public.career_evidence_items as evidence
+      where evidence.user_id = actor_user_id
+        and evidence.confirmation_state = 'confirmed'
+        and evidence.category in ('skill', 'tool')
+        and evidence.normalized_concept = requested.concept
+    )
+  ) or exists (
+    select 1
+    from unnest(requested_responsibility_concepts) as requested(concept)
+    where not exists (
+      select 1
+      from public.career_evidence_items as evidence
+      where evidence.user_id = actor_user_id
+        and evidence.confirmation_state = 'confirmed'
+        and evidence.category = 'responsibility'
+        and evidence.normalized_concept = requested.concept
+    )
+  ) then
+    raise exception using
+      errcode = '22023',
+      message = 'search evidence must be confirmed owner evidence';
+  end if;
+
+  if target_search_id is not null and not exists (
+    select 1
+    from public.search_profiles as search
+    where search.id = target_search_id and search.user_id = actor_user_id
+  ) then
+    raise exception using errcode = 'P0002', message = 'search profile not found';
+  end if;
+
+  insert into public.search_profiles as existing_search (
+    id,
     user_id,
     name,
     enabled,
@@ -225,6 +479,7 @@ begin
     notifications_enabled,
     updated_at
   ) values (
+    coalesce(target_search_id, gen_random_uuid()),
     actor_user_id,
     draft_value ->> 'name',
     (draft_value ->> 'enabled')::boolean,
@@ -233,8 +488,8 @@ begin
     array(select jsonb_array_elements_text(draft_value -> 'excludeTerms')),
     draft_value -> 'industries',
     draft_value -> 'domains',
-    array(select jsonb_array_elements_text(draft_value -> 'skillConcepts')),
-    array(select jsonb_array_elements_text(draft_value -> 'responsibilityConcepts')),
+    requested_skill_concepts,
+    requested_responsibility_concepts,
     draft_value ->> 'currentSeniority',
     draft_value ->> 'targetSeniority',
     array(select jsonb_array_elements_text(draft_value -> 'employmentTypes')),
@@ -250,7 +505,8 @@ begin
     (draft_value ->> 'notificationsEnabled')::boolean,
     clock_timestamp()
   )
-  on conflict (user_id, name) do update set
+  on conflict (id) do update set
+    name = excluded.name,
     enabled = excluded.enabled,
     role_families = excluded.role_families,
     include_terms = excluded.include_terms,
@@ -273,7 +529,12 @@ begin
     recency_days = excluded.recency_days,
     notifications_enabled = excluded.notifications_enabled,
     updated_at = clock_timestamp()
-  returning id into saved_search_id;
+  where existing_search.user_id = actor_user_id
+  returning existing_search.id into saved_search_id;
+
+  if saved_search_id is null then
+    raise exception using errcode = 'P0002', message = 'search profile not found';
+  end if;
 
   return saved_search_id;
 end;
@@ -293,6 +554,36 @@ declare
 begin
   if actor_user_id is null or not public.has_approved_access() then
     raise exception using errcode = '42501', message = 'approved access required';
+  end if;
+
+  insert into public.career_profile_generations (user_id)
+  values (actor_user_id)
+  on conflict (user_id) do nothing;
+  perform 1
+  from public.career_profile_generations as fence
+  where fence.user_id = actor_user_id
+  for update;
+
+  if not exists (
+    select 1
+    from public.cv_documents as document
+    where document.id = target_document_id
+      and document.user_id = actor_user_id
+      and document.storage_path = expected_storage_path
+      and document.is_current
+  ) then
+    raise exception using errcode = 'P0002', message = 'current CV not found';
+  end if;
+
+  if exists (
+    select 1
+    from storage.objects as object
+    where object.bucket_id = 'career-documents'
+      and object.name = expected_storage_path
+  ) then
+    raise exception using
+      errcode = '23503',
+      message = 'Storage object must be removed first';
   end if;
 
   delete from public.cv_documents
@@ -318,16 +609,39 @@ begin
   if actor_user_id is null or not public.has_approved_access() then
     raise exception using errcode = '42501', message = 'approved access required';
   end if;
+  insert into public.career_profile_generations (user_id)
+  values (actor_user_id)
+  on conflict (user_id) do nothing;
+  perform 1
+  from public.career_profile_generations as fence
+  where fence.user_id = actor_user_id
+  for update;
+  if exists (
+    select 1
+    from storage.objects as object
+    where object.bucket_id = 'career-documents'
+      and object.name like actor_user_id::text || '/%'
+  ) then
+    raise exception using
+      errcode = '23503',
+      message = 'Storage objects must be removed first';
+  end if;
+  update public.career_profile_generations
+  set generation = generation + 1, updated_at = clock_timestamp()
+  where user_id = actor_user_id;
+  delete from public.career_cv_upload_intents where user_id = actor_user_id;
   delete from public.career_profiles where user_id = actor_user_id;
 end;
 $$;
 
-revoke all on function public.save_career_profile_draft(jsonb) from public, anon;
-revoke all on function public.save_search_profile(jsonb) from public, anon;
+revoke all on function public.get_career_profile_snapshot() from public, anon;
+revoke all on function public.save_career_profile_draft(bigint, jsonb) from public, anon;
+revoke all on function public.save_search_profile(uuid, bigint, jsonb) from public, anon;
 revoke all on function public.delete_current_cv(uuid, text) from public, anon;
 revoke all on function public.delete_career_profile_data() from public, anon;
-grant execute on function public.save_career_profile_draft(jsonb),
-  public.save_search_profile(jsonb), public.delete_current_cv(uuid, text),
+grant execute on function public.get_career_profile_snapshot(),
+  public.save_career_profile_draft(bigint, jsonb),
+  public.save_search_profile(uuid, bigint, jsonb), public.delete_current_cv(uuid, text),
   public.delete_career_profile_data() to authenticated;
 
 commit;
