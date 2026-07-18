@@ -29,11 +29,11 @@ LinkedIn requires express crawling permission; Indeed requires an authorised fee
 - `greenhouse`: a complete per-employer board snapshot using `boardToken`;
 - `reed`: one global GB incremental source using the fixed source key `gb-discovery`.
 
-`ProviderAdapter.fetchJobs` returns `{ jobs, coverage }`, where `coverage` is `complete` or `incremental`. Greenhouse returns `complete`. Reed returns `incremental` because a bounded newest-results window cannot prove that every older live Reed advert is absent.
+`ProviderAdapter.fetchJobs` returns `{ jobs, coverage }`, where `coverage` is `complete` or `incremental`. Greenhouse returns `complete`. Reed returns `incremental` because one bounded search page cannot prove that every other live Reed advert is absent.
 
 An incremental successful run is still a successful run, updates freshness, and completes its queue request, but never increments omission counters. A failed or capped run also never increments omissions. Complete Greenhouse snapshots retain the existing two-consecutive-successful-omissions rule.
 
-Reed search/detail traffic is bounded to 50 newest results per run, four detail requests in flight, the existing three attempts, and the Edge Function's abort deadline. A 429 is a source failure with no paid or alternate fallback. The source minimum interval is at least six hours unless a later written provider allowance explicitly permits more.
+Reed search/detail traffic is bounded to the first 50 results returned per run, four detail requests in flight, the existing three attempts, and the Edge Function's abort deadline. The adapter sends only parameters listed by the public Jobseeker API page and makes no ordering claim. A 429 is a source failure with no paid or alternate fallback. The source minimum interval is at least six hours unless a later written provider allowance explicitly permits more.
 
 ## Removal and lifecycle
 

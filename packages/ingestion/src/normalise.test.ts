@@ -186,6 +186,34 @@ describe("Greenhouse normalisation", () => {
     expect(job.deduplicationKey).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  it("falls back to visible advertised GBP when structured salary fields are empty", async () => {
+    const job = await eligibleJob({
+      ...baseJob,
+      descriptionHtml:
+        "<p>UK role with an advertised salary of £62,000 per year.</p>",
+      postedAt: "2026-07-18T08:00:00.000Z",
+      compensation: {
+        raw: null,
+        minimum: null,
+        maximum: null,
+        currency: null,
+        period: "unknown",
+        provenance: "unknown",
+        observedAt: null,
+      },
+    });
+
+    expect(job).toMatchObject({
+      compensationRaw: "UK role with an advertised salary of £62,000 per year.",
+      compensationMinimum: 6_200_000,
+      compensationMaximum: null,
+      compensationCurrency: "GBP",
+      compensationPeriod: "year",
+      compensationProvenance: "advertised",
+      compensationObservedAt: "2026-07-17T10:00:00Z",
+    });
+  });
+
   it("falls back to a provider occurrence key when no canonical employer URL exists", async () => {
     const first = await eligibleJob(baseJob);
     const second = await eligibleJob({
@@ -197,6 +225,33 @@ describe("Greenhouse normalisation", () => {
     expect(first.deduplicationKey).toBe(second.deduplicationKey);
     expect(first.compensationProvenance).toBe("unknown");
     expect(first.compensationObservedAt).toBeNull();
+  });
+
+  it("uses the same exact employer URL identity across Greenhouse and Reed", async () => {
+    const employerUrl =
+      "https://boards.greenhouse.io/acme/jobs/normalise-1?utm_source=board";
+    const greenhouse = await eligibleJob({
+      ...baseJob,
+      canonicalApplicationUrl: employerUrl,
+    });
+    const reed = await eligibleJob(
+      {
+        ...baseJob,
+        providerJobId: "reed-1",
+        absoluteUrl: "https://www.reed.co.uk/jobs/platform-engineer/1",
+        canonicalApplicationUrl:
+          "https://boards.greenhouse.io/acme/jobs/normalise-1?utm_source=reed",
+      },
+      {
+        id: "f9d635bc-3b4f-4235-b966-3779f279bd5f",
+        provider: "reed",
+        boardToken: "gb-discovery",
+        employerName: "Reed",
+        allowedHosts: ["www.reed.co.uk"],
+      },
+    );
+
+    expect(reed.deduplicationKey).toBe(greenhouse.deduplicationKey);
   });
 
   it("never trusts an unsafe external URL as a cross-source deduplication key", async () => {

@@ -145,11 +145,15 @@ describe("administrator workspace", () => {
     const source = screen
       .getByText("Fictional Northstar UK Ltd")
       .closest("article");
-    expect(source).toHaveTextContent("greenhouse · complete coverage");
+    expect(source).toHaveTextContent("greenhouse · complete snapshot source");
+    expect(source).toHaveTextContent("Fresh · Last successful sync");
+    expect(source).toHaveTextContent("Latest run: succeeded");
     expect(source).toHaveTextContent("42 active occurrences");
     expect(source).toHaveTextContent("Advertised salary31");
     expect(source).toHaveTextContent("Salary not stated11");
     expect(source).toHaveTextContent("Contract13");
+    expect(source).toHaveTextContent("Temporary5");
+    expect(source).toHaveTextContent("Full time37");
     expect(source).toHaveTextContent("Part time5");
   });
 

@@ -71,6 +71,7 @@ describe("Greenhouse read-only adapter", () => {
       descriptionHtml:
         "<p>Permanent full-time hybrid role.</p><p>Build reliable platforms for our customers.</p>",
       absoluteUrl: "https://boards.greenhouse.io/acme/jobs/1001",
+      canonicalApplicationUrl: "https://boards.greenhouse.io/acme/jobs/1001",
       updatedAt: "2026-07-16T09:30:00Z",
       metadataText: ["Employment Type: Permanent", "Salary: £60,000 per year"],
     });

@@ -18,7 +18,7 @@ Never paste the Reed API key into Git, a pull request, issue, chat, SQL, URL, br
 - Allowed host: `www.reed.co.uk`
 - Coverage: incremental
 - Minimum successful-sync interval: six hours
-- Per-run discovery cap: 50 newest search results
+- Per-run discovery cap: the first 50 results returned by the documented search endpoint; no ordering claim is made
 - Detail concurrency: four requests
 - Salary provenance: advertised when Reed returns salary data; otherwise unknown
 - Omission rule: an incremental omission never closes a role
@@ -131,7 +131,7 @@ Reed is environment-managed and deliberately read-only in the current administra
    where provider = 'reed' and board_token = 'gb-discovery';
    ```
 
-5. As an approved administrator, request the source once from `/admin/sources`, then invoke the bearer-protected Edge Function once as described in `docs/operations/ingestion.md`.
+5. As an approved administrator, request the source once from `/admin/ingestion`, then invoke the bearer-protected Edge Function once as described in the [shared ingestion runbook](ingestion.md).
 6. Inspect the administrator source-health and ingestion-run views. Confirm:
    - provider is Reed and coverage is incremental;
    - no more than 50 jobs were received;
@@ -175,6 +175,14 @@ where occurrence.source_id = source.id
   and source.provider = 'reed'
   and source.board_token = 'gb-discovery';
 
+select private.rematerialize_canonical_job(affected.job_id)
+from (select distinct job_id from reed_affected_jobs) as affected
+where exists (
+  select 1
+  from public.job_source_occurrences as remaining
+  where remaining.job_id = affected.job_id
+);
+
 delete from public.jobs as job
 using reed_affected_jobs as affected
 where job.id = affected.job_id
@@ -184,10 +192,14 @@ where job.id = affected.job_id
     where remaining.job_id = job.id
   );
 
-delete from public.job_sources
+update public.job_sources
+set
+  enabled = false,
+  compliance_notes = 'Reed provider data removed on YYYY-MM-DD; historical source and run audit retained.',
+  updated_at = clock_timestamp()
 where provider = 'reed' and board_token = 'gb-discovery';
 
 commit;
 ```
 
-Do not run this removal block merely to disable ingestion. Deletion is material and should happen only after the owner has confirmed the provider/legal requirement, backup, exact target, and recovery plan. Afterward, verify that no Reed source occurrences remain, any multi-source canonical jobs survive, the API key is revoked, caches are purged if introduced later, and the deletion decision is recorded without provider content or secrets.
+The source row is retained as a disabled compliance tombstone because historical ingestion runs reference it with deletion restrictions. Occurrence candidates are the provider-derived display data: removing them and rematerialising every remaining multi-source canonical job prevents Reed fields from surviving as the selected representation. Do not run this removal block merely to disable ingestion. Deletion is material and should happen only after the owner has confirmed the provider/legal requirement, backup, exact target, and recovery plan. Afterward, verify that no Reed source occurrences remain, any multi-source canonical jobs now use a remaining source, the API key is revoked, caches are purged if introduced later, and the deletion decision is recorded without provider content or secrets.

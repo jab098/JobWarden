@@ -271,6 +271,26 @@ export function verifyFoundationSql(files) {
       "missing exact source occurrence identity uniqueness",
     ],
     [
+      "candidate_data jsonb not null check (jsonb_typeof(candidate_data) = 'object')",
+      "source occurrences must retain validated canonical candidates",
+    ],
+    [
+      "create or replace function private.rematerialize_canonical_job(target_job_id uuid)",
+      "missing deterministic canonical rematerialisation",
+    ],
+    [
+      "case source.provider when 'greenhouse' then 0 else 1 end",
+      "canonical ranking must prefer direct Greenhouse evidence after salary provenance",
+    ],
+    [
+      "source.provider in ('greenhouse', 'reed')",
+      "shared queue must admit every database-supported provider",
+    ],
+    [
+      "source_record.provider not in ('greenhouse', 'reed')",
+      "source-run startup must admit every database-supported provider",
+    ],
+    [
       "compensation_provenance in ('advertised', 'estimated', 'unknown')",
       "missing compensation provenance constraint",
     ],
@@ -295,6 +315,16 @@ export function verifyFoundationSql(files) {
       "grant execute on function public.get_job_source_health() to authenticated",
       "source-health function must have its narrow authenticated grant",
     ],
+    [
+      "freshness_state text",
+      "source health must expose a bounded freshness state",
+    ],
+    [
+      "latest_error_code text",
+      "source health must expose the sanitised latest error code",
+    ],
+    ["temporary_roles integer", "source health must count temporary roles"],
+    ["full_time_roles integer", "source health must count full-time roles"],
   ];
 
   for (const [fragment, message] of requiredFragments) {

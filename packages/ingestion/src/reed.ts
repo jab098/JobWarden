@@ -78,12 +78,19 @@ function isoDate(value: string | null | undefined): string | null {
 function compensationPeriod(
   value: string | null | undefined,
 ): NonNullable<ProviderJob["compensation"]>["period"] {
-  const normalised = value?.trim().toLowerCase();
-  if (normalised === "hourly") return "hour";
-  if (normalised === "daily") return "day";
-  if (normalised === "weekly") return "week";
-  if (normalised === "monthly") return "month";
-  if (normalised === "yearly" || normalised === "annual") return "year";
+  const normalised = value?.replace(/[^a-z]/gi, "").toLowerCase();
+  if (normalised === "hourly" || normalised === "perhour") return "hour";
+  if (normalised === "daily" || normalised === "perday") return "day";
+  if (normalised === "weekly" || normalised === "perweek") return "week";
+  if (normalised === "monthly" || normalised === "permonth") return "month";
+  if (
+    normalised === "yearly" ||
+    normalised === "annual" ||
+    normalised === "annum" ||
+    normalised === "perannum"
+  ) {
+    return "year";
+  }
   return "unknown";
 }
 
@@ -341,7 +348,6 @@ export class ReedAdapter implements ProviderAdapter {
     const searchUrl = new URL("https://www.reed.co.uk/api/1.0/search");
     searchUrl.searchParams.set("resultsToTake", String(MAX_RESULTS));
     searchUrl.searchParams.set("resultsToSkip", "0");
-    searchUrl.searchParams.set("sortBy", "DisplayDate");
     const payload = await this.#request(searchUrl, callerSignal);
     const parsed = searchResponseSchema.safeParse(payload);
     if (!parsed.success) {

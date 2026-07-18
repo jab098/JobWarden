@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(31);
+select plan(42);
 
 select has_table('public', 'job_source_occurrences', 'source occurrences are persisted');
 select has_column('public', 'job_sources', 'coverage_mode', 'sources declare coverage mode');
@@ -10,6 +10,8 @@ select has_column('public', 'jobs', 'compensation_provenance', 'jobs retain comp
 select has_column('public', 'jobs', 'deduplication_key', 'jobs retain an exact deduplication key');
 select has_column('public', 'job_source_occurrences', 'provider_job_id', 'occurrences retain provider identity');
 select has_column('public', 'job_source_occurrences', 'last_seen_source_run_id', 'occurrences retain source-run provenance');
+select has_column('public', 'job_source_occurrences', 'content_hash', 'occurrences retain candidate content identity');
+select has_column('public', 'job_source_occurrences', 'candidate_data', 'occurrences retain rematerialisation candidates');
 
 select ok(
   has_function_privilege('service_role', 'public.upsert_ingested_jobs(uuid,jsonb)', 'EXECUTE'),
@@ -156,6 +158,8 @@ select lives_ok(
 select is((select count(*)::integer from public.jobs where deduplication_key = repeat('a', 64)), 1, 'exact-key deduplication does not duplicate the canonical job');
 select is((select count(*)::integer from public.job_source_occurrences where job_id = (select id from public.jobs where deduplication_key = repeat('a', 64))), 2, 'both provider occurrences remain attributable');
 select is((select compensation_provenance from public.jobs where deduplication_key = repeat('a', 64)), 'advertised', 'advertised salary provenance is stored');
+select is((select source_id from public.jobs where deduplication_key = repeat('a', 64)), '61000000-0000-4000-8000-000000000001'::uuid, 'direct Greenhouse evidence wins after equal salary provenance');
+select is((select application_url from public.jobs where deduplication_key = repeat('a', 64)), 'https://boards.greenhouse.io/canonical/jobs/1', 'canonical display data does not oscillate with later aggregator arrival');
 select lives_ok(
   $$ select public.finish_source_ingestion('63000000-0000-4000-8000-000000000002', 'succeeded', false, 1, 1, 0, 1, 0, 5, 0, null) $$,
   'an incremental response succeeds without pretending to be complete'
@@ -204,6 +208,81 @@ select lives_ok(
 select is((select lifecycle_status from public.job_source_occurrences where source_id = '61000000-0000-4000-8000-000000000002'), 'closed', 'the expired incremental occurrence closes explicitly');
 select is((select lifecycle_status from public.jobs where deduplication_key = repeat('a', 64)), 'closed', 'the canonical job closes only after every occurrence closes');
 select is((select count(distinct job_id)::integer from public.job_source_occurrences), (select count(*)::integer from public.jobs), 'every canonical job has occurrence provenance');
+
+reset role;
+delete from public.ingestion_requests where source_id = '61000000-0000-4000-8000-000000000002';
+update public.job_sources
+set enabled = true, last_successful_sync_at = null
+where id = '61000000-0000-4000-8000-000000000002';
+set local role service_role;
+
+select lives_ok(
+  $$ select public.enqueue_scheduled_ingestion() $$,
+  'the shared scheduler can enqueue an enabled Reed source'
+);
+select is(
+  (select count(*)::integer from public.ingestion_requests where source_id = '61000000-0000-4000-8000-000000000002' and status = 'pending'),
+  1,
+  'Reed enters the shared pending queue'
+);
+select lives_ok(
+  $$ create temporary table reed_claim on commit drop as select * from public.claim_ingestion_requests(1) $$,
+  'the shared worker can claim and start a Reed source run'
+);
+select is((select provider from reed_claim), 'reed', 'the claimed source retains Reed dispatch identity');
+select lives_ok(
+  $$
+    select * from public.upsert_ingested_jobs(
+      (select source_run_id from reed_claim),
+      jsonb_build_array(jsonb_build_object(
+        'providerJobId', 'reed-queue-1',
+        'title', 'Queued Reed Consultant',
+        'employer', 'Queue Fixture Ltd',
+        'descriptionText', 'UK role from the shared queue.',
+        'applicationUrl', 'https://www.reed.co.uk/jobs/queued-reed-consultant/1',
+        'countryCode', 'GB',
+        'ukEligibilityEvidence', jsonb_build_array('Manchester, United Kingdom'),
+        'employmentType', 'temporary',
+        'workingTime', 'full_time',
+        'workplaceType', 'hybrid',
+        'ir35Status', 'unknown',
+        'compensationRaw', null,
+        'compensationMinimum', null,
+        'compensationMaximum', null,
+        'compensationCurrency', null,
+        'compensationPeriod', 'unknown',
+        'compensationProvenance', 'unknown',
+        'compensationObservedAt', null,
+        'postedAt', '2026-07-18T13:00:00Z',
+        'closesAt', null,
+        'deduplicationKey', repeat('d', 64),
+        'contentHash', repeat('e', 64)
+      ))
+    )
+  $$,
+  'a claimed Reed run persists through the shared transactional batch'
+);
+select lives_ok(
+  $$
+    do $block$
+    begin
+      perform public.finish_source_ingestion(
+        (select source_run_id from reed_claim),
+        'succeeded', false, 1, 1, 1, 0, 0, 5, 0, null
+      );
+      perform public.complete_ingestion_request(
+        (select request_id from reed_claim)
+      );
+    end
+    $block$
+  $$,
+  'the claimed Reed run finalises and completes its queue delivery'
+);
+select is(
+  (select status from public.ingestion_requests where id = (select request_id from reed_claim)),
+  'completed',
+  'the Reed queue lifecycle reaches completed'
+);
 
 select * from finish();
 rollback;

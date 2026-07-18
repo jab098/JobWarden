@@ -299,6 +299,7 @@ export class GreenhouseAdapter implements ProviderAdapter {
           location: job.location.name,
           descriptionHtml: job.content,
           absoluteUrl: job.absolute_url,
+          canonicalApplicationUrl: job.absolute_url,
           updatedAt: job.updated_at,
           metadataText: (job.metadata ?? [])
             .map(

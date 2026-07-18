@@ -7,8 +7,18 @@ const metrics = [
   ["Salary not stated", "unknownCompensation"],
   ["Permanent", "permanentRoles"],
   ["Contract", "contractRoles"],
+  ["Temporary", "temporaryRoles"],
+  ["Full time", "fullTimeRoles"],
   ["Part time", "partTimeRoles"],
 ] as const;
+
+const freshnessLabel = {
+  fresh: "Fresh",
+  stale: "Stale",
+  failed: "Latest run failed",
+  never: "Never synced",
+  disabled: "Disabled",
+} as const;
 
 export function SourceHealthList({
   sources,
@@ -43,7 +53,10 @@ export function SourceHealthList({
                 <div>
                   <h3 className="font-semibold">{source.employerName}</h3>
                   <p className="mt-1 font-mono text-xs uppercase tracking-[0.08em] text-[#596173]">
-                    {source.provider} · {source.coverageMode} coverage
+                    {source.provider} ·{" "}
+                    {source.coverageMode === "complete"
+                      ? "complete snapshot source"
+                      : "incremental indexed coverage"}
                   </p>
                 </div>
                 <p className="text-sm text-[#596173]">
@@ -54,12 +67,16 @@ export function SourceHealthList({
                 </p>
               </div>
               <p className="mt-3 text-xs text-[#596173]">
-                Last successful sync:{" "}
+                {freshnessLabel[source.freshnessState]} · Last successful sync:{" "}
                 {source.lastSuccessfulSyncAt
                   ? formatAdminDate(source.lastSuccessfulSyncAt)
                   : "Never"}
+                {source.latestRunStatus
+                  ? ` · Latest run: ${source.latestRunStatus}`
+                  : ""}
+                {source.latestErrorCode ? ` · ${source.latestErrorCode}` : ""}
               </p>
-              <dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
+              <dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-3 text-sm sm:grid-cols-4 xl:grid-cols-8">
                 {metrics.map(([label, field]) => (
                   <div key={field}>
                     <dt className="text-xs text-[#596173]">{label}</dt>

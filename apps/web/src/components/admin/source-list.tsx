@@ -56,7 +56,9 @@ export function SourceList({
                   </div>
                   <p className="mt-1 font-mono text-xs text-[#596173]">
                     {source.provider} / {source.boardToken} ·{" "}
-                    {source.coverageMode} coverage
+                    {source.coverageMode === "complete"
+                      ? "complete snapshot source"
+                      : "incremental indexed coverage"}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">

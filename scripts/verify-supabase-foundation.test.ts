@@ -125,6 +125,11 @@ describe("Supabase foundation static verifier", () => {
         "Reed discovery sources must enforce a six-hour minimum interval",
         "incremental source completion must not advance omissions",
         "missing bounded closing-date lifecycle maintenance",
+        "source occurrences must retain validated canonical candidates",
+        "missing deterministic canonical rematerialisation",
+        "shared queue must admit every database-supported provider",
+        "source health must expose a bounded freshness state",
+        "source health must count full-time roles",
       ]),
     );
   });

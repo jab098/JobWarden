@@ -14,8 +14,6 @@ export async function hashNormalisedJobContent(
   job: NormalisedJobContent,
 ): Promise<string> {
   const canonicalContent = {
-    sourceId: job.sourceId,
-    providerJobId: job.providerJobId,
     title: job.title,
     employer: job.employer,
     descriptionText: job.descriptionText,
@@ -32,6 +30,7 @@ export async function hashNormalisedJobContent(
     compensationCurrency: job.compensationCurrency,
     compensationPeriod: job.compensationPeriod,
     compensationProvenance: job.compensationProvenance,
+    compensationObservedAt: job.compensationObservedAt,
     postedAt: job.postedAt,
     closesAt: job.closesAt,
     deduplicationKey: job.deduplicationKey,

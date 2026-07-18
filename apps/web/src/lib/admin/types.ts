@@ -65,13 +65,19 @@ export type SourceHealthView = {
   employerName: string;
   provider: "greenhouse" | "reed";
   coverageMode: "complete" | "incremental";
+  enabled: boolean;
+  freshnessState: "fresh" | "stale" | "failed" | "never" | "disabled";
   lastSuccessfulSyncAt: string | null;
+  latestRunStatus: "running" | "succeeded" | "failed" | null;
+  latestErrorCode: string | null;
   activeOccurrences: number;
   advertisedCompensation: number;
   estimatedCompensation: number;
   unknownCompensation: number;
   permanentRoles: number;
   contractRoles: number;
+  temporaryRoles: number;
+  fullTimeRoles: number;
   partTimeRoles: number;
 };
 

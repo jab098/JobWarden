@@ -371,18 +371,28 @@ export async function normaliseProviderJob(
   );
   const inferredCompensation = parseCompensation(inferredCompensationRaw ?? "");
   const structuredCompensation = providerJob.compensation;
-  const compensationRaw =
-    structuredCompensation?.raw ?? inferredCompensationRaw;
-  const compensationMinimum = structuredCompensation
+  const structuredMinimum = structuredCompensation
     ? toMinorUnits(structuredCompensation.minimum)
-    : inferredCompensation.minimum;
-  const compensationMaximum = structuredCompensation
+    : null;
+  const structuredMaximum = structuredCompensation
     ? toMinorUnits(structuredCompensation.maximum)
+    : null;
+  const hasStructuredCompensation =
+    structuredCompensation?.currency === "GBP" &&
+    (structuredMinimum !== null || structuredMaximum !== null);
+  const compensationRaw = hasStructuredCompensation
+    ? structuredCompensation.raw
+    : inferredCompensationRaw;
+  const compensationMinimum = hasStructuredCompensation
+    ? structuredMinimum
+    : inferredCompensation.minimum;
+  const compensationMaximum = hasStructuredCompensation
+    ? structuredMaximum
     : inferredCompensation.maximum;
-  const compensationCurrency = structuredCompensation
+  const compensationCurrency = hasStructuredCompensation
     ? structuredCompensation.currency
     : inferredCompensation.currency;
-  const compensationPeriod = structuredCompensation
+  const compensationPeriod = hasStructuredCompensation
     ? structuredCompensation.period
     : inferredCompensation.period;
   const hasAdvertisedCompensation =
@@ -411,9 +421,17 @@ export async function normaliseProviderJob(
     compensationCurrency,
     compensationPeriod,
     compensationProvenance:
-      structuredCompensation?.provenance ??
-      (hasAdvertisedCompensation ? "advertised" : "unknown"),
-    compensationObservedAt: structuredCompensation?.observedAt ?? null,
+      hasStructuredCompensation && structuredCompensation
+        ? structuredCompensation.provenance
+        : hasAdvertisedCompensation
+          ? "advertised"
+          : "unknown",
+    compensationObservedAt:
+      hasStructuredCompensation && structuredCompensation
+        ? structuredCompensation.observedAt
+        : hasAdvertisedCompensation
+          ? (providerJob.updatedAt ?? providerJob.postedAt ?? null)
+          : null,
     postedAt: providerJob.postedAt ?? null,
     closesAt: providerJob.closesAt ?? null,
     deduplicationKey: await deduplicationKey(source, providerJob),

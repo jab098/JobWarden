@@ -28,7 +28,7 @@ const details = {
   minimumSalary: 450,
   maximumSalary: 550,
   currency: "GBP",
-  salaryType: "Daily",
+  salaryType: "Per Annum",
   contractType: "Contract",
   jobType: "PartTime",
 };
@@ -56,7 +56,7 @@ function adapterWith(
 }
 
 describe("Reed Jobseeker API adapter", () => {
-  it("fetches a bounded newest-first UK page and maps validated detail evidence", async () => {
+  it("fetches one bounded documented UK page and maps provider salary phrases", async () => {
     const requests: Array<{ url: URL; init?: RequestInit }> = [];
     const fetchImplementation: typeof fetch = async (input, init) => {
       const url = new URL(String(input));
@@ -75,7 +75,7 @@ describe("Reed Jobseeker API adapter", () => {
     );
     expect(requests[0]?.url.searchParams.get("resultsToTake")).toBe("50");
     expect(requests[0]?.url.searchParams.get("resultsToSkip")).toBe("0");
-    expect(requests[0]?.url.searchParams.get("sortBy")).toBe("DisplayDate");
+    expect(requests[0]?.url.searchParams.has("sortBy")).toBe(false);
     expect(requests[1]?.url.pathname).toBe("/api/1.0/jobs/123");
     for (const request of requests) {
       const headers = new Headers(request.init?.headers);
@@ -101,11 +101,11 @@ describe("Reed Jobseeker API adapter", () => {
         employmentType: "contract",
         workingTime: "part_time",
         compensation: {
-          raw: "GBP 450 - 550 per day",
+          raw: "GBP 450 - 550 per year",
           minimum: 450,
           maximum: 550,
           currency: "GBP",
-          period: "day",
+          period: "year",
           provenance: "advertised",
           observedAt: "2026-07-18T09:00:00.000Z",
         },
