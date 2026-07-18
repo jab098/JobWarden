@@ -88,6 +88,8 @@ alter table public.career_profiles force row level security;
 
 ### Task 3: Safe deterministic CV intake
 
+**Progress (2026-07-18):** The package, strict pre-parser file gate, sanitised error vocabulary, and deterministic evidence proposal are implemented with fictional tests. DOCX/PDF parser tests and implementations remain open because `fflate` and `unpdf` are not present locally and this sandbox cannot currently reach the package registry; do not substitute an unreviewed home-grown document parser.
+
 **Files:**
 - Create: `packages/profile/package.json`
 - Create: `packages/profile/tsconfig.json`
