@@ -4,9 +4,11 @@
 
 **Base:** Task 9 merge `44a3580`
 
-**Local implementation status:** complete
+**Local implementation head:** `b0d4da3`
 
-**Delivery status:** independent pull-request review, push, merge, local `main` update, and merge-commit verification pending
+**Task-slice review status:** remediation Tasks 1–3 independently passed specification and quality review with no remaining findings
+
+**Delivery status:** active; final whole-branch review, PR #11 update/merge, local `main` update, and merge-commit verification remain pending
 
 ## Outcome
 
@@ -15,59 +17,53 @@ Task 10 implements the private career-profile model, bounded deterministic DOCX/
 Real CV handling remains closed at two independent boundaries:
 
 - the web repository always returns a disabled upload capability and the UI contains no file input; and
-- `private.app_settings.career_cv_uploads_enabled` defaults false and blocks Storage insert/update, CV registration, and extraction claims. Task 10 exposes no setter.
+- `private.app_settings.career_cv_uploads_enabled` defaults false and blocks upload intents, Storage inserts, CV registration, and extraction claims. Task 10 exposes no setter.
 
-The branch must not be described as `reviewed` or delivered until the ready pull request receives an independent full-range review, is merged to GitHub `main`, and the merge commit passes the same verification. Task 11 has not started.
+The branch must not be described as `reviewed` or delivered until the final whole-branch review of `44a3580..HEAD` is clean, PR #11 is merged to GitHub `main`, and the merge commit passes the same verification. Task 11 has not started.
 
 ## Acceptance mapping
 
-| Outcome                        | Evidence                                                                                                                                                                                                                    |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Flexible onboarding            | Strict domain draft accepts any non-empty combination of CV reference, role family, industry/domain, user evidence, or keyword; empty drafts fail                                                                           |
-| Evidence-bound personalisation | Evidence stores normalised concept, label, category, origin, confidence, bounded excerpt/reference, proficiency, recency, and confirmation state; searches include confirmed evidence only                                  |
-| Separate seniority             | Current and target seniority are separate throughout domain, database, repository, UI, and named searches                                                                                                                   |
-| Owner-only private data        | Six career tables and the AI counter force RLS; private Storage uses approved owner paths; administrators have no default profile/CV visibility                                                                             |
-| Safe file intake               | DOCM/legacy/mismatched files, unsafe paths/relationships/entities/comments/namespaces/executable parts, oversized archives, encrypted/malformed/over-page PDFs, excessive text, and deadlines fail before proposal creation |
-| Deterministic fallback         | Explicit phrase rules emit offset-backed proposed evidence and evidence-backed inactive role suggestions without raw CV text                                                                                                |
-| Optional AI ceiling            | Default allowance zero; application-wide `0..25` daily reservation is globally locked and user-audited; one run/user; 60,000 input characters; 4,000 output tokens; 30 seconds; no retry/paid fallback                      |
-| Explicit review                | Successful completion materialises proposed evidence/suggestions; owners can confirm/exclude evidence and accept/dismiss suggestions; user-confirmed evidence cannot be overwritten by extraction                           |
-| Retention/deletion             | Raw structured proposals expire after 24 hours on an hourly job; Storage is removed before metadata; failed replacement restores the prior usable CV; direct profile-row deletion is denied                                 |
-| Real uploads disabled          | UI, repository, Storage policies, registration RPC, and claim RPC all retain the closed gate                                                                                                                                |
+| Outcome                        | Evidence                                                                                                                                                                                                                                                                                      |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Flexible onboarding            | Strict domain drafts accept any non-empty combination of CV reference, role family, industry/domain, user evidence, or keyword; empty drafts fail                                                                                                                                             |
+| Evidence-bound personalisation | Search saves are RPC-only, require unique skill/responsibility arrays, and intersect crafted input with the owner's confirmed matching-kind evidence; later evidence changes transactionally prune stale concepts or remove an otherwise-empty invalid search                                 |
+| Separate seniority             | Current and target seniority are separate throughout domain, database, repository, UI, and named searches                                                                                                                                                                                     |
+| Owner-only private data        | Career tables force RLS; profile/search writes and evidence decisions use owner-derived RPCs; private Storage uses owner paths and generation-bound upload intents; administrators have no default profile/CV visibility                                                                      |
+| Safe file intake               | DOCX parsing validates central/local ZIP structure and actual output, uses namespace-aware WordprocessingML structure/visibility rules, and aborts at bounds; PDF parsing streams visible in-page text, cancels at bounds, and destroys loading/document tasks within the extraction deadline |
+| Deterministic fallback         | Explicit phrase rules emit offset-backed proposed evidence and evidence-backed inactive role suggestions without raw CV text                                                                                                                                                                  |
+| Optional AI ceiling            | Private owner allowance defaults to zero and is constrained to `0..25`; the durable application-wide UTC-date aggregate survives user/profile deletion; claim/renew/complete are service-only and token/lease fenced; there is no retry or paid fallback                                      |
+| Explicit review                | Only the decision RPC can move proposed evidence to confirmed/rejected; successful extraction materialises reviewable records without overwriting user-confirmed evidence; decided suggestions stay visibly labelled                                                                          |
+| Concurrency safety             | One durable per-owner generation mutex fences profile/search saves, evidence pruning/decisions, extraction completion, upload intent/registration, CV cleanup, and full deletion; two-session pgTAP fixtures cover first-save and save/delete races                                           |
+| Retention/deletion             | Full deletion recursively inventories nested and unregistered owner Storage, unions registered paths, removes unique paths in bounded batches, verifies the prefix is empty, and only then advances the generation tombstone and deletes structured data                                      |
+| Real uploads disabled          | Web capability, database setting, generation-bound upload intent, Storage policy, registration RPC, and claim RPC all retain the closed gate                                                                                                                                                  |
 
-## Full-range local review
+## Review remediation record
 
-A line-by-line review of the Task 10 range found and remediated these issues before the completion checkpoint:
+The original Task 10 self-review and later independent slice reviews produced three remediation commits:
 
-1. proposed/rejected evidence could enter a named search;
-2. adding a user skill could duplicate an extracted concept and make the draft invalid;
-3. a post-claim persistence error used a runtime-only code that the durable run could not store;
-4. DOCX comments and nested `w` namespace redefinitions could masquerade as visible evidence;
-5. extraction conflict handling could demote explicit user-confirmed evidence;
-6. the optional AI limit was per user rather than application-wide;
-7. direct profile-table deletion could bypass Storage-first erasure; and
-8. Storage/register/claim paths were not independently disabled behind a database-owned flag.
+1. `d1ee375` — made extraction claims, lease renewal, and completion service-role-only; added unguessable claim tokens, renewable leases, stale-run recovery, SHA-256 download binding, a streamed request cap, one overall lifecycle deadline, and the durable application-wide AI ledger with a private owner-controlled allowance.
+2. `b4dd62a` — replaced metadata-trusting/regex/full-materialisation parsing with structurally validated, bounded, cancellation-aware DOCX/PDF extraction. Actual DOCX output, ZIP consistency and overlap, XML structure/visibility, PDF geometry/rendering visibility, incremental text limits, and cleanup deadlines are regression-covered.
+3. `b0d4da3` — made profile/search authority owner-derived and generation-fenced; added unique evidence arrays, confirmed-evidence-only search persistence and pruning, a stable selected-search lifecycle, controlled-state clearing, complete nested/orphan Storage inventory, 15-minute generation-bound upload intents, and shared owner lock ordering with real two-session race fixtures.
 
-Regression coverage was added for each executable boundary. No known Critical, Important, or Minor local-review finding remains. This is a self-review result, not the required independent PR review.
+Each slice received an independent specification and quality review. The Task 3 final re-review at `b0d4da3` passed with no findings. This is not the required final whole-branch review and does not change Task 10 from `active`.
 
 ## Verification evidence
 
 Run from `/Users/jabed/Desktop/Jabed's Trash/Dev/JobWarden` on 2026-07-18:
 
-- `pnpm install --frozen-lockfile` — dependency graph already current;
-- `pnpm verify` — formatting, lint, all TypeScript checks, both Deno deployment graphs, guardrails, tests, and production build passed;
-- workspace Vitest — 499 tests across 43 files passed;
-- Edge Function Vitest — 27 ingestion tests and 17 career-extraction tests passed;
-- `pnpm check:supabase` — ten migrations and eighteen forced-RLS tables passed the static verifier;
-- `pnpm audit --prod --audit-level high` — no known vulnerabilities;
-- `git diff --check` — clean;
-- hydrated `/profile` browser checks at 1440 by 1000 and true 390 by 844 passed the desktop/mobile hierarchy, navigation, visible focus, no file input, no error overlay, and no horizontal document overflow;
-- staged Gitleaks scan — 70.62 KB scanned with no leaks; and
-- exact Task 10 range Gitleaks scan (`44a3580..f15b192`) — ten commits and 340.68 KB scanned with no leaks.
+- `pnpm install --frozen-lockfile` — passed; all five workspace projects were already current under pnpm 11.9.0;
+- `pnpm verify` — passed formatting, workspace lint/typechecks, function typecheck, both Deno deployment graphs, 535 workspace tests across 43 files, 27 ingestion tests, 25 career-extraction tests, guardrails, and the Next.js production build;
+- `pnpm check:supabase` — passed for 10 migrations and 20 forced-RLS tables;
+- `pnpm audit --prod --audit-level high` — passed with no known vulnerabilities;
+- `git diff --check origin/main...HEAD` and plain `git diff --check` — passed with no output before the documentation commit;
+- `gitleaks git --no-banner --redact --log-opts='origin/main..HEAD'` — passed for 14 commits and approximately 561.19 KB with no leaks before the documentation commit;
+- `NODE_ENV=production JOBWARDEN_DEV_ACCESS_BYPASS=true pnpm --filter @jobwarden/web build` — failed closed as required during prerender with `Development access bypass is forbidden outside local development`; and
+- earlier hydrated `/profile` browser checks at 1440 by 1000 and true 390 by 844 passed the desktop/mobile hierarchy, navigation, visible focus, no file input, no error overlay, and no horizontal document overflow before the review-remediation wave.
 
-The expected jsdom `HTMLCanvasElement.getContext()` warning appears during the accessibility suite; it does not fail a test and no canvas is used by the profile feature.
+The expected jsdom `HTMLCanvasElement.getContext()` notice appeared during the accessibility suite; it did not fail a test and no canvas is used by the profile feature.
 
 ## Preserved pre-live blocker
 
-Docker is unavailable on this development machine. `supabase db reset`, database lint against the local stack, and pgTAP files 007 through 010 have therefore not executed against real PostgreSQL/Supabase. The new pgTAP specification includes default-off activation, owner isolation, failed-replacement rollback, materialisation, explicit-evidence precedence, 24-hour expiry, cleanup privileges, and the globally locked AI ceiling.
+Docker, the Supabase CLI, `psql`, and `pg_prove` are unavailable in this environment. `supabase db reset`, database lint against a local stack, and pgTAP files 007 through 011 have therefore not executed against real PostgreSQL/Supabase. The static verifier and fictional fixtures do not replace that evidence. The 13-assertion `011_career_profile_concurrency.sql` includes real two-session race coverage, but it is not claimed as runtime-green.
 
-This blocker does not reopen real CV upload. It is an explicit activation prerequisite in [Career Profile Data Operations](../operations/career-profile-data.md) and Task 16.
+Live approved authentication, private Storage/RLS boundary tests, fictional replacement/deletion/retention exercises, and complete erasure verification also remain pre-live gates. None of these blockers reopens real CV upload.
