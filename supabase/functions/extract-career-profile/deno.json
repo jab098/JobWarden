@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "@jobwarden/domain": "../../../packages/domain/src/index.ts",
+    "@jobwarden/profile": "../../../packages/profile/src/index.ts",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.110.6",
+    "fflate": "npm:fflate@0.8.3",
+    "saxes": "npm:saxes@6.0.0",
+    "unpdf": "npm:unpdf@1.6.2",
+    "zod": "npm:zod@4.4.3"
+  }
+}

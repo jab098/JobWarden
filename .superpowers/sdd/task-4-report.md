@@ -318,3 +318,126 @@ exit 0
 ```
 
 The pgTAP access suite now plans 21 assertions, including bootstrap privilege isolation, verified/idempotent execution, forced audit failure rollback, administrator-only settings access, and `NULL` host rejection. Its runtime status is still blocked by the same absent Docker prerequisite and is not reported as passing.
+
+---
+
+# Task 10 Task 4 report: review record and release gate
+
+## Status
+
+DONE_WITH_CONCERNS
+
+Commit subject: `docs: record Task 10 review remediation`
+
+The exact final amended SHA and every command rerun from that immutable head are recorded after amendment in the ignored handoff `.superpowers/sdd/task-4-final-head-evidence.md`. They cannot be embedded in this tracked report without changing the commit they identify.
+
+Task 10 remains `active`. Remediation Tasks 1–3 independently passed specification and quality review at implementation head `b0d4da3`, but the final whole-branch review of `44a3580..HEAD`, PR #11 merge, local `main` update, and merge-commit verification remain pending. Task 11 has not started.
+
+## Documentation outcome
+
+The release-record commit contains this tracked report and these six product documentation files:
+
+1. `.superpowers/sdd/task-4-report.md`
+2. `docs/reviews/task-10-career-profile-onboarding.md`
+3. `docs/operations/career-profile-data.md`
+4. `docs/privacy/data-inventory.md`
+5. `docs/project-status.md`
+6. `docs/handoffs/task-10-current-state.md`
+7. `docs/product/roadmap.md`
+
+The records now describe:
+
+- the durable application-wide UTC-date AI ledger, its private owner-controlled `0..25` allowance with default zero, and the fact that the ledger has no user/profile foreign key and survives profile deletion;
+- verified-user-to-service-client extraction, service-only claim/renew/complete RPCs, renewable one-minute leases, unguessable claim-token completion fencing, registered size/SHA-256 binding, streamed request limits, and the whole-lifecycle deadline;
+- central/local ZIP validation, actual DOCX expansion bounds, namespace-aware WordprocessingML structure/visibility rules, incremental visible PDF text, immediate cancellation, and bounded loading-task/document cleanup;
+- the durable owner generation mutex across profile/search saves, confirmed-evidence pruning/decisions, extraction completion, upload intent/registration, CV cleanup, and full deletion;
+- RPC-only unique confirmed-owner search evidence, transactional stale-evidence pruning, stable selected-search identity, optimistic-selection acknowledgement, and controlled-state clearing;
+- complete bounded owner Storage inventory, including nested and uploaded-but-unregistered objects, before full structured deletion;
+- generation-bound 15-minute upload intents and the two-session first-search/search-versus-evidence race fixtures; and
+- the unchanged default-off web/database upload gate plus Docker/pgTAP and live approved authentication, private Storage/RLS, replacement, retention, deletion, and erasure gates.
+
+The old per-user/cascading AI-counter description and pre-remediation test/table counts were removed. No record marks Task 10 reviewed, delivered, or merged; PR #11 is explicitly unmerged and Task 11 remains pending.
+
+## Complete release gate
+
+All commands ran from `/Users/jabed/Desktop/Jabed's Trash/Dev/JobWarden` on 2026-07-18.
+
+```text
+$ pnpm install --frozen-lockfile
+exit 0
+Scope: all 5 workspace projects
+Already up to date
+Done in 302ms using pnpm v11.9.0
+```
+
+```text
+$ pnpm verify
+exit 0
+Prettier: all matched files use Prettier code style
+Workspace lint: passed
+Workspace and function typechecks: passed
+Deno deployment graphs: passed
+Workspace Vitest: 43 files, 535 tests passed
+Ingestion Edge Function Vitest: 2 files, 27 tests passed
+Career-extraction Edge Function Vitest: 2 files, 25 tests passed
+Project guardrails: passed
+Next.js 16.2.10 production build: passed
+```
+
+The final edited documentation state received a second full `pnpm verify` run with the same counts and exit 0.
+
+```text
+$ pnpm check:supabase
+exit 0
+Supabase foundation static verification passed (10 migrations, 20 forced-RLS tables).
+
+$ pnpm audit --prod --audit-level high
+exit 0
+No known vulnerabilities found
+
+$ git diff --check origin/main...HEAD
+exit 0; no output
+
+$ git diff --check
+exit 0; no output before commit
+
+$ git diff --cached --check
+exit 0; no output before commit
+```
+
+The exact-range secret scan before the documentation commit passed for 14 commits and approximately 561.19 KB:
+
+```text
+$ gitleaks git --no-banner --redact --log-opts='origin/main..HEAD'
+exit 0
+14 commits scanned
+approximately 561.19 KB scanned
+no leaks found
+```
+
+The required final-head secret-scan refresh and the rest of the final-head release gate are recorded only in `.superpowers/sdd/task-4-final-head-evidence.md`, which is written after amendment and is not staged.
+
+The production-only bypass probe failed closed exactly as intended:
+
+```text
+$ NODE_ENV=production JOBWARDEN_DEV_ACCESS_BYPASS=true pnpm --filter @jobwarden/web build
+exit 1
+Error: Development access bypass is forbidden outside local development
+```
+
+The expected jsdom `HTMLCanvasElement.getContext()` notice appeared during workspace tests. It did not fail a test and Task 10 does not use canvas.
+
+## Self-review
+
+- The amended commit scope contains this tracked report and the six intended Task 4 product documentation files; exact final-head inspection is recorded in the ignored final-head evidence handoff.
+- `.claude-flow/` and `.claude/` remain untracked and were not staged, committed, deleted, or modified by this task.
+- No real CV, contact detail, raw CV text, realistic personal-data fixture, token, provider body, payment, pricing, subscription, or auto-application path was added.
+- Real CV upload remains disabled in both the web capability and database setting. The docs do not claim that the future intent/Storage/registration path is active.
+- The records distinguish independently approved remediation slices from the still-pending final whole-branch review and publication.
+- `git diff --check`, cached diff check, Prettier, and the complete final-state repository verification passed before commit.
+
+## Concerns and remaining gates
+
+1. Docker, the Supabase CLI, `psql`, and `pg_prove` are unavailable. Migrations 004–007 and pgTAP 007–011—including the 13-assertion real two-session concurrency fixture—have not executed against PostgreSQL/Supabase and are not claimed as runtime-green.
+2. Live approved authentication, private Storage/RLS isolation, fictional replacement/deletion/retention, and complete erasure exercises remain mandatory before real CV upload can be enabled.
+3. The final independent whole-branch review for `44a3580..HEAD`, PR #11 merge, local `main` update, and merge-commit verification remain pending. Task 10 therefore remains `active` and publication-pending.

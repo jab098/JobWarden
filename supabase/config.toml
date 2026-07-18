@@ -386,6 +386,10 @@ deno_version = 2
 # Cron uses a separate Vault-backed bearer secret validated by the handler.
 verify_jwt = false
 
+[functions.extract-career-profile]
+# Real CV extraction accepts only a valid approved-user JWT and remains undeployed.
+verify_jwt = true
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

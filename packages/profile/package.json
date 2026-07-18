@@ -1,0 +1,23 @@
+{
+  "name": "@jobwarden/profile",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "files": [],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@jobwarden/domain": "workspace:*",
+    "fflate": "^0.8.3",
+    "saxes": "^6.0.0",
+    "unpdf": "^1.6.2"
+  },
+  "devDependencies": {
+    "vitest": "latest"
+  }
+}

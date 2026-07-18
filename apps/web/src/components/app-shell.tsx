@@ -5,9 +5,11 @@ import { MobileNavigation } from "@/components/mobile-navigation";
 export function AppShell({
   children,
   dataMode,
+  activePath = "jobs",
 }: Readonly<{
   children: React.ReactNode;
   dataMode: "supabase" | "fixtures";
+  activePath?: "jobs" | "profile";
 }>) {
   return (
     <div className="min-h-screen bg-[#f4f1ea] text-[#172033]">
@@ -15,7 +17,7 @@ export function AppShell({
         <Link href="/jobs" className="font-semibold tracking-[-0.02em]">
           JobWarden
         </Link>
-        <MobileNavigation dataMode={dataMode} />
+        <MobileNavigation dataMode={dataMode} activePath={activePath} />
       </header>
       <aside className="fixed inset-y-0 left-0 hidden w-52 flex-col border-r border-[#d8d4cb] bg-[#f4f1ea] lg:flex">
         <div className="border-b border-[#d8d4cb] px-6 py-6">
@@ -30,9 +32,17 @@ export function AppShell({
         <nav aria-label="Primary" className="p-3">
           <Link
             href="/jobs"
-            className="block rounded-md bg-white px-4 py-3 text-sm font-medium shadow-[inset_3px_0_0_#2458a6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+            aria-current={activePath === "jobs" ? "page" : undefined}
+            className={`block rounded-md px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "jobs" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173] hover:bg-white/70"}`}
           >
             Jobs
+          </Link>
+          <Link
+            href="/profile"
+            aria-current={activePath === "profile" ? "page" : undefined}
+            className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "profile" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173] hover:bg-white/70"}`}
+          >
+            Career profile
           </Link>
         </nav>
         <p className="mt-auto border-t border-[#d8d4cb] px-6 py-5 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#596173]">

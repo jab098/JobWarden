@@ -19,6 +19,8 @@ JobWarden is designed to operate as close to free as practical during private be
 
 The Reed Jobseeker API is a credentialed source integration, not a metered AI service. JobWarden still treats it as a bounded external dependency: one shared page of at most 50 jobs, a six-hour minimum source interval, four concurrent detail calls, and no automatic paid or alternative-provider fallback. A provider limit or unavailable credential fails only that source and cannot spend money or abort later sources.
 
+Task 10's career extraction path keeps optional AI disabled with `CAREER_PROFILE_AI_DAILY_ALLOWANCE=0` unless the owner deliberately activates it. The database accepts an application-wide daily allowance only from `0` through `25`, reserves it under a global transaction lock, records each reservation against its user, and permits only one extraction per user at a time. No user's daily count can exceed the same global ceiling. Each optional call is limited to 60,000 input characters, 4,000 output tokens, and 30 seconds. Invalid output, timeout, unavailable credentials, or exhausted allowance falls back to deterministic extraction with no retry or paid route. The usage ledger stores only user, day, count, and timestamp; prompts and CV-derived text are excluded. Raw structured proposals expire after 24 hours through the hourly database retention job.
+
 ## Current provider references
 
 - [Cloudflare Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/) documents a free daily allocation and failed requests rather than free-plan overage after the allocation is exhausted. JobWarden still sets its own lower reserve so a single feature cannot consume the day.
@@ -68,7 +70,7 @@ No platform setup is required for Task 7's fictional local implementation. When 
 
 - Task 8: Supabase project URL, server secret, and Vault/Cron setup using the exact [shared ingestion operations guide](../operations/ingestion.md). A publishable key is not used by the custom bearer-protected scheduler path.
 - Task 9: Reed API registration and server-only `REED_API_KEY` setup using the exact [Reed ingestion runbook](../operations/reed-ingestion.md). Do not send the key in chat. Create the source disabled, validate it against a staging database, and enable it only after the documented terms/retention decision and real pgTAP checks are complete.
-- Task 10: private Storage bucket/policies and Cloudflare Workers AI binding before real CV tests.
+- Task 10: the private bucket/policies, extraction function, retention schedule, and authenticated deletion path must pass the Docker-backed and linked-environment checks in [Career Profile Data Operations](../operations/career-profile-data.md) before any real CV test. Cloudflare Workers AI is optional and stays disabled by default; it is not a prerequisite for deterministic extraction.
 - Task 14: Resend account, API key, verified sender, and DNS records.
 - Task 16: Google OAuth/Supabase callbacks, administrator bootstrap UUID, Cloudflare deployment/domain, and optional Sentry EU project.
 

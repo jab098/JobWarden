@@ -1,3 +1,5 @@
 docs/standards/shipping-standards.md
 docs/superpowers/
 pnpm-lock.yaml
+.claude-flow/
+.claude/

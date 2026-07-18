@@ -4,7 +4,8 @@
     "incremental": false,
     "paths": {
       "@jobwarden/domain": ["../../packages/domain/src/index.ts"],
-      "@jobwarden/ingestion": ["../../packages/ingestion/src/index.ts"]
+      "@jobwarden/ingestion": ["../../packages/ingestion/src/index.ts"],
+      "@jobwarden/profile": ["../../packages/profile/src/index.ts"]
     },
     "types": ["node", "vitest/globals"]
   },
