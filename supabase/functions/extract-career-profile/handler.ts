@@ -51,6 +51,7 @@ function completionErrorCode(code: string): CvFileErrorCode {
 
 async function readBody(
   request: Request,
+  signal: AbortSignal,
 ): Promise<z.infer<typeof requestSchema>> {
   const declaredLength = request.headers.get("content-length");
   if (
@@ -65,20 +66,37 @@ async function readBody(
   const decoder = new TextDecoder();
   let byteCount = 0;
   let text = "";
+  let cancellationStarted = false;
+  const cancelReader = (): void => {
+    if (cancellationStarted) return;
+    cancellationStarted = true;
+    try {
+      void reader.cancel().catch(() => undefined);
+    } catch {
+      // Cancellation details are deliberately discarded.
+    }
+  };
+  signal.addEventListener("abort", cancelReader, { once: true });
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      const { done, value } = await withinDeadline(reader.read(), signal);
       if (done) break;
       byteCount += value.byteLength;
       if (byteCount > careerExtractionLimits.requestBytes) {
-        await reader.cancel();
+        cancelReader();
         throw new CareerExtractionError("bad_request");
       }
       text += decoder.decode(value, { stream: true });
     }
     text += decoder.decode();
   } finally {
-    reader.releaseLock();
+    signal.removeEventListener("abort", cancelReader);
+    if (signal.aborted) cancelReader();
+    try {
+      reader.releaseLock();
+    } catch {
+      // A raced read may still be settling after best-effort cancellation.
+    }
   }
   try {
     return requestSchema.parse(JSON.parse(text));
@@ -192,19 +210,6 @@ export function createCareerExtractionHandler(
       return result;
     }
 
-    let environment: CareerRuntimeEnvironment;
-    let input: z.infer<typeof requestSchema>;
-    try {
-      environment = dependencies.readEnvironment();
-      input = await readBody(request);
-    } catch (error) {
-      const code =
-        error instanceof CareerExtractionError
-          ? error.code
-          : "runtime_unavailable";
-      return response({ error: code }, statusForCareerError(code));
-    }
-
     const correlationId = dependencies.randomUuid();
     const startedAt = dependencies.now().getTime();
     const overallController = new AbortController();
@@ -213,6 +218,23 @@ export function createCareerExtractionHandler(
       careerExtractionLimits.requestTimeoutMilliseconds,
     );
     const overallSignal = overallController.signal;
+    let environment: CareerRuntimeEnvironment;
+    let input: z.infer<typeof requestSchema>;
+    try {
+      environment = dependencies.readEnvironment();
+      input = await readBody(request, overallSignal);
+    } catch (error) {
+      clearTimeout(overallTimeout);
+      const code =
+        error instanceof CareerExtractionError
+          ? error.code
+          : "runtime_unavailable";
+      return response(
+        { correlationId, error: code },
+        statusForCareerError(code),
+      );
+    }
+
     const repository = dependencies.createRepository(environment, accessToken);
     let runId: string | null = null;
     let claimToken: string | null = null;

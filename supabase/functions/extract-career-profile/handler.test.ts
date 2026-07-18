@@ -6,6 +6,7 @@ import type {
   CareerRuntimeLog,
   ExtractionClaim,
 } from "./contracts";
+import { careerExtractionLimits } from "./contracts";
 import { CareerExtractionError } from "./errors";
 import { createCareerExtractionHandler } from "./handler";
 
@@ -380,6 +381,44 @@ describe("career extraction handler", () => {
     expect(result.status).toBe(400);
     expect(cancel).toHaveBeenCalledOnce();
     expect(repository.verifyUser).not.toHaveBeenCalled();
+  });
+
+  it("applies the overall deadline to a request body that never closes", async () => {
+    vi.useFakeTimers();
+    try {
+      const cancel = vi.fn();
+      const body = new ReadableStream<Uint8Array>({ cancel });
+      const stalled = new Request(
+        "https://example.test/functions/v1/extract-career-profile",
+        {
+          method: "POST",
+          headers: { authorization: "Bearer valid-user-token" },
+          body,
+          duplex: "half",
+        } as RequestInit & { duplex: "half" },
+      );
+      const { dependencies, repository } = harness();
+      let result: Response | undefined;
+      void createCareerExtractionHandler(dependencies)(stalled).then(
+        (response) => {
+          result = response;
+        },
+      );
+
+      await vi.advanceTimersByTimeAsync(
+        careerExtractionLimits.requestTimeoutMilliseconds + 1,
+      );
+
+      expect(result?.status).toBe(422);
+      expect(await json(result!)).toEqual({
+        correlationId,
+        error: "extraction_timeout",
+      });
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(repository.verifyUser).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("applies one overall deadline to stalled lifecycle work", async () => {

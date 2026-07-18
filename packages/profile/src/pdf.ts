@@ -3,6 +3,7 @@ import { getResolvedPDFJS } from "unpdf";
 import {
   CvFileValidationError,
   cvFileLimits,
+  ensureCvExtractionWithinDeadline,
   type CvFileErrorCode,
 } from "./file-gate.ts";
 import type { ExtractedCvText } from "./docx.ts";
@@ -10,6 +11,9 @@ import type { ExtractedCvText } from "./docx.ts";
 type ResolvedPdfJs = Awaited<ReturnType<typeof getResolvedPDFJS>>;
 type PdfLoadingTask = ReturnType<ResolvedPdfJs["getDocument"]>;
 type PdfDocument = Awaited<PdfLoadingTask["promise"]>;
+type PdfOptionalContentConfig = Awaited<
+  ReturnType<PdfDocument["getOptionalContentConfig"]>
+>;
 
 interface PdfTextItem {
   hasEOL?: unknown;
@@ -18,6 +22,67 @@ interface PdfTextItem {
   transform?: unknown;
   width?: unknown;
 }
+
+interface PdfOperatorIds {
+  beginMarkedContent: number;
+  beginMarkedContentProps: number;
+  endMarkedContent: number;
+  nextLineSetSpacingShowText: number;
+  nextLineShowText: number;
+  setFillTransparent: number;
+  setGState: number;
+  setStrokeTransparent: number;
+  setTextRenderingMode: number;
+  showSpacedText: number;
+  showText: number;
+}
+
+const unsupportedPdfNames = new Set([
+  "AA",
+  "AF",
+  "GoToE",
+  "GoToR",
+  "Hide",
+  "ImportData",
+  "Launch",
+  "Movie",
+  "Named",
+  "ObjStm",
+  "OpenAction",
+  "Rendition",
+  "ResetForm",
+  "SetOCGState",
+  "Sound",
+  "SubmitForm",
+  "URI",
+  "XFA",
+]);
+const longestUnsupportedPdfName = Math.max(
+  ...Array.from(unsupportedPdfNames, (name) => name.length),
+);
+const pdfLexicalDeadlineInterval = 16_384;
+const pdfMaxContainerDepth = 128;
+const pdfIntegerPattern = /^[+-]?\d+$/u;
+const pdfNumberPattern = /^[+-]?(?:\d+|\d+\.\d*|\.\d+)$/u;
+
+interface PdfLexicalState {
+  bytes: Uint8Array;
+  containerDepth: number;
+  nextDeadlineOffset: number;
+  offset: number;
+  startedAt: number;
+}
+
+interface PdfDictionarySummary {
+  directStreamLength?: number;
+}
+
+type PdfValueSummary =
+  | { integer?: number; kind: "integer" }
+  | { kind: "other" }
+  | { kind: "reference" };
+
+class PdfLexicalSyntaxError extends Error {}
 
 function fail(code: CvFileErrorCode): never {
   throw new CvFileValidationError(code);
@@ -48,6 +113,424 @@ function declaresEncryption(bytes: Uint8Array): boolean {
   const trailerWindow = bytes.subarray(Math.max(0, bytes.length - 131_072));
   const trailer = new TextDecoder("latin1").decode(trailerWindow);
   return /\/Encrypt\b/u.test(trailer);
+}
+
+function isPdfWhitespace(byte: number): boolean {
+  return (
+    byte === 0x00 ||
+    byte === 0x09 ||
+    byte === 0x0a ||
+    byte === 0x0c ||
+    byte === 0x0d ||
+    byte === 0x20
+  );
+}
+
+function isPdfDelimiter(byte: number): boolean {
+  return (
+    byte === 0x25 ||
+    byte === 0x28 ||
+    byte === 0x29 ||
+    byte === 0x2f ||
+    byte === 0x3c ||
+    byte === 0x3e ||
+    byte === 0x5b ||
+    byte === 0x5d ||
+    byte === 0x7b ||
+    byte === 0x7d
+  );
+}
+
+function isPdfTokenBoundary(byte: number): boolean {
+  return isPdfWhitespace(byte) || isPdfDelimiter(byte);
+}
+
+function hexadecimalValue(byte: number): number | undefined {
+  if (byte >= 0x30 && byte <= 0x39) return byte - 0x30;
+  if (byte >= 0x41 && byte <= 0x46) return byte - 0x41 + 10;
+  if (byte >= 0x61 && byte <= 0x66) return byte - 0x61 + 10;
+  return undefined;
+}
+
+function rejectPdfLexicalSyntax(): never {
+  throw new PdfLexicalSyntaxError();
+}
+
+function checkPdfLexicalDeadline(state: PdfLexicalState): void {
+  if (state.offset < state.nextDeadlineOffset) return;
+  ensureCvExtractionWithinDeadline(state.startedAt);
+  state.nextDeadlineOffset = state.offset + pdfLexicalDeadlineInterval;
+}
+
+function skipPdfWhitespaceAndComments(state: PdfLexicalState): void {
+  while (state.offset < state.bytes.length) {
+    checkPdfLexicalDeadline(state);
+    const byte = state.bytes[state.offset]!;
+    if (isPdfWhitespace(byte)) {
+      state.offset += 1;
+      continue;
+    }
+    if (byte !== 0x25) return;
+    state.offset += 1;
+    while (state.offset < state.bytes.length) {
+      const commentByte = state.bytes[state.offset]!;
+      if (commentByte === 0x0a || commentByte === 0x0d) break;
+      state.offset += 1;
+      checkPdfLexicalDeadline(state);
+    }
+  }
+}
+
+function scanPdfLiteralString(state: PdfLexicalState): void {
+  if (state.bytes[state.offset] !== 0x28) rejectPdfLexicalSyntax();
+  state.offset += 1;
+  let depth = 1;
+  while (state.offset < state.bytes.length) {
+    checkPdfLexicalDeadline(state);
+    const byte = state.bytes[state.offset]!;
+    if (byte === 0x5c) {
+      state.offset += 1;
+      if (state.offset >= state.bytes.length) rejectPdfLexicalSyntax();
+      const escaped = state.bytes[state.offset]!;
+      if (escaped === 0x0d) {
+        state.offset += 1;
+        if (state.bytes[state.offset] === 0x0a) state.offset += 1;
+        continue;
+      }
+      if (escaped === 0x0a) {
+        state.offset += 1;
+        continue;
+      }
+      if (escaped >= 0x30 && escaped <= 0x37) {
+        state.offset += 1;
+        for (let digit = 1; digit < 3; digit += 1) {
+          const octal = state.bytes[state.offset];
+          if (octal === undefined || octal < 0x30 || octal > 0x37) break;
+          state.offset += 1;
+        }
+        continue;
+      }
+      state.offset += 1;
+      continue;
+    }
+    state.offset += 1;
+    if (byte === 0x28) depth += 1;
+    if (byte === 0x29) depth -= 1;
+    if (depth === 0) return;
+  }
+  rejectPdfLexicalSyntax();
+}
+
+function scanPdfHexadecimalString(state: PdfLexicalState): void {
+  if (state.bytes[state.offset] !== 0x3c) rejectPdfLexicalSyntax();
+  state.offset += 1;
+  while (state.offset < state.bytes.length) {
+    checkPdfLexicalDeadline(state);
+    const byte = state.bytes[state.offset]!;
+    if (byte === 0x3e) {
+      state.offset += 1;
+      return;
+    }
+    if (!isPdfWhitespace(byte) && hexadecimalValue(byte) === undefined) {
+      rejectPdfLexicalSyntax();
+    }
+    state.offset += 1;
+  }
+  rejectPdfLexicalSyntax();
+}
+
+function scanPdfName(state: PdfLexicalState): string | undefined {
+  if (state.bytes[state.offset] !== 0x2f) rejectPdfLexicalSyntax();
+  state.offset += 1;
+  let decodedName = "";
+  let canMatchUnsupportedName = true;
+  while (state.offset < state.bytes.length) {
+    checkPdfLexicalDeadline(state);
+    let byte = state.bytes[state.offset]!;
+    if (isPdfTokenBoundary(byte)) break;
+    state.offset += 1;
+    if (byte === 0x23) {
+      const high = hexadecimalValue(state.bytes[state.offset] ?? -1);
+      const low = hexadecimalValue(state.bytes[state.offset + 1] ?? -1);
+      if (high === undefined || low === undefined) rejectPdfLexicalSyntax();
+      byte = high * 16 + low;
+      state.offset += 2;
+    }
+    if (byte === 0x00) rejectPdfLexicalSyntax();
+    if (canMatchUnsupportedName) {
+      if (decodedName.length >= longestUnsupportedPdfName) {
+        canMatchUnsupportedName = false;
+      } else {
+        decodedName += String.fromCharCode(byte);
+      }
+    }
+  }
+  if (canMatchUnsupportedName && unsupportedPdfNames.has(decodedName)) {
+    rejectPdfLexicalSyntax();
+  }
+  return canMatchUnsupportedName ? decodedName : undefined;
+}
+
+function scanPdfRegularToken(state: PdfLexicalState): string {
+  const start = state.offset;
+  while (
+    state.offset < state.bytes.length &&
+    !isPdfTokenBoundary(state.bytes[state.offset]!)
+  ) {
+    state.offset += 1;
+    checkPdfLexicalDeadline(state);
+    if (state.offset - start > 64) rejectPdfLexicalSyntax();
+  }
+  if (state.offset === start) rejectPdfLexicalSyntax();
+  return String.fromCharCode(...state.bytes.subarray(start, state.offset));
+}
+
+function regularPdfTokenStartsAtCurrentOffset(state: PdfLexicalState): boolean {
+  const byte = state.bytes[state.offset];
+  return byte !== undefined && !isPdfTokenBoundary(byte);
+}
+
+function pdfKeywordStartsAtCurrentOffset(
+  state: PdfLexicalState,
+  keyword: string,
+): boolean {
+  if (state.offset + keyword.length > state.bytes.length) return false;
+  for (let index = 0; index < keyword.length; index += 1) {
+    if (state.bytes[state.offset + index] !== keyword.charCodeAt(index)) {
+      return false;
+    }
+  }
+  const following = state.bytes[state.offset + keyword.length];
+  return following === undefined || isPdfTokenBoundary(following);
+}
+
+function enterPdfContainer(state: PdfLexicalState): void {
+  state.containerDepth += 1;
+  if (state.containerDepth > pdfMaxContainerDepth) rejectPdfLexicalSyntax();
+}
+
+function scanPdfArray(state: PdfLexicalState): void {
+  if (state.bytes[state.offset] !== 0x5b) rejectPdfLexicalSyntax();
+  state.offset += 1;
+  enterPdfContainer(state);
+  while (true) {
+    skipPdfWhitespaceAndComments(state);
+    if (state.offset >= state.bytes.length) rejectPdfLexicalSyntax();
+    if (state.bytes[state.offset] === 0x5d) {
+      state.offset += 1;
+      state.containerDepth -= 1;
+      return;
+    }
+    scanPdfValue(state);
+  }
+}
+
+function scanPdfNumberOrReference(
+  state: PdfLexicalState,
+  token: string,
+): PdfValueSummary {
+  if (!pdfNumberPattern.test(token)) rejectPdfLexicalSyntax();
+  if (!pdfIntegerPattern.test(token)) return { kind: "other" };
+
+  const integer = Number(token);
+  const afterFirstInteger = state.offset;
+  skipPdfWhitespaceAndComments(state);
+  if (!regularPdfTokenStartsAtCurrentOffset(state)) {
+    state.offset = afterFirstInteger;
+    return {
+      integer: Number.isSafeInteger(integer) ? integer : undefined,
+      kind: "integer",
+    };
+  }
+
+  const secondToken = scanPdfRegularToken(state);
+  if (!pdfIntegerPattern.test(secondToken)) {
+    state.offset = afterFirstInteger;
+    return {
+      integer: Number.isSafeInteger(integer) ? integer : undefined,
+      kind: "integer",
+    };
+  }
+  const secondInteger = Number(secondToken);
+  skipPdfWhitespaceAndComments(state);
+  if (
+    !pdfKeywordStartsAtCurrentOffset(state, "R") ||
+    !Number.isSafeInteger(integer) ||
+    integer <= 0 ||
+    !Number.isSafeInteger(secondInteger) ||
+    secondInteger < 0
+  ) {
+    state.offset = afterFirstInteger;
+    return {
+      integer: Number.isSafeInteger(integer) ? integer : undefined,
+      kind: "integer",
+    };
+  }
+  state.offset += 1;
+  return { kind: "reference" };
+}
+
+function scanPdfValue(state: PdfLexicalState): PdfValueSummary {
+  skipPdfWhitespaceAndComments(state);
+  const byte = state.bytes[state.offset];
+  if (byte === undefined) rejectPdfLexicalSyntax();
+  if (byte === 0x28) {
+    scanPdfLiteralString(state);
+    return { kind: "other" };
+  }
+  if (byte === 0x3c) {
+    if (state.bytes[state.offset + 1] === 0x3c) {
+      scanPdfDictionary(state);
+    } else {
+      scanPdfHexadecimalString(state);
+    }
+    return { kind: "other" };
+  }
+  if (byte === 0x5b) {
+    scanPdfArray(state);
+    return { kind: "other" };
+  }
+  if (byte === 0x2f) {
+    scanPdfName(state);
+    return { kind: "other" };
+  }
+  if (!regularPdfTokenStartsAtCurrentOffset(state)) {
+    rejectPdfLexicalSyntax();
+  }
+  const token = scanPdfRegularToken(state);
+  if (token === "true" || token === "false" || token === "null") {
+    return { kind: "other" };
+  }
+  return scanPdfNumberOrReference(state, token);
+}
+
+function scanPdfDictionary(state: PdfLexicalState): PdfDictionarySummary {
+  if (
+    state.bytes[state.offset] !== 0x3c ||
+    state.bytes[state.offset + 1] !== 0x3c
+  ) {
+    rejectPdfLexicalSyntax();
+  }
+  state.offset += 2;
+  enterPdfContainer(state);
+  let directStreamLength: number | undefined;
+  let sawLength = false;
+  while (true) {
+    skipPdfWhitespaceAndComments(state);
+    if (state.offset >= state.bytes.length) rejectPdfLexicalSyntax();
+    if (
+      state.bytes[state.offset] === 0x3e &&
+      state.bytes[state.offset + 1] === 0x3e
+    ) {
+      state.offset += 2;
+      state.containerDepth -= 1;
+      return { directStreamLength };
+    }
+    if (state.bytes[state.offset] !== 0x2f) rejectPdfLexicalSyntax();
+    const key = scanPdfName(state);
+    const value = scanPdfValue(state);
+    if (key !== "Length") continue;
+    if (sawLength) rejectPdfLexicalSyntax();
+    sawLength = true;
+    if (
+      value.kind === "integer" &&
+      value.integer !== undefined &&
+      value.integer >= 0
+    ) {
+      directStreamLength = value.integer;
+    }
+  }
+}
+
+function consumePdfEndOfLine(state: PdfLexicalState): void {
+  const byte = state.bytes[state.offset];
+  if (byte === 0x0a) {
+    state.offset += 1;
+    return;
+  }
+  if (byte !== 0x0d) rejectPdfLexicalSyntax();
+  state.offset += 1;
+  if (state.bytes[state.offset] === 0x0a) state.offset += 1;
+}
+
+function scanPdfStream(
+  state: PdfLexicalState,
+  directStreamLength: number | undefined,
+): void {
+  if (
+    directStreamLength === undefined ||
+    !pdfKeywordStartsAtCurrentOffset(state, "stream")
+  ) {
+    rejectPdfLexicalSyntax();
+  }
+  state.offset += "stream".length;
+  consumePdfEndOfLine(state);
+  const dataEnd = state.offset + directStreamLength;
+  if (!Number.isSafeInteger(dataEnd) || dataEnd > state.bytes.length) {
+    rejectPdfLexicalSyntax();
+  }
+  state.offset = dataEnd;
+  checkPdfLexicalDeadline(state);
+  consumePdfEndOfLine(state);
+  if (!pdfKeywordStartsAtCurrentOffset(state, "endstream")) {
+    rejectPdfLexicalSyntax();
+  }
+  state.offset += "endstream".length;
+}
+
+function containsUnsafePdfLexicalSyntax(
+  bytes: Uint8Array,
+  startedAt: number,
+): boolean {
+  const state: PdfLexicalState = {
+    bytes,
+    containerDepth: 0,
+    nextDeadlineOffset: 0,
+    offset: 0,
+    startedAt,
+  };
+  try {
+    while (state.offset < bytes.length) {
+      skipPdfWhitespaceAndComments(state);
+      if (state.offset >= bytes.length) break;
+      const byte = bytes[state.offset]!;
+      if (byte === 0x28) {
+        scanPdfLiteralString(state);
+        continue;
+      }
+      if (byte === 0x3c) {
+        if (bytes[state.offset + 1] === 0x3c) {
+          const dictionary = scanPdfDictionary(state);
+          skipPdfWhitespaceAndComments(state);
+          if (pdfKeywordStartsAtCurrentOffset(state, "stream")) {
+            scanPdfStream(state, dictionary.directStreamLength);
+          }
+        } else {
+          scanPdfHexadecimalString(state);
+        }
+        continue;
+      }
+      if (byte === 0x5b) {
+        scanPdfArray(state);
+        continue;
+      }
+      if (byte === 0x2f) {
+        scanPdfName(state);
+        continue;
+      }
+      if (!regularPdfTokenStartsAtCurrentOffset(state)) {
+        rejectPdfLexicalSyntax();
+      }
+      const token = scanPdfRegularToken(state);
+      if (token === "stream" || token === "endstream") {
+        rejectPdfLexicalSyntax();
+      }
+    }
+    return false;
+  } catch (error) {
+    if (error instanceof PdfLexicalSyntaxError) return true;
+    throw error;
+  }
 }
 
 function discardCancellation(operation: () => unknown): void {
@@ -96,9 +579,17 @@ export function runWithExtractionDeadline<T>(
   });
 }
 
+function hasSecuritySurface(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Reflect.ownKeys(value).length > 0;
+  return true;
+}
+
 function pageContainsInvisibleText(
   operatorList: { argsArray?: unknown; fnArray?: unknown },
-  setTextRenderingModeOperator: number,
+  operators: PdfOperatorIds,
+  optionalContentConfig: PdfOptionalContentConfig,
 ): boolean {
   if (
     !Array.isArray(operatorList.fnArray) ||
@@ -109,15 +600,121 @@ function pageContainsInvisibleText(
   }
   const fnArray = operatorList.fnArray as unknown[];
   const argsArray = operatorList.argsArray as unknown[];
+  const markedContentStack: Array<
+    "ordinary" | "optional-hidden" | "optional-visible"
+  > = [];
+  let containsHiddenOptionalContent = false;
 
-  return fnArray.some((operator, index) => {
-    if (operator !== setTextRenderingModeOperator) return false;
+  const containsInvisibleText = fnArray.some((operator, index) => {
     const argumentsForOperator = argsArray[index];
+    if (operator === operators.beginMarkedContent) {
+      if (
+        !Array.isArray(argumentsForOperator) ||
+        typeof argumentsForOperator[0] !== "string"
+      ) {
+        fail("invalid_file");
+      }
+      markedContentStack.push("ordinary");
+      return false;
+    }
+    if (operator === operators.beginMarkedContentProps) {
+      if (
+        !Array.isArray(argumentsForOperator) ||
+        typeof argumentsForOperator[0] !== "string"
+      ) {
+        fail("invalid_file");
+      }
+      if (argumentsForOperator[0] !== "OC") {
+        markedContentStack.push("ordinary");
+        return false;
+      }
+      const properties = argumentsForOperator[1];
+      if (
+        !properties ||
+        typeof properties !== "object" ||
+        Array.isArray(properties)
+      ) {
+        fail("invalid_file");
+      }
+      const optionalContent = properties as {
+        id?: unknown;
+        type?: unknown;
+      };
+      if (
+        optionalContent.type !== "OCG" ||
+        typeof optionalContent.id !== "string" ||
+        optionalContent.id.length === 0 ||
+        !optionalContentConfig.getGroup(optionalContent.id)
+      ) {
+        fail("invalid_file");
+      }
+      const visible = optionalContentConfig.isVisible(properties);
+      if (typeof visible !== "boolean") fail("invalid_file");
+      markedContentStack.push(visible ? "optional-visible" : "optional-hidden");
+      if (!visible) containsHiddenOptionalContent = true;
+      return false;
+    }
+    if (operator === operators.endMarkedContent) {
+      if (
+        argumentsForOperator !== null &&
+        (!Array.isArray(argumentsForOperator) ||
+          argumentsForOperator.length !== 0)
+      ) {
+        fail("invalid_file");
+      }
+      if (markedContentStack.pop() === undefined) fail("invalid_file");
+      return false;
+    }
+    if (
+      (operator === operators.showText ||
+        operator === operators.showSpacedText ||
+        operator === operators.nextLineShowText ||
+        operator === operators.nextLineSetSpacingShowText) &&
+      markedContentStack.includes("optional-hidden")
+    ) {
+      return true;
+    }
+    if (
+      operator === operators.setFillTransparent ||
+      operator === operators.setStrokeTransparent
+    ) {
+      return true;
+    }
+    if (operator === operators.setTextRenderingMode) {
+      if (!Array.isArray(argumentsForOperator)) fail("invalid_file");
+      const mode = argumentsForOperator[0];
+      if (!Number.isInteger(mode) || mode < 0 || mode > 7) {
+        fail("invalid_file");
+      }
+      return (mode & 3) === 3;
+    }
+    if (operator !== operators.setGState) return false;
     if (!Array.isArray(argumentsForOperator)) fail("invalid_file");
-    const mode = argumentsForOperator[0];
-    if (!Number.isInteger(mode) || mode < 0 || mode > 7) fail("invalid_file");
-    return (mode & 3) === 3;
+    const state = argumentsForOperator[0];
+    if (!Array.isArray(state)) fail("invalid_file");
+    return state.some((entry) => {
+      if (!Array.isArray(entry) || entry.length < 2) fail("invalid_file");
+      const [name, value] = entry;
+      if (typeof name !== "string") fail("invalid_file");
+      if (name === "ca" || name === "CA") {
+        if (
+          typeof value !== "number" ||
+          !Number.isFinite(value) ||
+          value < 0 ||
+          value > 1
+        ) {
+          fail("invalid_file");
+        }
+        return value === 0;
+      }
+      if (name === "SMask") {
+        return value !== false && value !== null && value !== "None";
+      }
+      return false;
+    });
   });
+  if (markedContentStack.length !== 0) fail("invalid_file");
+  return containsInvisibleText || containsHiddenOptionalContent;
 }
 
 function visibleTextFromItem(
@@ -222,6 +819,7 @@ export async function extractPdfText(
     fail("invalid_file");
   }
   if (declaresEncryption(bytes)) fail("encrypted_pdf");
+  if (containsUnsafePdfLexicalSyntax(bytes, startedAt)) fail("invalid_file");
 
   let loadingTask: PdfLoadingTask | undefined;
   let pdf: PdfDocument | undefined;
@@ -248,6 +846,32 @@ export async function extractPdfText(
     }
     if (pdf.numPages > cvFileLimits.pdfPages) fail("page_limit");
 
+    const currentPdf = pdf;
+    const [attachments, documentActions, openAction, optionalContentConfig] =
+      await Promise.all([
+        runWithExtractionDeadline(currentPdf.getAttachments(), startedAt, () =>
+          discardCancellation(() => currentPdf.destroy()),
+        ),
+        runWithExtractionDeadline(currentPdf.getJSActions(), startedAt, () =>
+          discardCancellation(() => currentPdf.destroy()),
+        ),
+        runWithExtractionDeadline(currentPdf.getOpenAction(), startedAt, () =>
+          discardCancellation(() => currentPdf.destroy()),
+        ),
+        runWithExtractionDeadline(
+          currentPdf.getOptionalContentConfig({ intent: "display" }),
+          startedAt,
+          () => discardCancellation(() => currentPdf.destroy()),
+        ),
+      ]);
+    if (
+      hasSecuritySurface(attachments) ||
+      hasSecuritySurface(documentActions) ||
+      hasSecuritySurface(openAction)
+    ) {
+      fail("invalid_file");
+    }
+
     const textParts: string[] = [];
     let textLength = 0;
     let truncated = false;
@@ -260,15 +884,38 @@ export async function extractPdfText(
         () => discardCancellation(() => currentPdf.destroy()),
       );
       try {
-        const operatorList = await runWithExtractionDeadline(
-          page.getOperatorList(),
-          startedAt,
-          () => discardCancellation(() => currentPdf.destroy()),
-        );
+        const [annotations, pageActions, operatorList] = await Promise.all([
+          runWithExtractionDeadline(page.getAnnotations(), startedAt, () =>
+            discardCancellation(() => currentPdf.destroy()),
+          ),
+          runWithExtractionDeadline(page.getJSActions(), startedAt, () =>
+            discardCancellation(() => currentPdf.destroy()),
+          ),
+          runWithExtractionDeadline(page.getOperatorList(), startedAt, () =>
+            discardCancellation(() => currentPdf.destroy()),
+          ),
+        ]);
+        if (!Array.isArray(annotations) || annotations.length > 0) {
+          fail("invalid_file");
+        }
+        if (hasSecuritySurface(pageActions)) fail("invalid_file");
         if (
           pageContainsInvisibleText(
             operatorList,
-            pdfJs.OPS.setTextRenderingMode,
+            {
+              beginMarkedContent: pdfJs.OPS.beginMarkedContent,
+              beginMarkedContentProps: pdfJs.OPS.beginMarkedContentProps,
+              endMarkedContent: pdfJs.OPS.endMarkedContent,
+              nextLineSetSpacingShowText: pdfJs.OPS.nextLineSetSpacingShowText,
+              nextLineShowText: pdfJs.OPS.nextLineShowText,
+              setFillTransparent: pdfJs.OPS.setFillTransparent,
+              setGState: pdfJs.OPS.setGState,
+              setStrokeTransparent: pdfJs.OPS.setStrokeTransparent,
+              setTextRenderingMode: pdfJs.OPS.setTextRenderingMode,
+              showSpacedText: pdfJs.OPS.showSpacedText,
+              showText: pdfJs.OPS.showText,
+            },
+            optionalContentConfig,
           )
         ) {
           fail("invalid_file");

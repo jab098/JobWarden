@@ -193,6 +193,105 @@ describe("bounded DOCX extraction", () => {
     expect(result.text).toBe("Visible fictional evidence");
   });
 
+  it("suppresses WordprocessingML descendants of an mc:Ignorable extension element", async () => {
+    const result = await extractDocxText(
+      createDocx({
+        "word/document.xml": `<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" mc:Ignorable="w14">
+  <w:body>
+    <w:p><w:r><w:t>Visible fictional evidence</w:t></w:r></w:p>
+    <w14:fictionalExtension>
+      <w:p><w:r><w:t>Ignored extension-wrapped fictional claim</w:t></w:r></w:p>
+    </w14:fictionalExtension>
+  </w:body>
+</w:document>`,
+      }),
+    );
+
+    expect(result.text).toBe("Visible fictional evidence");
+  });
+
+  it.each([
+    {
+      declaration: "",
+      ignorable: "undeclaredExtension",
+      name: "an undeclared prefix",
+    },
+    {
+      declaration:
+        'xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"',
+      ignorable: "w14:",
+      name: "a malformed prefix",
+    },
+  ])(
+    "rejects mc:Ignorable containing $name",
+    async ({ declaration, ignorable }) => {
+      await expect(
+        extractDocxText(
+          createDocx({
+            "word/document.xml": `<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" ${declaration} mc:Ignorable="${ignorable}">
+  <w:body><w:p><w:r><w:t>Visible fictional evidence</w:t></w:r></w:p></w:body>
+</w:document>`,
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "unsafe_archive" });
+    },
+  );
+
+  it.each([
+    ["ProcessContent", "w14:fictionalExtension"],
+    ["PreserveElements", "w14:fictionalExtension"],
+    ["PreserveAttributes", "w14:fictionalAttribute"],
+    ["MustUnderstand", "w14"],
+  ])(
+    "rejects unsupported mc:%s compatibility instructions",
+    async (attributeName, attributeValue) => {
+      await expect(
+        extractDocxText(
+          createDocx({
+            "word/document.xml": `<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" mc:Ignorable="w14" mc:${attributeName}="${attributeValue}">
+  <w:body><w:p><w:r><w:t>Visible fictional evidence</w:t></w:r></w:p></w:body>
+</w:document>`,
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "unsafe_archive" });
+    },
+  );
+
+  it("accepts visible WordprocessingML with unused common ignorable namespaces", async () => {
+    const result = await extractDocxText(
+      createDocx({
+        "word/document.xml": `<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" mc:Ignorable="w14 w15">
+  <w:body><w:p><w:r><w:t>Visible fictional evidence</w:t></w:r></w:p></w:body>
+</w:document>`,
+      }),
+    );
+
+    expect(result.text).toBe("Visible fictional evidence");
+  });
+
+  it("rejects alternate-content branches before either branch becomes evidence", async () => {
+    await expect(
+      extractDocxText(
+        createDocx({
+          "word/document.xml": `<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:w14="urn:fictional:word-variant">
+  <w:body>
+    <w:p><w:r><w:t>Visible fictional evidence</w:t></w:r></w:p>
+    <mc:AlternateContent>
+      <mc:Choice Requires="w14"><w:p><w:r><w:t>Choice-only fictional claim</w:t></w:r></w:p></mc:Choice>
+      <mc:Fallback><w:p><w:r><w:t>Fallback fictional claim</w:t></w:r></w:p></mc:Fallback>
+    </mc:AlternateContent>
+  </w:body>
+</w:document>`,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "unsafe_archive" });
+  });
+
   it("rejects comments that could masquerade as visible WordprocessingML", async () => {
     await expect(
       extractDocxText(

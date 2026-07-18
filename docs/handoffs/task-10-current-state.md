@@ -39,4 +39,6 @@ Real CV upload remains disabled in both the web capability and database settings
 
 Real upload must stay disabled until approved live authentication, private Storage/RLS isolation, fictional replacement/deletion/retention and complete erasure exercises, and Docker-backed database reset/pgTAP verification have all passed. No real CV or personal-data fixture may be added to the repository.
 
+The PDF lexical preflight deliberately rejects streams whose `/Length` is an indirect reference, so linearized or streaming-produced CV PDFs fail closed as `invalid_file`. This compatibility ceiling must be reassessed with fictional fixtures before real uploads are enabled.
+
 Docker, the Supabase CLI, `psql`, and `pg_prove` are unavailable in the current environment. The static verifier and SQL fixtures are locally exercised, but migrations 004–007 and pgTAP 007–011—including the 13-assertion two-session concurrency fixture—are not claimed as runtime-green.

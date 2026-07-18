@@ -39,31 +39,31 @@
 - `complete_career_profile_extraction(..., target_claim_token uuid, ...)` completes only the matching running claim; an expired or superseded token cannot mutate a run or document.
 - `career_ai_daily_usage` uses a durable, non-user-owned UTC-date aggregate and reads its limit from a private owner-controlled setting with default `0` and check `0..25`.
 
-- [ ] **Step 1: Add failing SQL/static and repository tests**
+- [x] **Step 1: Add failing SQL/static and repository tests**
 
   Assert that authenticated callers cannot execute claim/renew/complete, the claim has no caller allowance, deleting a profile cannot delete the daily aggregate, stale same-key claims are recovered before idempotent return, replacement recovery commits, every completion is token-fenced, the repository claims via the service client, and downloaded bytes must match both size and SHA-256.
 
-- [ ] **Step 2: Run the focused tests and confirm RED**
+- [x] **Step 2: Run the focused tests and confirm RED**
 
   Run: `pnpm vitest run scripts/verify-supabase-foundation.test.ts --config vitest.workspace.ts && pnpm vitest run --config supabase/functions/extract-career-profile/vitest.config.ts`
 
   Expected: failures for the caller allowance/service-client contract, missing lease token, non-durable ledger, and missing digest verification.
 
-- [ ] **Step 3: Implement the minimal database and repository changes**
+- [x] **Step 3: Implement the minimal database and repository changes**
 
   Derive the approved user in the Edge Function from the verified bearer client, pass that derived UUID only through the service-role repository, store an unguessable claim token and lease expiry, renew before long phases, and require the token for finalisation. Recover stale work in a transaction that returns a sanitised stale result rather than raising after the replacement trigger. Make the AI limit owner-controlled and the aggregate independent of deletable profile rows.
 
-- [ ] **Step 4: Bound the complete request lifecycle**
+- [x] **Step 4: Bound the complete request lifecycle**
 
   Stream request bodies and cancel after 2,048 bytes when `Content-Length` is absent; apply one overall deadline covering claim, Storage download, parsing, optional AI, lease renewal, and finalisation; reject truncated extraction as a visible bounded failure rather than persisting an apparently complete proposal.
 
-- [ ] **Step 5: Run focused tests and confirm GREEN**
+- [x] **Step 5: Run focused tests and confirm GREEN**
 
   Run: `pnpm vitest run scripts/verify-supabase-foundation.test.ts --config vitest.workspace.ts && pnpm vitest run --config supabase/functions/extract-career-profile/vitest.config.ts && pnpm check:supabase && pnpm check:deno`
 
   Expected: all selected tests and both static/deployment-graph checks pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Commit message: `fix: fence career extraction runtime`
 
@@ -84,31 +84,31 @@
 - DOCX XML is namespace-aware and accepts text only inside a complete `w:document/w:body`; deleted, moved-from, hidden, instruction, external, or out-of-body text is rejected or excluded.
 - `extractPdfText` owns the `PDFDocumentLoadingTask`, destroys it on timeout/failure, consumes `streamTextContent()` incrementally, cancels at bounds, excludes invalid/off-page geometry, and rejects invisible text-rendering modes before evidence creation.
 
-- [ ] **Step 1: Add failing hostile-fixture tests**
+- [x] **Step 1: Add failing hostile-fixture tests**
 
   Add fictional tests for forged stored-size metadata, overlapping ZIP ranges, actual output beyond 20 MiB, truncated/misnested WordprocessingML, hidden style and moved-from text, a compressed PDF text bomb, incremental cancellation, off-page text, and invisible rendering mode.
 
-- [ ] **Step 2: Run the profile package tests and confirm RED**
+- [x] **Step 2: Run the profile package tests and confirm RED**
 
   Run: `pnpm --filter @jobwarden/profile test`
 
   Expected: the new hostile fixtures fail because current extraction trusts metadata, materialises full PDF text, and regex-scans document XML.
 
-- [ ] **Step 3: Implement bounded ZIP and strict WordprocessingML parsing**
+- [x] **Step 3: Implement bounded ZIP and strict WordprocessingML parsing**
 
   Decode selected entries one at a time with output callbacks that update a shared actual-byte counter and deadline. Reject encrypted/data-descriptor ambiguity, local/central mismatches, duplicate or overlapping ranges, unsupported compression, and any output after a limit. Parse XML with namespace and stack state; never treat a regex match as document structure.
 
-- [ ] **Step 4: Implement incremental PDF extraction and visibility checks**
+- [x] **Step 4: Implement incremental PDF extraction and visibility checks**
 
   Retain and destroy the loading task/document on every exit, read text-content chunks through the stream reader, enforce the remaining character/deadline budget before concatenation, cancel immediately at a limit, and reject pages whose rendering instructions contain invisible text or whose items have non-finite/non-positive/off-page geometry.
 
-- [ ] **Step 5: Run focused tests and confirm GREEN**
+- [x] **Step 5: Run focused tests and confirm GREEN**
 
   Run: `pnpm --filter @jobwarden/profile test && pnpm --filter @jobwarden/profile typecheck && pnpm check:deno`
 
   Expected: profile tests, package typecheck, and Edge deployment graph pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Commit message: `fix: harden CV document extraction`
 
@@ -181,11 +181,11 @@
 - Modify: `docs/privacy/data-inventory.md`
 - Modify: `docs/project-status.md`
 
-- [ ] **Step 1: Update operational truth**
+- [x] **Step 1: Update operational truth**
 
   Record the durable application-wide AI ledger, service-only lease fencing, parser rejection/cancellation behavior, orphan Storage inventory, confirmed-evidence enforcement, and the unchanged default-off activation gate. Keep Docker/pgTAP and live Storage/auth/deletion as explicit pre-live blockers.
 
-- [ ] **Step 2: Run the complete release gate**
+- [x] **Step 2: Run the complete release gate**
 
   Run: `pnpm install --frozen-lockfile && pnpm verify && pnpm check:supabase && pnpm audit --prod --audit-level high && git diff --check origin/main...HEAD && gitleaks git --no-banner --redact --log-opts='origin/main..HEAD'`
 
@@ -195,6 +195,25 @@
 
   Review exact range `44a3580..HEAD`. Fix every Critical or Important finding and re-review until clean. Do not mark Task 10 reviewed before PR merge and local merge-commit verification.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
   Commit message: `docs: record Task 10 review remediation`
+
+#### Final-review follow-up
+
+- [x] Add fictional RED regressions for a never-closing request body, DOCX alternate-content branches, PDF JavaScript/action/rich-media/attachment surfaces, and zero-opacity or transparent operator state.
+- [x] Move the overall request deadline ahead of body parsing, race each body read, cancel on abort, and return only the sanitised timeout code.
+- [x] Reject alternate-content markup and active/ambiguous PDF metadata or hidden rendering state before extracted text becomes evidence.
+- [x] Rerun focused tests, typechecks, Deno checks, the complete release gate, dependency audit, diff checks, and Gitleaks scans.
+- [x] Commit the consolidated final-review remediation at branch `HEAD`.
+- [ ] Obtain a clean independent re-review of `44a3580..HEAD`.
+- [ ] Merge PR #11, update local `main`, and verify the merge commit before marking Task 10 reviewed or starting Task 11.
+
+#### Final re-review optional-content follow-up
+
+- [x] Add real fictional catalog-OFF and catalog-ON OCG fixtures; confirm RED proves disabled-layer text enters extraction while the enabled group remains accepted.
+- [x] Add RED cases for unknown OCG references, unsupported OCMD membership dictionaries, unclosed marked-content scopes, and unmatched terminators.
+- [x] Fetch the display optional-content configuration under the extraction deadline and reject hidden, unknown, unsupported, or malformed marked-content state before evidence creation.
+- [x] Rerun the focused profile suite/typecheck, Deno graph, complete release gate, static Supabase verifier, production audit, diff checks, and Gitleaks scans.
+- [x] Amend the consolidated remediation commit at branch `HEAD`.
+- [ ] Receive clean independent confirmation, then merge and verify PR #11 before changing Task 10 from `active`.

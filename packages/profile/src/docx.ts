@@ -33,6 +33,11 @@ interface XmlHandlers {
   onText?: (text: string) => void;
 }
 
+interface XmlCompatibilityFrame {
+  ignorableNamespaces: ReadonlySet<string>;
+  suppressed: boolean;
+}
+
 interface StyleDefinition {
   basedOn?: string;
   defaultCharacter: boolean;
@@ -55,6 +60,8 @@ const requiredDocxParts = [
 
 const wordprocessingNamespace =
   "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+const markupCompatibilityNamespace =
+  "http://schemas.openxmlformats.org/markup-compatibility/2006";
 const relationshipsNamespace =
   "http://schemas.openxmlformats.org/package/2006/relationships";
 const contentTypesNamespace =
@@ -66,6 +73,7 @@ const executablePartPattern =
 const unsafeArchiveNamePattern = /[\u0000-\u001f\u007f\\]/u;
 const zipChunkBytes = 1_024;
 const xmlChunkCharacters = 16_384;
+const xmlPrefixPattern = /^[A-Za-z_][A-Za-z0-9._-]*$/u;
 
 const crc32Table = new Uint32Array(256);
 for (let index = 0; index < crc32Table.length; index += 1) {
@@ -455,6 +463,7 @@ function parsePassiveXml(
   handlers: XmlHandlers,
 ): void {
   const parser = new SaxesParser({ xmlns: true, position: false });
+  const compatibilityFrames: XmlCompatibilityFrame[] = [];
   let malformed = false;
   parser.on("error", () => {
     malformed = true;
@@ -465,6 +474,9 @@ function parsePassiveXml(
   parser.on("processinginstruction", () => fail("unsafe_archive"));
   parser.on("opentag", (tag) => {
     ensureCvExtractionWithinDeadline(startedAt);
+    if (tag.uri === markupCompatibilityNamespace) {
+      fail("unsafe_archive");
+    }
     if (
       (tag.prefix === "w" && tag.uri !== wordprocessingNamespace) ||
       (tag.ns.w !== undefined && tag.ns.w !== wordprocessingNamespace) ||
@@ -475,15 +487,49 @@ function parsePassiveXml(
     ) {
       fail("unsafe_archive");
     }
-    handlers.onOpenTag?.(tag);
+
+    const parentFrame = compatibilityFrames.at(-1);
+    const ignorableNamespaces = new Set(parentFrame?.ignorableNamespaces ?? []);
+    for (const attribute of Object.values(tag.attributes)) {
+      if (attribute.uri !== markupCompatibilityNamespace) continue;
+      if (attribute.local !== "Ignorable") fail("unsafe_archive");
+
+      const prefixes = attribute.value.trim().split(/\s+/u);
+      if (prefixes.length === 0 || prefixes[0] === "") {
+        fail("unsafe_archive");
+      }
+      for (const prefix of prefixes) {
+        if (!xmlPrefixPattern.test(prefix)) fail("unsafe_archive");
+        const namespace = tag.ns[prefix];
+        if (
+          namespace === undefined ||
+          namespace === "" ||
+          namespace === wordprocessingNamespace ||
+          namespace === markupCompatibilityNamespace
+        ) {
+          fail("unsafe_archive");
+        }
+        ignorableNamespaces.add(namespace);
+      }
+    }
+
+    const frame: XmlCompatibilityFrame = {
+      ignorableNamespaces,
+      suppressed:
+        (parentFrame?.suppressed ?? false) || ignorableNamespaces.has(tag.uri),
+    };
+    compatibilityFrames.push(frame);
+    if (!frame.suppressed) handlers.onOpenTag?.(tag);
   });
   parser.on("closetag", (tag) => {
     ensureCvExtractionWithinDeadline(startedAt);
-    handlers.onCloseTag?.(tag);
+    const frame = compatibilityFrames.pop();
+    if (!frame) fail("unsafe_archive");
+    if (!frame.suppressed) handlers.onCloseTag?.(tag);
   });
   parser.on("text", (text) => {
     ensureCvExtractionWithinDeadline(startedAt);
-    handlers.onText?.(text);
+    if (!compatibilityFrames.at(-1)?.suppressed) handlers.onText?.(text);
   });
 
   try {
@@ -492,7 +538,7 @@ function parsePassiveXml(
       parser.write(xml.slice(offset, offset + xmlChunkCharacters));
     }
     parser.close();
-    if (malformed) fail("unsafe_archive");
+    if (malformed || compatibilityFrames.length > 0) fail("unsafe_archive");
   } catch (error) {
     if (error instanceof CvFileValidationError) throw error;
     fail("unsafe_archive");
