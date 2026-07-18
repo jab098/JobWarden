@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(50);
+select plan(59);
 
 select has_table('public', 'job_source_occurrences', 'source occurrences are persisted');
 select has_column('public', 'job_sources', 'coverage_mode', 'sources declare coverage mode');
@@ -45,6 +45,24 @@ select throws_ok(
   '23514',
   null,
   'Reed discovery cannot run more often than every six hours'
+);
+
+insert into auth.users (
+  id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+) values (
+  '60000000-0000-4000-8000-000000000001',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated', 'coverage-admin@example.test', '', now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"full_name":"Coverage administrator"}', now(), now()
+);
+
+insert into public.user_roles (user_id, role, created_by)
+values (
+  '60000000-0000-4000-8000-000000000001',
+  'admin',
+  '60000000-0000-4000-8000-000000000001'
 );
 
 insert into public.job_sources (
@@ -134,17 +152,17 @@ select lives_ok(
         'applicationUrl', 'https://www.reed.co.uk/jobs/implementation-consultant/1',
         'countryCode', 'GB',
         'ukEligibilityEvidence', jsonb_build_array('London, United Kingdom'),
-        'employmentType', 'permanent',
-        'workingTime', 'full_time',
+        'employmentType', 'contract',
+        'workingTime', 'part_time',
         'workplaceType', 'hybrid',
         'ir35Status', 'not_applicable',
-        'compensationRaw', 'GBP 60000 per year',
-        'compensationMinimum', 6000000,
+        'compensationRaw', null,
+        'compensationMinimum', null,
         'compensationMaximum', null,
-        'compensationCurrency', 'GBP',
-        'compensationPeriod', 'year',
-        'compensationProvenance', 'advertised',
-        'compensationObservedAt', '2026-07-18T12:00:00Z',
+        'compensationCurrency', null,
+        'compensationPeriod', 'unknown',
+        'compensationProvenance', 'unknown',
+        'compensationObservedAt', null,
         'postedAt', '2026-07-18T08:00:00Z',
         'closesAt', clock_timestamp() + interval '30 days',
         'deduplicationKey', repeat('a', 64),
@@ -158,8 +176,32 @@ select lives_ok(
 select is((select count(*)::integer from public.jobs where deduplication_key = repeat('a', 64)), 1, 'exact-key deduplication does not duplicate the canonical job');
 select is((select count(*)::integer from public.job_source_occurrences where job_id = (select id from public.jobs where deduplication_key = repeat('a', 64))), 2, 'both provider occurrences remain attributable');
 select is((select compensation_provenance from public.jobs where deduplication_key = repeat('a', 64)), 'advertised', 'advertised salary provenance is stored');
-select is((select source_id from public.jobs where deduplication_key = repeat('a', 64)), '61000000-0000-4000-8000-000000000001'::uuid, 'direct Greenhouse evidence wins after equal salary provenance');
+select is((select source_id from public.jobs where deduplication_key = repeat('a', 64)), '61000000-0000-4000-8000-000000000001'::uuid, 'advertised direct evidence wins over an unknown-salary aggregator occurrence');
 select is((select application_url from public.jobs where deduplication_key = repeat('a', 64)), 'https://boards.greenhouse.io/canonical/jobs/1', 'canonical display data does not oscillate with later aggregator arrival');
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '60000000-0000-4000-8000-000000000001', true);
+select is(
+  (select advertised_compensation from public.get_job_source_health() where source_id = '61000000-0000-4000-8000-000000000001'),
+  1,
+  'source health counts the direct occurrence advertised salary instead of canonicalising both sources'
+);
+select is(
+  (select unknown_compensation from public.get_job_source_health() where source_id = '61000000-0000-4000-8000-000000000002'),
+  1,
+  'source health retains the aggregator occurrence unknown salary'
+);
+select is(
+  (select contract_roles from public.get_job_source_health() where source_id = '61000000-0000-4000-8000-000000000002'),
+  1,
+  'source health counts employment type from the provider occurrence'
+);
+select is(
+  (select part_time_roles from public.get_job_source_health() where source_id = '61000000-0000-4000-8000-000000000002'),
+  1,
+  'source health counts working time from the provider occurrence'
+);
 
 reset role;
 insert into public.ingestion_runs (id, trigger_type)
@@ -402,6 +444,98 @@ select throws_ok(
 select lives_ok(
   $$ select public.finish_source_ingestion('63000000-0000-4000-8000-000000000008', 'failed', false, 0, 0, 0, 0, 0, 5, 0, 'source_disabled') $$,
   'the disabled in-flight source run can finalise safely as failed'
+);
+
+reset role;
+update public.job_source_occurrences
+set candidate_data = candidate_data || jsonb_build_object(
+  'compensationRaw', null,
+  'compensationMinimum', null,
+  'compensationMaximum', null,
+  'compensationCurrency', null,
+  'compensationPeriod', 'unknown',
+  'compensationProvenance', 'unknown',
+  'compensationObservedAt', null
+)
+where source_id = '61000000-0000-4000-8000-000000000001';
+
+update public.job_source_occurrences
+set candidate_data = candidate_data || jsonb_build_object(
+  'compensationRaw', 'GBP 60000 per year',
+  'compensationMinimum', 6000000,
+  'compensationMaximum', null,
+  'compensationCurrency', 'GBP',
+  'compensationPeriod', 'year',
+  'compensationProvenance', 'advertised',
+  'compensationObservedAt', '2026-07-18T14:00:00Z'
+)
+where source_id = '61000000-0000-4000-8000-000000000002'
+  and provider_job_id = 'reed-1';
+
+select private.rematerialize_canonical_job(
+  (select id from public.jobs where deduplication_key = repeat('a', 64))
+);
+select is(
+  (select source_id from public.jobs where deduplication_key = repeat('a', 64)),
+  '61000000-0000-4000-8000-000000000002'::uuid,
+  'the removal fixture starts with Reed selected for a shared canonical job'
+);
+
+create temporary table reed_affected_jobs on commit drop as
+select occurrence.job_id
+from public.job_source_occurrences as occurrence
+join public.job_sources as source on source.id = occurrence.source_id
+where source.provider = 'reed' and source.board_token = 'gb-discovery';
+
+delete from public.job_source_occurrences as occurrence
+using public.job_sources as source
+where occurrence.source_id = source.id
+  and source.provider = 'reed'
+  and source.board_token = 'gb-discovery';
+
+select private.rematerialize_canonical_job(affected.job_id)
+from (select distinct job_id from reed_affected_jobs) as affected
+where exists (
+  select 1
+  from public.job_source_occurrences as remaining
+  where remaining.job_id = affected.job_id
+);
+
+delete from public.jobs as job
+using reed_affected_jobs as affected
+where job.id = affected.job_id
+  and not exists (
+    select 1
+    from public.job_source_occurrences as remaining
+    where remaining.job_id = job.id
+  );
+
+update public.job_sources
+set
+  enabled = false,
+  compliance_notes = 'Reed provider data removed in pgTAP fixture; historical audit retained.',
+  updated_at = clock_timestamp()
+where provider = 'reed' and board_token = 'gb-discovery';
+
+select is(
+  (select count(*)::integer from public.job_source_occurrences where source_id = '61000000-0000-4000-8000-000000000002'),
+  0,
+  'provider removal deletes every Reed occurrence'
+);
+select is(
+  (select source_id from public.jobs where deduplication_key = repeat('a', 64)),
+  '61000000-0000-4000-8000-000000000001'::uuid,
+  'provider removal rematerialises a shared canonical job from the surviving direct source'
+);
+select is(
+  (select count(*)::integer from public.jobs where deduplication_key = repeat('d', 64)),
+  0,
+  'provider removal deletes an orphaned Reed-only canonical job'
+);
+select is(
+  (select enabled from public.job_sources where id = '61000000-0000-4000-8000-000000000002'),
+  false,
+  'provider removal retains a disabled source tombstone'
 );
 
 select * from finish();
