@@ -130,6 +130,10 @@ describe("Supabase foundation static verifier", () => {
         "shared queue must admit every database-supported provider",
         "source health must expose a bounded freshness state",
         "source health must count full-time roles",
+        "canonical jobs must delegate provider identity uniqueness to occurrences",
+        "batch persistence must recheck source state under lock",
+        "source finalisation must only close affected canonical jobs",
+        "source health must aggregate each source occurrence candidate",
       ]),
     );
   });

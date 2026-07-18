@@ -18,6 +18,7 @@ alter table public.job_sources
   );
 
 alter table public.jobs
+  drop constraint jobs_provider_identity_unique,
   add column compensation_provenance text not null default 'unknown'
     check (compensation_provenance in ('advertised', 'estimated', 'unknown')),
   add column compensation_observed_at timestamptz,
@@ -520,6 +521,8 @@ as $$
 declare
   source_id_value uuid;
   source_run_status text;
+  source_enabled boolean;
+  source_provider text;
   job_value jsonb;
   job_id_value uuid;
   occurrence_job_id uuid;
@@ -539,17 +542,21 @@ begin
     raise exception using errcode = '22023', message = 'invalid ingestion job batch';
   end if;
 
-  select source_id, status
-  into source_id_value, source_run_status
-  from public.ingestion_source_runs
-  where id = target_source_run_id
-  for update;
+  select source_run.source_id, source_run.status, source.enabled, source.provider
+  into source_id_value, source_run_status, source_enabled, source_provider
+  from public.ingestion_source_runs as source_run
+  join public.job_sources as source on source.id = source_run.source_id
+  where source_run.id = target_source_run_id
+  for update of source_run, source;
 
   if not found then
     raise exception using errcode = 'P0002', message = 'ingestion source run not found';
   end if;
   if source_run_status is distinct from 'running' then
     raise exception using errcode = '22023', message = 'ingestion source run is not running';
+  end if;
+  if not source_enabled or source_provider not in ('greenhouse', 'reed') then
+    raise exception using errcode = '22023', message = 'source is not enabled for ingestion';
   end if;
 
   perform pg_catalog.pg_advisory_xact_lock(
@@ -752,6 +759,7 @@ declare
   effective_error_code text;
   derived_closed_count integer := 0;
   affected_job_ids uuid[] := '{}'::uuid[];
+  omitted_job_ids uuid[] := '{}'::uuid[];
   expiring_occurrence_ids uuid[] := '{}'::uuid[];
   expiring_job_ids uuid[] := '{}'::uuid[];
   affected_job_id uuid;
@@ -808,13 +816,17 @@ begin
     pg_catalog.hashtextextended(source_id_value::text, 0)
   );
 
-  select coalesce(array_agg(distinct job_id), '{}'::uuid[])
-  into affected_job_ids
-  from public.job_source_occurrences
-  where source_id = source_id_value;
-
   if effective_status = 'succeeded'
     and coverage_mode_value = 'complete' and response_was_complete then
+    select coalesce(array_agg(distinct job_id), '{}'::uuid[])
+    into omitted_job_ids
+    from public.job_source_occurrences
+    where source_id = source_id_value
+      and lifecycle_status = 'active'
+      and last_seen_source_run_id is distinct from target_source_run_id;
+
+    affected_job_ids := affected_job_ids || omitted_job_ids;
+
     update public.job_source_occurrences
     set
       consecutive_successful_omissions = consecutive_successful_omissions + 1,
@@ -856,29 +868,18 @@ begin
     updated_at = clock_timestamp()
   where id = any(expiring_occurrence_ids);
 
-  with closed_jobs as (
-    update public.jobs as job
-    set
-      lifecycle_status = 'closed',
-      closed_at = clock_timestamp(),
-      updated_at = clock_timestamp()
-    where lifecycle_status = 'active'
-      and not exists (
-        select 1
-        from public.job_source_occurrences as occurrence
-        where occurrence.job_id = job.id
-          and occurrence.lifecycle_status = 'active'
-      )
-    returning id
-  )
-  select count(*)::integer into derived_closed_count from closed_jobs;
-
   for affected_job_id in
     select distinct affected.id
     from unnest(affected_job_ids) as affected(id)
   loop
     perform private.rematerialize_canonical_job(affected_job_id);
   end loop;
+
+  select count(*)::integer
+  into derived_closed_count
+  from public.jobs as job
+  where job.id = any(affected_job_ids)
+    and job.lifecycle_status = 'closed';
 
   update public.ingestion_source_runs
   set
@@ -1006,16 +1007,15 @@ begin
   left join lateral (
     select
       count(*)::integer as active_occurrences,
-      count(*) filter (where job.compensation_provenance = 'advertised')::integer as advertised_compensation,
-      count(*) filter (where job.compensation_provenance = 'estimated')::integer as estimated_compensation,
-      count(*) filter (where job.compensation_provenance = 'unknown')::integer as unknown_compensation,
-      count(*) filter (where job.employment_type = 'permanent')::integer as permanent_roles,
-      count(*) filter (where job.employment_type = 'contract')::integer as contract_roles,
-      count(*) filter (where job.employment_type = 'temporary')::integer as temporary_roles,
-      count(*) filter (where job.working_time = 'full_time')::integer as full_time_roles,
-      count(*) filter (where job.working_time = 'part_time')::integer as part_time_roles
+      count(*) filter (where occurrence.candidate_data ->> 'compensationProvenance' = 'advertised')::integer as advertised_compensation,
+      count(*) filter (where occurrence.candidate_data ->> 'compensationProvenance' = 'estimated')::integer as estimated_compensation,
+      count(*) filter (where coalesce(occurrence.candidate_data ->> 'compensationProvenance', 'unknown') = 'unknown')::integer as unknown_compensation,
+      count(*) filter (where occurrence.candidate_data ->> 'employmentType' = 'permanent')::integer as permanent_roles,
+      count(*) filter (where occurrence.candidate_data ->> 'employmentType' = 'contract')::integer as contract_roles,
+      count(*) filter (where occurrence.candidate_data ->> 'employmentType' = 'temporary')::integer as temporary_roles,
+      count(*) filter (where occurrence.candidate_data ->> 'workingTime' = 'full_time')::integer as full_time_roles,
+      count(*) filter (where occurrence.candidate_data ->> 'workingTime' = 'part_time')::integer as part_time_roles
     from public.job_source_occurrences as occurrence
-    join public.jobs as job on job.id = occurrence.job_id
     where occurrence.source_id = source.id
       and occurrence.lifecycle_status = 'active'
   ) as metrics on true

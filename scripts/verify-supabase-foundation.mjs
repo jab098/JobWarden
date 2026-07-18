@@ -72,8 +72,8 @@ export function verifyFoundationSql(files) {
 
   const requiredFragments = [
     [
-      "constraint jobs_provider_identity_unique unique (source_id, provider_job_id)",
-      "missing provider identity uniqueness",
+      "drop constraint jobs_provider_identity_unique",
+      "canonical jobs must delegate provider identity uniqueness to occurrences",
     ],
     [
       "constraint jobs_country_gb check (country_code = 'gb')",
@@ -291,6 +291,14 @@ export function verifyFoundationSql(files) {
       "source-run startup must admit every database-supported provider",
     ],
     [
+      "if not source_enabled or source_provider not in ('greenhouse', 'reed') then",
+      "batch persistence must recheck source state under lock",
+    ],
+    [
+      "where job.id = any(affected_job_ids)",
+      "source finalisation must only close affected canonical jobs",
+    ],
+    [
       "compensation_provenance in ('advertised', 'estimated', 'unknown')",
       "missing compensation provenance constraint",
     ],
@@ -325,6 +333,10 @@ export function verifyFoundationSql(files) {
     ],
     ["temporary_roles integer", "source health must count temporary roles"],
     ["full_time_roles integer", "source health must count full-time roles"],
+    [
+      "occurrence.candidate_data ->> 'compensationprovenance'",
+      "source health must aggregate each source occurrence candidate",
+    ],
   ];
 
   for (const [fragment, message] of requiredFragments) {

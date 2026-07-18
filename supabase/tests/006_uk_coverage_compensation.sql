@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(42);
+select plan(50);
 
 select has_table('public', 'job_source_occurrences', 'source occurrences are persisted');
 select has_column('public', 'job_sources', 'coverage_mode', 'sources declare coverage mode');
@@ -54,12 +54,12 @@ insert into public.job_sources (
 ) values
   (
     '61000000-0000-4000-8000-000000000001', 'greenhouse', 'canonical-fixture',
-    'Canonical Fixture Ltd', false, interval '1 hour', current_date, current_date,
+    'Canonical Fixture Ltd', true, interval '1 hour', current_date, current_date,
     'Complete Greenhouse fixture.', array['boards.greenhouse.io'], 'complete'
   ),
   (
     '61000000-0000-4000-8000-000000000002', 'reed', 'gb-discovery',
-    'Reed', false, interval '6 hours', current_date, current_date,
+    'Reed', true, interval '6 hours', current_date, current_date,
     'Incremental Reed API fixture.', array['www.reed.co.uk'], 'incremental'
   );
 
@@ -160,6 +160,88 @@ select is((select count(*)::integer from public.job_source_occurrences where job
 select is((select compensation_provenance from public.jobs where deduplication_key = repeat('a', 64)), 'advertised', 'advertised salary provenance is stored');
 select is((select source_id from public.jobs where deduplication_key = repeat('a', 64)), '61000000-0000-4000-8000-000000000001'::uuid, 'direct Greenhouse evidence wins after equal salary provenance');
 select is((select application_url from public.jobs where deduplication_key = repeat('a', 64)), 'https://boards.greenhouse.io/canonical/jobs/1', 'canonical display data does not oscillate with later aggregator arrival');
+
+reset role;
+insert into public.ingestion_runs (id, trigger_type)
+values ('62000000-0000-4000-8000-000000000007', 'manual');
+insert into public.ingestion_source_runs (id, run_id, source_id)
+values (
+  '63000000-0000-4000-8000-000000000007',
+  '62000000-0000-4000-8000-000000000007',
+  '61000000-0000-4000-8000-000000000001'
+);
+set local role service_role;
+select lives_ok(
+  $$
+    select * from public.upsert_ingested_jobs(
+      '63000000-0000-4000-8000-000000000007',
+      jsonb_build_array(jsonb_build_object(
+        'providerJobId', 'greenhouse-1',
+        'title', 'Implementation Consultant',
+        'employer', 'Canonical Fixture Ltd',
+        'descriptionText', 'UK implementation role after a corrected canonical URL.',
+        'applicationUrl', 'https://boards.greenhouse.io/canonical/jobs/1',
+        'countryCode', 'GB',
+        'ukEligibilityEvidence', jsonb_build_array('London, United Kingdom'),
+        'employmentType', 'permanent',
+        'workingTime', 'full_time',
+        'workplaceType', 'hybrid',
+        'ir35Status', 'not_applicable',
+        'compensationRaw', 'GBP 60000 per year',
+        'compensationMinimum', 6000000,
+        'compensationMaximum', null,
+        'compensationCurrency', 'GBP',
+        'compensationPeriod', 'year',
+        'compensationProvenance', 'advertised',
+        'compensationObservedAt', '2026-07-18T13:00:00Z',
+        'postedAt', '2026-07-18T08:00:00Z',
+        'closesAt', null,
+        'deduplicationKey', repeat('f', 64),
+        'contentHash', repeat('f', 64)
+      ))
+    )
+  $$,
+  'a winning direct occurrence can move to a corrected new canonical key'
+);
+select is((select source_id from public.jobs where deduplication_key = repeat('a', 64)), '61000000-0000-4000-8000-000000000002'::uuid, 'the old canonical rematerialises from its remaining Reed occurrence');
+select lives_ok(
+  $$
+    select * from public.upsert_ingested_jobs(
+      '63000000-0000-4000-8000-000000000007',
+      jsonb_build_array(jsonb_build_object(
+        'providerJobId', 'greenhouse-1',
+        'title', 'Implementation Consultant',
+        'employer', 'Canonical Fixture Ltd',
+        'descriptionText', 'UK implementation role.',
+        'applicationUrl', 'https://boards.greenhouse.io/canonical/jobs/1',
+        'countryCode', 'GB',
+        'ukEligibilityEvidence', jsonb_build_array('London, United Kingdom'),
+        'employmentType', 'permanent',
+        'workingTime', 'full_time',
+        'workplaceType', 'hybrid',
+        'ir35Status', 'not_applicable',
+        'compensationRaw', 'GBP 60000 per year',
+        'compensationMinimum', 6000000,
+        'compensationMaximum', null,
+        'compensationCurrency', 'GBP',
+        'compensationPeriod', 'year',
+        'compensationProvenance', 'advertised',
+        'compensationObservedAt', '2026-07-18T13:05:00Z',
+        'postedAt', '2026-07-18T08:00:00Z',
+        'closesAt', null,
+        'deduplicationKey', repeat('a', 64),
+        'contentHash', repeat('b', 64)
+      ))
+    )
+  $$,
+  'the direct occurrence can move back onto an existing canonical job'
+);
+select is((select count(*)::integer from public.jobs where deduplication_key = repeat('f', 64)), 0, 'the orphaned temporary canonical row is removed');
+select is((select source_id from public.jobs where deduplication_key = repeat('a', 64)), '61000000-0000-4000-8000-000000000001'::uuid, 'direct evidence wins regardless of provider arrival order');
+select lives_ok(
+  $$ select public.finish_source_ingestion('63000000-0000-4000-8000-000000000007', 'succeeded', true, 1, 1, 0, 1, 0, 5, 0, null) $$,
+  'the canonical-key correction run finalises normally'
+);
 select lives_ok(
   $$ select public.finish_source_ingestion('63000000-0000-4000-8000-000000000002', 'succeeded', false, 1, 1, 0, 1, 0, 5, 0, null) $$,
   'an incremental response succeeds without pretending to be complete'
@@ -211,6 +293,9 @@ select is((select count(distinct job_id)::integer from public.job_source_occurre
 
 reset role;
 delete from public.ingestion_requests where source_id = '61000000-0000-4000-8000-000000000002';
+update public.job_sources
+set enabled = false
+where id = '61000000-0000-4000-8000-000000000001';
 update public.job_sources
 set enabled = true, last_successful_sync_at = null
 where id = '61000000-0000-4000-8000-000000000002';
@@ -282,6 +367,41 @@ select is(
   (select status from public.ingestion_requests where id = (select request_id from reed_claim)),
   'completed',
   'the Reed queue lifecycle reaches completed'
+);
+
+reset role;
+insert into public.ingestion_runs (id, trigger_type)
+values ('62000000-0000-4000-8000-000000000008', 'manual');
+insert into public.ingestion_source_runs (id, run_id, source_id)
+values (
+  '63000000-0000-4000-8000-000000000008',
+  '62000000-0000-4000-8000-000000000008',
+  '61000000-0000-4000-8000-000000000002'
+);
+update public.job_sources
+set enabled = false
+where id = '61000000-0000-4000-8000-000000000002';
+set local role service_role;
+select throws_ok(
+  $$
+    select * from public.upsert_ingested_jobs(
+      '63000000-0000-4000-8000-000000000008',
+      jsonb_build_array(jsonb_build_object(
+        'providerJobId', 'reed-removal-race',
+        'countryCode', 'GB',
+        'ukEligibilityEvidence', jsonb_build_array('United Kingdom'),
+        'deduplicationKey', repeat('7', 64),
+        'contentHash', repeat('8', 64)
+      ))
+    )
+  $$,
+  '22023',
+  'source is not enabled for ingestion',
+  'a disabled source cannot persist after a claimed-run removal race'
+);
+select lives_ok(
+  $$ select public.finish_source_ingestion('63000000-0000-4000-8000-000000000008', 'failed', false, 0, 0, 0, 0, 0, 5, 0, 'source_disabled') $$,
+  'the disabled in-flight source run can finalise safely as failed'
 );
 
 select * from finish();

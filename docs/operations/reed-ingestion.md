@@ -158,7 +158,34 @@ where provider = 'reed' and board_token = 'gb-discovery';
 
 ## Termination and provider-data removal
 
-Disable the source and revoke/delete `REED_API_KEY` before any data operation. If Reed or the applicable terms require removal, take an owner-approved database backup, confirm the exact scope, and use a transaction that preserves canonical jobs still evidenced by other providers:
+Disable the source and revoke/delete `REED_API_KEY` before any data operation. Then cancel work that has not started:
+
+```sql
+update public.ingestion_requests as request
+set
+  status = 'cancelled',
+  completed_at = clock_timestamp(),
+  last_error_code = 'source_disabled',
+  updated_at = clock_timestamp()
+from public.job_sources as source
+where request.source_id = source.id
+  and source.provider = 'reed'
+  and source.board_token = 'gb-discovery'
+  and request.status = 'pending';
+```
+
+Do not rewrite a claimed request. The persistence function locks and rechecks the source row, so a worker that claimed Reed before it was disabled fails closed instead of reinserting provider data. Wait until this query returns zero before deleting occurrences:
+
+```sql
+select count(*) as active_reed_runs
+from public.ingestion_source_runs as source_run
+join public.job_sources as source on source.id = source_run.source_id
+where source.provider = 'reed'
+  and source.board_token = 'gb-discovery'
+  and source_run.status = 'running';
+```
+
+If a run remains after its five-minute lease, follow the shared ingestion lease-recovery process and investigate before continuing. Once no Reed run is active, take an owner-approved database backup, confirm the exact removal scope, and use this transaction to preserve canonical jobs still evidenced by other providers:
 
 ```sql
 begin;
