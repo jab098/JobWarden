@@ -1,0 +1,77 @@
+const unsafeAuthorityCharacter = /[\u0000-\u0020\u007f-\u009f,/@?#\\]/;
+const unsafeOriginCharacter = /[\u0000-\u0020\u007f-\u009f]/;
+
+export type MutationOriginInput = {
+  requestOrigin: string | null;
+  requestHost: string | null;
+  forwardedHost: string | null;
+  forwardedProto: string | null;
+  siteOrigin: string;
+};
+
+function parseExactOrigin(value: string): URL | null {
+  if (unsafeOriginCharacter.test(value)) return null;
+
+  try {
+    const parsed = new URL(value);
+    if (
+      !["http:", "https:"].includes(parsed.protocol) ||
+      parsed.username ||
+      parsed.password ||
+      parsed.pathname !== "/" ||
+      parsed.search ||
+      parsed.hash
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function authorityMatches(authority: string | null, configured: URL): boolean {
+  if (!authority || unsafeAuthorityCharacter.test(authority)) return false;
+
+  try {
+    return (
+      new URL(`${configured.protocol}//${authority}`).origin ===
+      configured.origin
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function isTrustedMutationOrigin(input: MutationOriginInput): boolean {
+  const configured = parseExactOrigin(input.siteOrigin);
+  const requestOrigin = input.requestOrigin
+    ? parseExactOrigin(input.requestOrigin)
+    : null;
+  if (!configured || !requestOrigin) return false;
+
+  if (
+    requestOrigin.origin !== configured.origin ||
+    !authorityMatches(input.requestHost, configured)
+  ) {
+    return false;
+  }
+
+  if (
+    input.forwardedHost !== null &&
+    !authorityMatches(input.forwardedHost, configured)
+  ) {
+    return false;
+  }
+
+  if (input.forwardedProto !== null) {
+    if (
+      unsafeAuthorityCharacter.test(input.forwardedProto) ||
+      `${input.forwardedProto}:` !== configured.protocol
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}

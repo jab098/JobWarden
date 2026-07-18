@@ -20,18 +20,18 @@ Status changes to `reviewed` only after independent review, full verification, p
 
 ## Delivery sequence
 
-| Task | Deliverable                                                                | Status  | External setup gate                                                                  |
-| ---- | -------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------ |
-| 7    | Administrator operations                                                   | pending | None for fixture development                                                         |
-| 8    | Shared ingestion runtime                                                   | pending | Supabase project for live deployment; local implementation does not wait             |
-| 9    | UK coverage and compensation                                               | pending | Source credentials only when an approved API requires them                           |
-| 10   | Career profile, onboarding, and CV extraction                              | pending | Supabase private Storage and Cloudflare Workers AI before real-data testing          |
-| 11   | Target Feed and explainable fit scores                                     | pending | No paid AI dependency                                                                |
-| 12   | Explore and career pathways                                                | pending | Cloudflare Workers AI optional; deterministic taxonomy is the fallback               |
-| 13   | Application tracker and follow-ups                                         | pending | None for fixture development                                                         |
-| 14   | Scheduled updates and notifications                                        | pending | Resend account, verified sending domain, and DNS records                             |
-| 15   | Evidence-bound CV tailoring                                                | pending | Cloudflare Workers AI and private Storage; DOCX source required for preserved layout |
-| 16   | Privacy, production authentication, deployment, and full-path verification | pending | Supabase OAuth, production domain, Cloudflare deployment, Sentry EU if enabled       |
+| Task | Deliverable                                                                | Status   | External setup gate                                                                  |
+| ---- | -------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------ |
+| 7    | Administrator operations                                                   | reviewed | None for fixture development                                                         |
+| 8    | Shared ingestion runtime                                                   | pending  | Supabase project for live deployment; local implementation does not wait             |
+| 9    | UK coverage and compensation                                               | pending  | Source credentials only when an approved API requires them                           |
+| 10   | Career profile, onboarding, and CV extraction                              | pending  | Supabase private Storage and Cloudflare Workers AI before real-data testing          |
+| 11   | Target Feed and explainable fit scores                                     | pending  | No paid AI dependency                                                                |
+| 12   | Explore and career pathways                                                | pending  | Cloudflare Workers AI optional; deterministic taxonomy is the fallback               |
+| 13   | Application tracker and follow-ups                                         | pending  | None for fixture development                                                         |
+| 14   | Scheduled updates and notifications                                        | pending  | Resend account, verified sending domain, and DNS records                             |
+| 15   | Evidence-bound CV tailoring                                                | pending  | Cloudflare Workers AI and private Storage; DOCX source required for preserved layout |
+| 16   | Privacy, production authentication, deployment, and full-path verification | pending  | Supabase OAuth, production domain, Cloudflare deployment, Sentry EU if enabled       |
 
 ## Task 7 — Administrator operations
 
