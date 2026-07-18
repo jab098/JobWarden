@@ -21,18 +21,18 @@ The branch must not be described as `reviewed` or delivered until the ready pull
 
 ## Acceptance mapping
 
-| Outcome | Evidence |
-| --- | --- |
-| Flexible onboarding | Strict domain draft accepts any non-empty combination of CV reference, role family, industry/domain, user evidence, or keyword; empty drafts fail |
-| Evidence-bound personalisation | Evidence stores normalised concept, label, category, origin, confidence, bounded excerpt/reference, proficiency, recency, and confirmation state; searches include confirmed evidence only |
-| Separate seniority | Current and target seniority are separate throughout domain, database, repository, UI, and named searches |
-| Owner-only private data | Six career tables and the AI counter force RLS; private Storage uses approved owner paths; administrators have no default profile/CV visibility |
-| Safe file intake | DOCM/legacy/mismatched files, unsafe paths/relationships/entities/comments/namespaces/executable parts, oversized archives, encrypted/malformed/over-page PDFs, excessive text, and deadlines fail before proposal creation |
-| Deterministic fallback | Explicit phrase rules emit offset-backed proposed evidence and evidence-backed inactive role suggestions without raw CV text |
-| Optional AI ceiling | Default allowance zero; application-wide `0..25` daily reservation is globally locked and user-audited; one run/user; 60,000 input characters; 4,000 output tokens; 30 seconds; no retry/paid fallback |
-| Explicit review | Successful completion materialises proposed evidence/suggestions; owners can confirm/exclude evidence and accept/dismiss suggestions; user-confirmed evidence cannot be overwritten by extraction |
-| Retention/deletion | Raw structured proposals expire after 24 hours on an hourly job; Storage is removed before metadata; failed replacement restores the prior usable CV; direct profile-row deletion is denied |
-| Real uploads disabled | UI, repository, Storage policies, registration RPC, and claim RPC all retain the closed gate |
+| Outcome                        | Evidence                                                                                                                                                                                                                    |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Flexible onboarding            | Strict domain draft accepts any non-empty combination of CV reference, role family, industry/domain, user evidence, or keyword; empty drafts fail                                                                           |
+| Evidence-bound personalisation | Evidence stores normalised concept, label, category, origin, confidence, bounded excerpt/reference, proficiency, recency, and confirmation state; searches include confirmed evidence only                                  |
+| Separate seniority             | Current and target seniority are separate throughout domain, database, repository, UI, and named searches                                                                                                                   |
+| Owner-only private data        | Six career tables and the AI counter force RLS; private Storage uses approved owner paths; administrators have no default profile/CV visibility                                                                             |
+| Safe file intake               | DOCM/legacy/mismatched files, unsafe paths/relationships/entities/comments/namespaces/executable parts, oversized archives, encrypted/malformed/over-page PDFs, excessive text, and deadlines fail before proposal creation |
+| Deterministic fallback         | Explicit phrase rules emit offset-backed proposed evidence and evidence-backed inactive role suggestions without raw CV text                                                                                                |
+| Optional AI ceiling            | Default allowance zero; application-wide `0..25` daily reservation is globally locked and user-audited; one run/user; 60,000 input characters; 4,000 output tokens; 30 seconds; no retry/paid fallback                      |
+| Explicit review                | Successful completion materialises proposed evidence/suggestions; owners can confirm/exclude evidence and accept/dismiss suggestions; user-confirmed evidence cannot be overwritten by extraction                           |
+| Retention/deletion             | Raw structured proposals expire after 24 hours on an hourly job; Storage is removed before metadata; failed replacement restores the prior usable CV; direct profile-row deletion is denied                                 |
+| Real uploads disabled          | UI, repository, Storage policies, registration RPC, and claim RPC all retain the closed gate                                                                                                                                |
 
 ## Full-range local review
 
@@ -60,8 +60,9 @@ Run from `/Users/jabed/Desktop/Jabed's Trash/Dev/JobWarden` on 2026-07-18:
 - `pnpm check:supabase` — ten migrations and eighteen forced-RLS tables passed the static verifier;
 - `pnpm audit --prod --audit-level high` — no known vulnerabilities;
 - `git diff --check` — clean;
-- hydrated `/profile` browser checks at 1440 by 1000 and true 390 by 844 passed the desktop/mobile hierarchy, navigation, visible focus, no file input, no error overlay, and no horizontal document overflow; and
-- the Task 10 staged and exact-range secret scans are required immediately around the final local commit.
+- hydrated `/profile` browser checks at 1440 by 1000 and true 390 by 844 passed the desktop/mobile hierarchy, navigation, visible focus, no file input, no error overlay, and no horizontal document overflow;
+- staged Gitleaks scan — 70.62 KB scanned with no leaks; and
+- exact Task 10 range Gitleaks scan (`44a3580..f15b192`) — ten commits and 340.68 KB scanned with no leaks.
 
 The expected jsdom `HTMLCanvasElement.getContext()` warning appears during the accessibility suite; it does not fail a test and no canvas is used by the profile feature.
 

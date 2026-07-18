@@ -7,6 +7,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - [Approved foundation design](superpowers/specs/2026-07-17-jobwarden-foundation-design.md)
 - [Historical Tasks 1–6 foundation plan](superpowers/plans/2026-07-17-jobwarden-foundation.md)
 - [Active Task 10 implementation plan](superpowers/plans/2026-07-18-task-10-career-profile-onboarding.md)
+- [Task 10 local completion review](reviews/task-10-career-profile-onboarding.md)
 - [Shipping standard](standards/shipping-standards.md)
 - [UI direction](design/ui-direction.md)
 - [UK source coverage strategy](product/source-coverage.md)
@@ -21,6 +22,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - Last independently reviewed task implementation commit: `5d53b7f` (Task 9 final review; delivered by merge `44a3580`)
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
 - Active feature branch: `codex/task-10-career-profile`, rebased onto the Task 9 merge commit `44a3580`
+- Task 10 local completion commit: `f15b192`; independent PR review and publication remain pending
 - Active task: Task 10 career profile and onboarding; authentication setup remains deferred by the owner
 
 ## Task progress

@@ -220,8 +220,8 @@ export const cvFileLimits = {
 - Modify: `docs/privacy/data-inventory.md`
 
 - [x] Document and verify replace/delete ordering, failed extraction cleanup, 24-hour unsaved-proposal expiry, AI counters, incidents, and live activation.
-- [ ] Run frozen install, formatting, lint, all typechecks, Deno graph, all tests, guardrails, Supabase checks, production build, audits, diff check, and exact-range Gitleaks.
-- [ ] Run real `supabase db reset` and pgTAP when Docker is available; otherwise preserve the explicit pre-live blocker.
+- [x] Run frozen install, formatting, lint, all typechecks, Deno graph, all tests, guardrails, Supabase checks, production build, audits, diff check, and exact-range Gitleaks.
+- [x] Run real `supabase db reset` and pgTAP when Docker is available; otherwise preserve the explicit pre-live blocker. Docker is unavailable, so the blocker is preserved in the review and operations guide.
 - [ ] Request independent full-range review and remediate every Critical, Important, and Minor finding.
 - [ ] Rebase this stacked branch onto the GitHub Task 9 merge, publish a ready PR, merge to `main`, update local `main`, and rerun verification.
 
