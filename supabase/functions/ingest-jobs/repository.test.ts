@@ -85,6 +85,30 @@ describe("Supabase ingestion repository", () => {
     });
   });
 
+  it("accepts the one reviewed incremental Reed discovery source shape", async () => {
+    const reedRow = {
+      ...claimedRow,
+      provider: "reed",
+      board_token: "gb-discovery",
+      employer_name: "Reed",
+      allowed_hosts: ["www.reed.co.uk"],
+    };
+    const fake = client({
+      claim_ingestion_requests: { data: [reedRow], error: null },
+    });
+
+    await expect(
+      createSupabaseIngestionRepository(fake.client).claim(1),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        source: expect.objectContaining({
+          provider: "reed",
+          boardToken: "gb-discovery",
+        }),
+      }),
+    ]);
+  });
+
   it("rejects malformed database rows without returning their content", async () => {
     const fake = client({
       claim_ingestion_requests: {
@@ -144,8 +168,11 @@ describe("Supabase ingestion repository", () => {
           compensationMaximum: job.compensationMaximum,
           compensationCurrency: job.compensationCurrency,
           compensationPeriod: job.compensationPeriod,
+          compensationProvenance: job.compensationProvenance,
+          compensationObservedAt: job.compensationObservedAt,
           postedAt: job.postedAt,
           closesAt: job.closesAt,
+          deduplicationKey: job.deduplicationKey,
           contentHash: job.contentHash,
         },
       ],

@@ -15,17 +15,27 @@ const hostSchema = z
   .max(253)
   .regex(/^[a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]{2,}$/);
 
-const claimedRowSchema = z.object({
-  request_id: z.string().uuid(),
-  correlation_id: z.string().uuid(),
-  trigger_type: z.enum(["admin", "scheduled"]),
-  source_run_id: z.string().uuid(),
-  source_id: z.string().uuid(),
-  provider: z.literal("greenhouse"),
-  board_token: z.string().min(1).max(200),
-  employer_name: z.string().min(1).max(300),
-  allowed_hosts: z.array(hostSchema).min(1).max(10),
-});
+const claimedRowSchema = z
+  .object({
+    request_id: z.string().uuid(),
+    correlation_id: z.string().uuid(),
+    trigger_type: z.enum(["admin", "scheduled"]),
+    source_run_id: z.string().uuid(),
+    source_id: z.string().uuid(),
+    provider: z.enum(["greenhouse", "reed"]),
+    board_token: z.string().min(1).max(200),
+    employer_name: z.string().min(1).max(300),
+    allowed_hosts: z.array(hostSchema).min(1).max(10),
+  })
+  .refine(
+    (row) =>
+      row.provider !== "reed" ||
+      (row.board_token === "gb-discovery" &&
+        row.employer_name === "Reed" &&
+        row.allowed_hosts.length === 1 &&
+        row.allowed_hosts[0] === "www.reed.co.uk"),
+    { message: "Invalid Reed discovery source." },
+  );
 
 const upsertResultSchema = z
   .array(
@@ -65,18 +75,24 @@ function databaseFailure(
 }
 
 function mapClaim(row: z.infer<typeof claimedRowSchema>): ClaimedIngestion {
+  const common = {
+    id: row.source_id,
+    employerName: row.employer_name,
+    allowedHosts: row.allowed_hosts,
+  };
   return {
     requestId: row.request_id,
     correlationId: row.correlation_id,
     triggerType: row.trigger_type,
     sourceRunId: row.source_run_id,
-    source: {
-      id: row.source_id,
-      provider: row.provider,
-      boardToken: row.board_token,
-      employerName: row.employer_name,
-      allowedHosts: row.allowed_hosts,
-    },
+    source:
+      row.provider === "reed"
+        ? { ...common, provider: "reed", boardToken: "gb-discovery" }
+        : {
+            ...common,
+            provider: "greenhouse",
+            boardToken: row.board_token,
+          },
   };
 }
 
@@ -98,8 +114,11 @@ function jobParameters(job: NormalisedJob) {
     compensationMaximum: job.compensationMaximum,
     compensationCurrency: job.compensationCurrency,
     compensationPeriod: job.compensationPeriod,
+    compensationProvenance: job.compensationProvenance,
+    compensationObservedAt: job.compensationObservedAt,
     postedAt: job.postedAt,
     closesAt: job.closesAt,
+    deduplicationKey: job.deduplicationKey,
     contentHash: job.contentHash,
   };
 }

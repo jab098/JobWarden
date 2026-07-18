@@ -85,12 +85,12 @@
 - Consumes Task 1 provider contracts and Task 2 RPCs.
 - Produces environment-only `REED_API_KEY` dispatch, incremental-success finalisation, and occurrence-aware batch payloads.
 
-- [ ] Write failing environment tests proving Reed credentials are optional globally, required only for Reed work, bounded, and never present in errors.
-- [ ] Write failing handler tests for Reed dispatch, missing-key source isolation, incremental success, and later Greenhouse continuation.
-- [ ] Write failing repository tests for the new occurrence-aware batch and coverage finalisation parameters.
-- [ ] Implement the minimal runtime changes and rerun all function tests.
-- [ ] Run `pnpm typecheck:functions` and `pnpm check:deno`.
-- [ ] Commit `feat: connect Reed to shared ingestion`.
+- [x] Write failing environment tests proving Reed credentials are optional globally, required only for Reed work, bounded, and never present in errors.
+- [x] Write failing handler tests for Reed dispatch, missing-key source isolation, incremental success, and later Greenhouse continuation.
+- [x] Write failing repository tests for the new occurrence-aware batch and coverage finalisation parameters.
+- [x] Implement the minimal runtime changes and rerun all function tests.
+- [x] Run `pnpm typecheck:functions` and `pnpm check:deno`.
+- [x] Commit `feat: connect Reed to shared ingestion`.
 
 ### Task 4: Compensation filters and source-health visibility
 

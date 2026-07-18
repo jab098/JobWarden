@@ -191,6 +191,7 @@ async function processSource(options: {
   repository: ReturnType<IngestionHandlerDependencies["createRepository"]>;
   invocationCorrelationId: string;
   claim: ClaimedIngestion;
+  environment: ReturnType<IngestionHandlerDependencies["readEnvironment"]>;
   invocationDeadlineAt: number;
 }): Promise<SourceResult> {
   const startedAt = options.dependencies.now().getTime();
@@ -200,7 +201,10 @@ async function processSource(options: {
   let unchangedCount = 0;
 
   try {
-    const adapter = options.dependencies.createAdapter(options.claim.source);
+    const adapter = options.dependencies.createAdapter(
+      options.claim.source,
+      options.environment,
+    );
     const adapterBudgetMs = Math.max(
       1,
       options.invocationDeadlineAt -
@@ -251,7 +255,7 @@ async function processSource(options: {
     const completion: SourceCompletion = {
       sourceRunId: options.claim.sourceRunId,
       status: "succeeded",
-      responseComplete: true,
+      responseComplete: fetchResult.coverage === "complete",
       receivedCount,
       eligibleCount,
       upsertedCount,
@@ -417,6 +421,7 @@ export function createIngestionHandler(
           repository,
           invocationCorrelationId,
           claim,
+          environment,
           invocationDeadlineAt,
         });
         aggregate.failedSourceCount += result.failedSourceCount;

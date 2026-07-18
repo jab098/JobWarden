@@ -6,6 +6,15 @@ const environmentSchema = z.object({
   SUPABASE_URL: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
   INGESTION_CRON_SECRET: z.string().min(32),
+  REED_API_KEY: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z
+      .string()
+      .min(1)
+      .max(512)
+      .regex(/^[\x20-\x7e]+$/)
+      .optional(),
+  ),
 });
 
 function exactHttpOrigin(value: string): string | null {
@@ -43,5 +52,8 @@ export function readRuntimeEnvironment(
     supabaseUrl,
     serviceRoleKey: result.data.SUPABASE_SERVICE_ROLE_KEY,
     cronSecret: result.data.INGESTION_CRON_SECRET,
+    ...(result.data.REED_API_KEY === undefined
+      ? {}
+      : { reedApiKey: result.data.REED_API_KEY }),
   };
 }

@@ -46,4 +46,36 @@ describe("ingestion runtime environment", () => {
       cronSecret: validEnvironment.INGESTION_CRON_SECRET,
     });
   });
+
+  it("keeps Reed optional globally but returns a configured provider key", () => {
+    expect(readRuntimeEnvironment(validEnvironment)).not.toHaveProperty(
+      "reedApiKey",
+    );
+    expect(
+      readRuntimeEnvironment({
+        ...validEnvironment,
+        REED_API_KEY: "reed-fixture-key",
+      }),
+    ).toMatchObject({ reedApiKey: "reed-fixture-key" });
+  });
+
+  it.each(["x".repeat(513), "key\nwith-control"])(
+    "rejects an unsafe Reed key without echoing it: %s",
+    (reedApiKey) => {
+      const error = (() => {
+        try {
+          readRuntimeEnvironment({
+            ...validEnvironment,
+            REED_API_KEY: reedApiKey,
+          });
+        } catch (caught) {
+          return caught;
+        }
+      })();
+      expect(error).toEqual(
+        new Error("Invalid ingestion runtime configuration."),
+      );
+      expect(JSON.stringify(error)).not.toContain(reedApiKey);
+    },
+  );
 });

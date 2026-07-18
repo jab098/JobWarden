@@ -8,6 +8,8 @@ alter table public.job_sources
     or (
       provider = 'reed'
       and board_token = 'gb-discovery'
+      and employer_name = 'Reed'
+      and allowed_hosts = array['www.reed.co.uk']::text[]
       and coverage_mode = 'incremental'
     )
   ),
