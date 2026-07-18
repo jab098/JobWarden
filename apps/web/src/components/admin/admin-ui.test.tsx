@@ -39,13 +39,13 @@ describe("administrator workspace", () => {
     expect(primaryNavigation).toBeInTheDocument();
     expect(
       within(primaryNavigation).getByRole("link", { name: "Access" }),
-    ).toHaveAttribute("href", "/admin/access");
+    ).toHaveAttribute("href", "#access");
     expect(
       within(primaryNavigation).getByRole("link", { name: "Sources" }),
-    ).toHaveAttribute("href", "/admin/sources");
+    ).toHaveAttribute("href", "#sources");
     expect(
       within(primaryNavigation).getByRole("link", { name: "Ingestion" }),
-    ).toHaveAttribute("href", "/admin/ingestion");
+    ).toHaveAttribute("href", "#ingestion");
   });
 
   it("renders access states and disables every decision in preview mode", () => {

@@ -96,6 +96,10 @@ describe("administrator route boundaries", () => {
     expect(
       screen.getByRole("navigation", { name: "Administrator primary" }),
     ).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Access" })[0]).toHaveAttribute(
+      "href",
+      "/admin/access",
+    );
     expect(
       screen.getByText("Protected administrator content"),
     ).toBeInTheDocument();

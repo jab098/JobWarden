@@ -28,12 +28,12 @@ export default async function DevelopmentAdminPreview() {
 
   return (
     <AdminShell preview>
-      <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+      <main className="mx-auto w-full min-w-0 max-w-6xl px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
         <header className="mb-12 max-w-3xl">
           <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#2458a6]">
             Fictional local data
           </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
+          <h1 className="mt-3 break-words text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
             Administrator operations preview
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-[#596173]">
@@ -44,15 +44,23 @@ export default async function DevelopmentAdminPreview() {
         </header>
 
         <div className="space-y-16">
-          <AccessRequestList
-            requests={[...snapshot.accessRequests]}
-            requestsEnabled={snapshot.accessRequestsEnabled}
-            readOnly
-          />
+          <div id="access" className="scroll-mt-16">
+            <AccessRequestList
+              requests={[...snapshot.accessRequests]}
+              requestsEnabled={snapshot.accessRequestsEnabled}
+              readOnly
+            />
+          </div>
 
-          <SourceList sources={snapshot.sources} readOnly />
+          <div id="sources" className="scroll-mt-16">
+            <SourceList sources={snapshot.sources} readOnly />
+          </div>
 
-          <section aria-labelledby="preview-sync-heading" className="space-y-4">
+          <section
+            id="ingestion"
+            aria-labelledby="preview-sync-heading"
+            className="scroll-mt-16 space-y-4"
+          >
             <div>
               <h2
                 id="preview-sync-heading"

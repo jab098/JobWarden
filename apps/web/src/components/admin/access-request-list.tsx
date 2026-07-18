@@ -20,7 +20,7 @@ export function AccessRequestList({
 }) {
   return (
     <section aria-labelledby="access-requests-heading" className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#d8d4cb] pb-5">
+      <div className="grid min-w-0 gap-4 border-b border-[#d8d4cb] pb-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <div>
           <h2
             id="access-requests-heading"
@@ -36,12 +36,14 @@ export function AccessRequestList({
           </p>
         </div>
         {readOnly ? (
-          <ButtonState
-            disabled
-            label={
-              requestsEnabled ? "Pause new requests" : "Accept new requests"
-            }
-          />
+          <div className="min-w-0 sm:justify-self-end">
+            <ButtonState
+              disabled
+              label={
+                requestsEnabled ? "Pause new requests" : "Accept new requests"
+              }
+            />
+          </div>
         ) : settingAction ? (
           <AccessSettingForm enabled={requestsEnabled} action={settingAction} />
         ) : null}
