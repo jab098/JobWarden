@@ -17,11 +17,11 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Handoff
 
-- Current integration branch: `main`
+- Current integration branch: `main`; Task 9 is isolated in its feature worktree
 - Last independently reviewed task implementation commit: `8556997`
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
-- Active feature branch: none after Task 8 delivery
-- Active task: Task 9 UK coverage and compensation planning; authentication setup remains deferred by the owner
+- Active feature branch: `codex/task-9-uk-coverage`
+- Active task: Task 9 UK coverage and compensation; authentication setup remains deferred by the owner
 
 ## Task progress
 
@@ -35,7 +35,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 6. Responsive app shell and UK jobs feed                               | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally   |
 | 7. Administrator operations                                            | reviewed | Delivered by PR #8; final code review clean at `4a1efdd`      |
 | 8. Shared ingestion runtime                                            | reviewed | Delivered by PR #9; final code review clean at `8556997`      |
-| 9. UK coverage and compensation                                        | pending  |                                                               |
+| 9. UK coverage and compensation                                        | active   | Focused design and implementation plan dated 2026-07-18       |
 | 10. Career profile, onboarding, and CV extraction                      | pending  |                                                               |
 | 11. Target Feed and explainable fit scores                             | pending  |                                                               |
 | 12. Explore and career pathways                                        | pending  |                                                               |
