@@ -1,4 +1,4 @@
-import type { EmploymentType } from "./job";
+import type { EmploymentType } from "./job.ts";
 
 export type UkEligibilityReason =
   "explicit_uk_location" | "explicit_uk_remote" | "non_uk" | "ambiguous";

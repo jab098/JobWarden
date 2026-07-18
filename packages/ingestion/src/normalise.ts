@@ -8,8 +8,8 @@ import {
 } from "@jobwarden/domain";
 import sanitizeHtml from "sanitize-html";
 
-import { hashNormalisedJobContent } from "./hash";
-import type { JobSource, NormalisationResult, ProviderJob } from "./types";
+import { hashNormalisedJobContent } from "./hash.ts";
+import type { JobSource, NormalisationResult, ProviderJob } from "./types.ts";
 
 const nonTextTags = [
   "head",
@@ -133,7 +133,7 @@ function sanitiseMarkup(value: string): string {
     allowedAttributes: {},
     nonTextTags: [...nonTextTags],
     parser: { decodeEntities: true },
-    onOpenTag: (tagName, attributes) => {
+    onOpenTag: (tagName: string, attributes: Record<string, string>) => {
       const parent = visibilityStack.at(-1);
       let suppressSubtree = parent?.suppressSubtree ?? false;
 
@@ -159,15 +159,16 @@ function sanitiseMarkup(value: string): string {
         hasSummary: false,
       });
     },
-    onCloseTag: (tagName) => {
+    onCloseTag: (tagName: string) => {
       const matchingIndex = visibilityStack.findLastIndex(
         (frame) => frame.tagName === tagName,
       );
       if (matchingIndex >= 0) visibilityStack.length = matchingIndex;
     },
-    textFilter: (text) => (visibilityStack.at(-1)?.closedDetails ? "" : text),
+    textFilter: (text: string) =>
+      visibilityStack.at(-1)?.closedDetails ? "" : text,
     transformTags: {
-      "*": (tagName, attributes) =>
+      "*": (tagName: string, attributes: Record<string, string>) =>
         visibilityStack.at(-1)?.suppressSubtree
           ? { tagName: "template", attribs: {} }
           : { tagName, attribs: attributes },

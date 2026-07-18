@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "@jobwarden/domain": "../../../packages/domain/src/index.ts",
+    "@jobwarden/ingestion": "../../../packages/ingestion/src/index.ts",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.110.6",
+    "sanitize-html": "npm:sanitize-html@2.17.0",
+    "zod": "npm:zod@4.4.3"
+  }
+}

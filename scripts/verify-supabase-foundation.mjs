@@ -7,6 +7,7 @@ export const requiredMigrationFiles = [
   "202607170002_rls_and_functions.sql",
   "202607170003_audit_and_ingestion.sql",
   "202607180001_admin_operations.sql",
+  "202607180002_shared_ingestion_runtime.sql",
 ];
 
 const publicTables = [
@@ -190,10 +191,97 @@ export function verifyFoundationSql(files) {
       "grant execute on function public.request_source_ingestion(uuid) to authenticated",
       "ingestion-request function must have its narrow authenticated grant",
     ],
+    [
+      "create or replace function public.enqueue_scheduled_ingestion()",
+      "missing shared scheduled-ingestion enqueue function",
+    ],
+    [
+      "create or replace function public.claim_ingestion_requests(maximum_requests integer)",
+      "missing bounded service-role ingestion claim function",
+    ],
+    [
+      "maximum_requests not between 1 and 4",
+      "ingestion claim must enforce the four-source global cap",
+    ],
+    [
+      "claim_expires_at = clock_timestamp() + interval '5 minutes'",
+      "ingestion claims must have a five-minute recovery lease",
+    ],
+    [
+      "attempt_count < 3",
+      "ingestion lease recovery must enforce the three-attempt ceiling",
+    ],
+    [
+      "create or replace function public.complete_ingestion_request(target_request_id uuid)",
+      "missing service-role ingestion completion function",
+    ],
+    [
+      "grant execute on function public.enqueue_scheduled_ingestion() to service_role",
+      "scheduled enqueue must be service-role only",
+    ],
+    [
+      "grant execute on function public.claim_ingestion_requests(integer) to service_role",
+      "queue claiming must be service-role only",
+    ],
+    [
+      "create or replace function public.upsert_ingested_jobs(",
+      "missing bounded transactional ingestion batch function",
+    ],
+    [
+      "jsonb_array_length(jobs_value) not between 1 and 500",
+      "ingestion batch must enforce the per-source job ceiling",
+    ],
+    [
+      "grant execute on function public.upsert_ingested_jobs(uuid, jsonb) to service_role",
+      "ingestion batch persistence must be service-role only",
+    ],
+    [
+      "grant execute on function public.complete_ingestion_request(uuid) to service_role",
+      "queue completion must be service-role only",
+    ],
+    [
+      "create extension if not exists supabase_vault with schema vault",
+      "missing Supabase Vault extension",
+    ],
+    [
+      "create extension if not exists pg_net with schema extensions",
+      "missing pg_net extension",
+    ],
+    ["create extension if not exists pg_cron", "missing pg_cron extension"],
+    [
+      "at time zone 'europe/london'",
+      "scheduler must gate candidate hours in Europe/London",
+    ],
+    [
+      "'0 8,9,11,12,14,15,17,18 * * 1-5'",
+      "scheduler must cover GMT and BST candidate hours",
+    ],
+    [
+      "name = 'jobwarden_project_url'",
+      "scheduler must load the project URL from Vault",
+    ],
+    [
+      "name = 'jobwarden_ingestion_cron_secret'",
+      "scheduler must load the cron secret from Vault",
+    ],
   ];
 
   for (const [fragment, message] of requiredFragments) {
     if (!normalised.includes(fragment.toLowerCase())) failures.push(message);
+  }
+
+  const runtimeMigration = files.get(
+    "202607180002_shared_ingestion_runtime.sql",
+  );
+  if (
+    runtimeMigration &&
+    /https:\/\/[a-z0-9-]+\.supabase\.co|bearer\s+[a-z0-9._~-]{16,}/i.test(
+      runtimeMigration,
+    )
+  ) {
+    failures.push(
+      "ingestion schedule migration contains a literal secret or project URL",
+    );
   }
 
   if (!/pg_catalog\.pg_advisory_xact_lock\s*\(/i.test(sql)) {

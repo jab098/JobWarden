@@ -53,6 +53,7 @@ The counter must be atomic. Failure states are `capacity_exhausted`, `provider_u
 ## Private-beta capacity assumptions
 
 - Ingestion is shared across all users and driven by source cadence, so user growth does not multiply source requests.
+- Task 8 schedules four shared weekday Edge Function invocations in `Europe/London`, admits at most four sources and 500 received jobs per invocation, and allows at most three five-minute leased attempts per request. On 2026-07-18 Supabase documented 500,000 monthly Edge Function invocations on Free; provider, database, egress, and runtime ceilings remain separate and must be rechecked before activation.
 - Target matching is deterministic and runs over already indexed jobs.
 - AI enriches profile suggestions, pathway explanations, and CV wording only when capacity is available.
 - Notification email is sent only when new target matches exist, at most once per enabled scheduled slot.
@@ -62,7 +63,7 @@ The counter must be atomic. Failure states are `capacity_exhausted`, `provider_u
 
 No platform setup is required for Task 7's fictional local implementation. When a task reaches a live gate, its operations guide must give the owner exact click-by-click/CLI steps and request only the values required for that service:
 
-- Task 8: Supabase project URL, publishable key, server secret, Vault/Cron setup.
+- Task 8: Supabase project URL, server secret, and Vault/Cron setup using the exact [shared ingestion operations guide](../operations/ingestion.md). A publishable key is not used by the custom bearer-protected scheduler path.
 - Task 10: private Storage bucket/policies and Cloudflare Workers AI binding before real CV tests.
 - Task 14: Resend account, API key, verified sender, and DNS records.
 - Task 16: Google OAuth/Supabase callbacks, administrator bootstrap UUID, Cloudflare deployment/domain, and optional Sentry EU project.

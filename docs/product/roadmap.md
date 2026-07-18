@@ -23,7 +23,7 @@ Status changes to `reviewed` only after independent review, full verification, p
 | Task | Deliverable                                                                | Status   | External setup gate                                                                  |
 | ---- | -------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------ |
 | 7    | Administrator operations                                                   | reviewed | None for fixture development                                                         |
-| 8    | Shared ingestion runtime                                                   | pending  | Supabase project for live deployment; local implementation does not wait             |
+| 8    | Shared ingestion runtime                                                   | active   | Supabase project for live deployment; local implementation does not wait             |
 | 9    | UK coverage and compensation                                               | pending  | Source credentials only when an approved API requires them                           |
 | 10   | Career profile, onboarding, and CV extraction                              | pending  | Supabase private Storage and Cloudflare Workers AI before real-data testing          |
 | 11   | Target Feed and explainable fit scores                                     | pending  | No paid AI dependency                                                                |

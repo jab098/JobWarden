@@ -1,4 +1,4 @@
-import type { compensationPeriods } from "./job";
+import type { compensationPeriods } from "./job.ts";
 
 type CompensationPeriod = (typeof compensationPeriods)[number];
 

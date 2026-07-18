@@ -75,4 +75,39 @@ describe("Supabase foundation static verifier", () => {
       ]),
     );
   });
+
+  it("requires the shared bounded queue, recovery lease, and secret-safe London scheduler", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "missing shared scheduled-ingestion enqueue function",
+        "missing bounded service-role ingestion claim function",
+        "ingestion claim must enforce the four-source global cap",
+        "ingestion claims must have a five-minute recovery lease",
+        "ingestion lease recovery must enforce the three-attempt ceiling",
+        "missing service-role ingestion completion function",
+        "scheduler must gate candidate hours in Europe/London",
+        "scheduler must cover GMT and BST candidate hours",
+        "scheduler must load the project URL from Vault",
+        "scheduler must load the cron secret from Vault",
+      ]),
+    );
+  });
+
+  it("rejects literal hosted project URLs or bearer secrets in the schedule migration", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+    files.set(
+      "202607180002_shared_ingestion_runtime.sql",
+      "select 'https://example-project.supabase.co', 'Bearer abcdefghijklmnopqrstuvwxyz';",
+    );
+
+    expect(verifyFoundationSql(files)).toContain(
+      "ingestion schedule migration contains a literal secret or project URL",
+    );
+  });
 });

@@ -26,3 +26,5 @@ pnpm verify
 ```
 
 The persistent shipping standard is in [docs/standards/shipping-standards.md](docs/standards/shipping-standards.md). The default architecture remains free-tier-first with hard cost ceilings and no automatic paid AI fallback; service-specific setup is documented only when its task reaches a live integration gate.
+
+Task 8's shared Supabase ingestion runtime, local checks, hosted activation, secret rotation, pause/retry, and recovery procedures are in the [ingestion operations guide](docs/operations/ingestion.md). No Supabase account setup is required to continue fixture development; complete that guide before enabling a live source.

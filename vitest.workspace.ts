@@ -6,6 +6,7 @@ export default defineConfig({
       "tests/guardrails/vitest.config.ts",
       "packages/*/vitest.config.ts",
       "apps/*/vitest.config.ts",
+      "supabase/functions/ingest-jobs/vitest.config.ts",
     ],
   },
 });
