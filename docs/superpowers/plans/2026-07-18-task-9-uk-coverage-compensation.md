@@ -138,5 +138,5 @@
 - [x] Add exact owner setup steps without requesting the key in chat or storing it in Git.
 - [ ] Run frozen install, formatting, lint, all typechecks, Deno graph, all tests, guardrails, static Supabase verification, production build, both audits, diff check, and exact-range Gitleaks.
 - [ ] Run real `supabase db reset` and pgTAP if Docker is available; otherwise preserve the explicit pre-live blocker.
-- [ ] Request independent full-range review and remediate every Critical, Important, and Minor finding through test-first commits.
+- [x] Request independent full-range review and remediate every Critical, Important, and Minor finding through test-first commits.
 - [ ] Publish a ready PR, merge it to GitHub `main`, update local `main`, and rerun frozen verification on the merge commit.
