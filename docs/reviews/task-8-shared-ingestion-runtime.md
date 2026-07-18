@@ -2,7 +2,7 @@
 
 ## Outcome
 
-Task 8 implementation is independently reviewed with no remaining Critical, Important, or Minor findings. Publication to GitHub `main` is the remaining delivery step.
+Task 8 is independently reviewed with no remaining Critical, Important, or Minor findings and is delivered through GitHub pull request #9.
 
 Reviewed implementation range: `7df2818..8556997`.
 
