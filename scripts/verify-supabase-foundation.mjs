@@ -183,7 +183,7 @@ export function verifyFoundationSql(files) {
       "missing active ingestion-request coalescing index",
     ],
     [
-      "create policy \"administrators read ingestion requests\"",
+      'create policy "administrators read ingestion requests"',
       "missing administrator-only ingestion-request read policy",
     ],
     [
