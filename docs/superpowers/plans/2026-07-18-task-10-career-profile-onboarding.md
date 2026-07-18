@@ -65,9 +65,9 @@ export function parseCareerProfileDraft(input: unknown): CareerProfileDraft {
 - Produces private bucket `career-documents`; the first object-path segment must equal `auth.uid()`.
 - Service-role extraction writes proposals; authenticated users may access only their rows while approved.
 
-- [ ] Add failing verifier tests for migration 7, six force-RLS tables, private Storage, owner policies, suggestion states, one active CV per user, and bounded extraction status/error codes.
-- [ ] Run `pnpm vitest run scripts/verify-supabase-foundation.test.ts`; expect every new fragment to be missing.
-- [ ] Implement tables, checks, indexes, grants, and policies. The root profile starts with:
+- [x] Add failing verifier tests for migration 7, six force-RLS tables, private Storage, owner policies, suggestion states, one active CV per user, and bounded extraction status/error codes.
+- [x] Run `pnpm vitest run scripts/verify-supabase-foundation.test.ts`; expect every new fragment to be missing.
+- [x] Implement tables, checks, indexes, grants, and policies. The root profile starts with:
 
 ```sql
 create table public.career_profiles (
@@ -82,8 +82,8 @@ alter table public.career_profiles enable row level security;
 alter table public.career_profiles force row level security;
 ```
 
-- [ ] Add pgTAP tests for owner isolation, administrator denial by default, service extraction, suggestion acceptance, CV replacement, and cascading deletion.
-- [ ] Run `pnpm check:supabase`, match `plan(N)` to exact assertions, and run `git diff --check`; expect green.
+- [x] Add pgTAP tests for owner isolation, administrator denial by default, service extraction, suggestion acceptance, CV replacement, and cascading deletion.
+- [x] Run `pnpm check:supabase`, match `plan(N)` to exact assertions, and run `git diff --check`; expect green. Real PostgreSQL execution remains part of the existing Docker-backed pre-live gate.
 - [ ] Commit `feat: add private career profile storage`.
 
 ### Task 3: Safe deterministic CV intake

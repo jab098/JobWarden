@@ -9,6 +9,7 @@ export const requiredMigrationFiles = [
   "202607180001_admin_operations.sql",
   "202607180002_shared_ingestion_runtime.sql",
   "202607180003_uk_coverage_compensation.sql",
+  "202607180004_career_profiles.sql",
 ];
 
 const publicTables = [
@@ -23,6 +24,12 @@ const publicTables = [
   "ingestion_source_runs",
   "ingestion_requests",
   "job_source_occurrences",
+  "career_profiles",
+  "career_evidence_items",
+  "profile_suggestions",
+  "search_profiles",
+  "cv_documents",
+  "cv_extraction_runs",
 ];
 
 function compact(sql) {
@@ -336,6 +343,78 @@ export function verifyFoundationSql(files) {
     [
       "occurrence.candidate_data ->> 'compensationprovenance'",
       "source health must aggregate each source occurrence candidate",
+    ],
+    [
+      "insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)",
+      "missing private career-document Storage bucket",
+    ],
+    [
+      "'career-documents', 'career-documents', false, 5242880",
+      "career-document Storage bucket must be private and capped at 5 MiB",
+    ],
+    [
+      "(storage.foldername(name))[1] = auth.uid()::text",
+      "career-document objects must be isolated by owner path",
+    ],
+    [
+      'create policy "approved users manage own career profiles"',
+      "missing approved-owner career-profile policy",
+    ],
+    [
+      'create policy "approved users add own career evidence"',
+      "missing user-origin career-evidence insert policy",
+    ],
+    [
+      "origin = 'user' and user_id = auth.uid() and public.has_approved_access()",
+      "authenticated users must not forge CV-derived evidence",
+    ],
+    [
+      "grant update (confirmation_state, proficiency_signal, last_used_at) on public.career_evidence_items to authenticated",
+      "career-evidence review must use a column-limited update grant",
+    ],
+    [
+      'create policy "approved users manage own search profiles"',
+      "missing approved-owner search-profile policy",
+    ],
+    [
+      'create policy "approved users read own profile suggestions"',
+      "missing approved-owner suggestion read policy",
+    ],
+    [
+      'create policy "approved users read own cv documents"',
+      "missing approved-owner CV metadata policy",
+    ],
+    [
+      'create policy "approved users read own cv extraction runs"',
+      "missing approved-owner extraction-run read policy",
+    ],
+    [
+      "state in ('proposed', 'accepted', 'rejected')",
+      "profile suggestions must use bounded review states",
+    ],
+    [
+      "create unique index cv_documents_one_current_per_user_idx",
+      "CV metadata must allow only one current document per user",
+    ],
+    [
+      "status in ('queued', 'running', 'succeeded', 'failed')",
+      "CV extraction runs must use bounded statuses",
+    ],
+    [
+      "'invalid_file', 'unsupported_type', 'file_too_large', 'unsafe_archive', 'encrypted_pdf', 'page_limit', 'extraction_timeout', 'storage_missing', 'internal_error'",
+      "CV extraction runs must use bounded sanitised error codes",
+    ],
+    [
+      "create or replace function public.register_cv_document(",
+      "missing atomic current-CV registration function",
+    ],
+    [
+      "create or replace function public.decide_profile_suggestion(",
+      "missing owner-only suggestion decision function",
+    ],
+    [
+      "grant execute on function public.decide_profile_suggestion(uuid, text) to authenticated",
+      "suggestion decisions must have a narrow authenticated grant",
     ],
   ];
 
