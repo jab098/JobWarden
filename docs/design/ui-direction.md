@@ -23,8 +23,15 @@ JobWarden is a calm, capable work tool rather than a marketing template. It is l
 - Keep icons small and quiet. Text labels carry meaning; icons support them.
 - Prefer compact but breathable density: consistent 4- and 8-pixel spacing increments, short line lengths for prose, and aligned metadata columns for scanning.
 - Use semantic colour only for state: approved/success, pending/warning, rejected/error, and neutral/unknown.
+- Shadows at most `0 2px 8px rgba(0,0,0,0.04)` on hover only; borders `1px` neutral (`#EAEAEA`-class against white, existing warm neutrals stay); accents appear as text/dot state colour on neutral surfaces, never as tinted panels with accent edges. (Distilled from the taste-skill minimalist variant and the owner's 2026-07-19 direction; calm Openship-like surfaces, transitions.dev-like motion.)
+
+## Motion
+
+- Animate only `transform` and `opacity`; state-change transitions 150–250 ms with `ease-out` (entrances may use `cubic-bezier(0.16,1,0.3,1)`); pressed buttons may scale to 0.98; no scroll-triggered reveals on work surfaces; respect `prefers-reduced-motion: reduce` by disabling non-essential transitions.
 
 ## Avoid
+
+- Coloured left-border callout/note strips; replace with either plain muted text (`text-sm` secondary ink) for notes, or a quiet bordered surface (`1px` neutral border, 4–6 px radius, no accent edge) with a small state-coloured dot or label for status.
 
 - Purple or multicolour gradients, glassmorphism, glowing borders, decorative blobs, and oversized hero copy.
 - Excessive centred layouts, pill-shaped controls, nested cards, uniform rounded corners, and repeated `rounded-xl border p-6` containers.
