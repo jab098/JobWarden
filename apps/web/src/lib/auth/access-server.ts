@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import {
   resolveAdminAccess,
+  resolveApprovedAccess,
   resolveProtectedAccess,
   type AccessRepository,
 } from "./access";
@@ -16,6 +17,18 @@ async function getRepository(): Promise<AccessRepository> {
 
 export async function requireProtectedAccess(repository?: AccessRepository) {
   const result = await resolveProtectedAccess(
+    repository ?? (await getRepository()),
+  );
+
+  if (result.kind === "redirect") redirect(result.destination);
+  if (result.kind === "not-found") notFound();
+
+  return result;
+}
+
+/** Approved access without the onboarding requirement — for onboarding itself. */
+export async function requireApprovedAccess(repository?: AccessRepository) {
+  const result = await resolveApprovedAccess(
     repository ?? (await getRepository()),
   );
 

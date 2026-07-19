@@ -20,10 +20,7 @@ type ClientShape = {
         column: string,
         value: string,
       ): {
-        maybeSingle(): Promise<{
-          data: { status: unknown; decision_reason: string | null } | null;
-          error: unknown;
-        }>;
+        maybeSingle(): Promise<{ data: unknown; error: unknown }>;
       };
     };
   };
@@ -59,13 +56,17 @@ export function createSupabaseAccessRepository(
       throw new Error("Unable to resolve access state");
     }
 
-    if (!data || !accessStatuses.has(data.status as AccessStatus)) {
+    const row = data as {
+      status: unknown;
+      decision_reason: string | null;
+    } | null;
+    if (!row || !accessStatuses.has(row.status as AccessStatus)) {
       return null;
     }
 
     return {
-      status: data.status as AccessStatus,
-      reason: data.decision_reason,
+      status: row.status as AccessStatus,
+      reason: row.decision_reason,
     };
   }
 
@@ -85,6 +86,27 @@ export function createSupabaseAccessRepository(
       }
 
       return data === true;
+    },
+    async getOwnOnboardingState(userId) {
+      const { data, error } = await typedClient
+        .from("career_onboarding_state")
+        .select("path, completed_steps, completed_at")
+        .eq("owner_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        throw new Error("Unable to resolve onboarding state");
+      }
+      if (data === null || typeof data !== "object") return null;
+
+      // Mapped to the domain's camelCase shape here; the domain parser decides
+      // whether it is valid, and anything it rejects gates the user.
+      const row = data as Record<string, unknown>;
+      return {
+        path: row.path,
+        completedSteps: row.completed_steps,
+        completedAt: row.completed_at,
+      };
     },
     getOwnAccessRecord,
   };
