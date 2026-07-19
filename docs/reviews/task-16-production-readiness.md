@@ -18,7 +18,7 @@ This is the last task, and the one where the owner's deferred platform setup is 
 
 **Legal baseline.** `/privacy` and `/terms` are public pages backed by `docs/privacy/privacy-policy.md`, naming every subprocessor and the UK International Data Transfer Addendum. A guardrail test requires each provider to appear in **both** the document and the page users read, so a service cannot be added without being disclosed.
 
-**CI.** A GitHub Actions workflow runs the same gate a human runs, with `contents: read` and **no secrets** — every check is static or fixture-backed, so CI needs no project, key, or deployed environment.
+**CI.** A GitHub Actions workflow runs the same gate a human runs, with `contents: read` and no configured secrets — every check is static or fixture-backed, so CI needs no project, key, or deployed environment. (The secret scanner additionally uses GitHub's auto-provisioned `GITHUB_TOKEN` to read a pull request's commits; this was added after the first PR run failed without it.)
 
 **One-command live verification.** `pnpm verify:live` runs `supabase db reset`, the database lint, and all 17 pgTAP files. It **exits non-zero when Docker is absent** rather than skipping, because a database check recorded as passed when it did not run is how a broken migration reaches production.
 

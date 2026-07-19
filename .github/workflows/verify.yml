@@ -45,5 +45,9 @@ jobs:
       - name: Scan full history for secrets
         uses: gitleaks/gitleaks-action@v2
         env:
+          # Auto-provisioned by GitHub, not a configured secret. The action
+          # requires it to scan a pull request's commits; without it the job
+          # fails on every PR while passing on push, which is the worst of both.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
           GITLEAKS_ENABLE_SUMMARY: "false"
