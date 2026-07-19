@@ -147,7 +147,9 @@ describe("career profile onboarding", () => {
       (container.querySelector('input[name="draft"]') as HTMLInputElement)
         .value,
     ) as { evidence: unknown[] };
-    expect(profileDraft.evidence).toHaveLength(3);
+    expect(profileDraft.evidence).toHaveLength(
+      fictionalSnapshot.evidence.length,
+    );
   });
 
   it("remounts to an empty identity after deletion so controlled personal data cannot be resubmitted", async () => {

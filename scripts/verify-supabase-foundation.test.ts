@@ -493,6 +493,106 @@ describe("Supabase foundation static verifier", () => {
     );
   });
 
+  it("requires the opt-in explore schema, RPCs, and deletion coverage", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "public table career_explore_settings must enable and force RLS",
+        "public table career_pathway_decisions must enable and force RLS",
+        "public table explore_pathway_analytics must enable and force RLS",
+        "missing explore settings table",
+        "missing pathway decisions table",
+        "missing aggregate pathway analytics table",
+        "pathway decisions must enforce one decision per owner and pathway",
+        "missing explore opt-in RPC",
+        "missing owner-fenced pathway decision RPC",
+        "pathway decision RPC must validate decision value",
+        "pathway decision RPC must have its narrow authenticated grant",
+        "explore opt-in RPC must have its narrow authenticated grant",
+        "career profile deletion must also erase pathway decisions",
+        "career profile deletion must also erase explore settings",
+        "missing curated explore pathway seed table",
+        "pathway decision RPC must reject non-curated pathways",
+        "pathway decisions must reference the curated taxonomy",
+        "aggregate pathway analytics must reference the curated taxonomy",
+        "pathway analytics must count decision transitions only",
+      ]),
+    );
+  });
+
+  it("keeps the SQL pathway seed in lockstep with the domain taxonomy", async () => {
+    const { careerPathways } =
+      await import("../packages/domain/src/explore.ts");
+    const migrationSql = migration("202607190002_explore_pathways.sql");
+    const seedMatch = migrationSql.match(
+      /insert into public\.explore_pathways \(pathway_concept\) values(.*?);/u,
+    );
+    const seeded = [...(seedMatch?.[1] ?? "").matchAll(/\('([^']+)'\)/gu)].map(
+      (entry) => entry[1],
+    );
+
+    expect(seeded.toSorted()).toEqual(
+      careerPathways.map((pathway) => pathway.normalizedConcept).toSorted(),
+    );
+  });
+
+  it("requires aggregate pathway analytics to stay ownerless and grammar-bound", () => {
+    const exploreFile = "202607190002_explore_pathways.sql";
+
+    const withOwner = migrations();
+    withOwner.set(
+      exploreFile,
+      (withOwner.get(exploreFile) ?? "").replace(
+        "create table public.explore_pathway_analytics (",
+        "create table public.explore_pathway_analytics (\n  owner_id uuid,",
+      ),
+    );
+    expect(verifyFoundationSql(withOwner)).toContain(
+      "aggregate pathway analytics must not carry an owner or user column",
+    );
+
+    const withoutGrammar = migrations();
+    withoutGrammar.set(
+      exploreFile,
+      (withoutGrammar.get(exploreFile) ?? "").replace(
+        /create table public\.explore_pathway_analytics \([\s\S]*?\);/u,
+        `create table public.explore_pathway_analytics (
+          pathway_concept text not null,
+          event text not null,
+          event_count bigint not null default 0,
+          primary key (pathway_concept, event)
+        );`,
+      ),
+    );
+    expect(verifyFoundationSql(withoutGrammar)).toContain(
+      "aggregate pathway analytics must constrain concepts to the normalised grammar",
+    );
+  });
+
+  it("forbids direct authenticated mutation of explore state", () => {
+    const files = migrations();
+    const exploreFile = "202607190002_explore_pathways.sql";
+    files.set(
+      exploreFile,
+      `${files.get(exploreFile) ?? ""}
+        grant insert, update on public.career_pathway_decisions to authenticated;
+        create policy "unsafe explore toggle"
+        on public.career_explore_settings for update to authenticated
+        using (owner_id = auth.uid());`,
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "authenticated callers must decide pathways through the owner-fenced RPC",
+        "authenticated callers must toggle explore through the owner-fenced RPC",
+        "browser mutation policy forbidden on public.career_explore_settings",
+      ]),
+    );
+  });
+
   it("forbids a direct authenticated mutation grant on career_job_decisions", () => {
     const files = migrations();
     const targetFeedFile = "202607190001_target_feed.sql";
