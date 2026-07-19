@@ -13,6 +13,7 @@ export const requiredMigrationFiles = [
   "202607180005_career_extraction_runtime.sql",
   "202607180006_career_profile_workflow.sql",
   "202607180007_career_profile_review_and_retention.sql",
+  "202607190001_target_feed.sql",
 ];
 
 const publicTables = [
@@ -36,6 +37,7 @@ const publicTables = [
   "cv_documents",
   "cv_extraction_runs",
   "career_ai_daily_usage",
+  "career_job_decisions",
 ];
 
 function compact(sql) {
@@ -578,6 +580,38 @@ export function verifyFoundationSql(files) {
       "grant execute on function public.decide_profile_suggestion(uuid, text) to authenticated",
       "suggestion decisions must have a narrow authenticated grant",
     ],
+    [
+      "create table public.career_job_decisions",
+      "missing career job decisions table",
+    ],
+    [
+      "constraint career_job_decisions_owner_job_unique unique (owner_id, job_id)",
+      "career job decisions must enforce one decision per owner and job",
+    ],
+    [
+      "decision text not null check (decision in ('saved', 'dismissed', 'considering'))",
+      "career job decisions must use bounded decision values",
+    ],
+    [
+      "create or replace function public.decide_career_job( target_job_id uuid, target_decision text )",
+      "missing owner-fenced job decision RPC",
+    ],
+    [
+      "target_decision not in ('saved', 'dismissed', 'considering', 'clear')",
+      "job decision RPC must validate decision value",
+    ],
+    [
+      "grant execute on function public.decide_career_job(uuid, text) to authenticated",
+      "job decision RPC must have its narrow authenticated grant",
+    ],
+    [
+      "delete from public.career_job_decisions where owner_id = actor_user_id",
+      "career profile deletion must also erase job decisions",
+    ],
+    [
+      "grant select on public.career_job_decisions to authenticated",
+      "career job decisions must have a narrow authenticated select grant",
+    ],
   ];
 
   for (const [fragment, message] of requiredFragments) {
@@ -612,6 +646,24 @@ export function verifyFoundationSql(files) {
   const purgeInactiveCvDefinition = definerFunctions.find(
     ({ name }) => name === "public.purge_inactive_cv_document",
   )?.definition;
+  const decideJobDefinition = definerFunctions.find(
+    ({ name }) => name === "public.decide_career_job",
+  )?.definition;
+  const decideJob = compact(decideJobDefinition ?? "");
+  const jobLockIndex = decideJob.indexOf("for update");
+  const jobExistsIndex = decideJob.indexOf(
+    "if not exists ( select 1 from public.jobs where id = target_job_id ) then",
+  );
+  if (
+    jobLockIndex === -1 ||
+    jobExistsIndex === -1 ||
+    jobLockIndex > jobExistsIndex
+  ) {
+    failures.push(
+      "job decisions must lock the generation mutex before validating the job",
+    );
+  }
+
   const completeExtractionDefinition = definerFunctions
     .filter(({ name }) => name === "public.complete_career_profile_extraction")
     .at(-1)?.definition;
@@ -846,6 +898,14 @@ export function verifyFoundationSql(files) {
       "authenticated callers must save career profiles through the generation-fenced RPC",
     );
   }
+  if (
+    hasAuthenticatedMutationGrant("career_job_decisions") ||
+    hasAuthenticatedMutationPolicy("career_job_decisions")
+  ) {
+    failures.push(
+      "authenticated callers must decide career jobs through the owner-fenced RPC",
+    );
+  }
 
   const storageUpdatePolicies =
     sql.match(
@@ -934,7 +994,7 @@ export function verifyFoundationSql(files) {
   }
 
   const forbiddenMutationPolicy =
-    /create\s+policy[\s\S]*?on\s+public\.(jobs|user_roles|audit_log|access_requests)\s+for\s+(insert|update|delete|all)\b/gi;
+    /create\s+policy[\s\S]*?on\s+public\.(jobs|user_roles|audit_log|access_requests|career_job_decisions)\s+for\s+(insert|update|delete|all)\b/gi;
   for (const match of sql.matchAll(forbiddenMutationPolicy)) {
     failures.push(
       `browser mutation policy forbidden on public.${match[1].toLowerCase()}`,

@@ -12,3 +12,9 @@ coverage/
 !.env.example
 
 pnpm-debug.log*
+
+# Local knowledge-graph artifacts
+graphify-out/
+.claude/
+.claude-flow/
+.superpowers/

@@ -4,3 +4,4 @@ export * from "./career-profile.ts";
 export * from "./classification.ts";
 export * from "./compensation.ts";
 export * from "./job.ts";
+export * from "./target-feed.ts";

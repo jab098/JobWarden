@@ -46,7 +46,15 @@ export function JobsFeedView({
               UK jobs
             </h1>
           </div>
-          <JobFilters filters={filters} variant="mobile" />
+          <div className="flex items-center gap-4">
+            <Link
+              href="/jobs?view=target"
+              className="rounded-sm text-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+            >
+              Target feed
+            </Link>
+            <JobFilters filters={filters} variant="mobile" />
+          </div>
         </div>
         <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 border-t border-[#ece9e2] pt-4 text-sm text-[#596173]">
           <span className="font-medium text-[#263248]">

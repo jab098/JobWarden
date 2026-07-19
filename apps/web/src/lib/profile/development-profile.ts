@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { CareerEvidenceItem } from "@jobwarden/domain";
+
 import type { ProfileRepository } from "./repository";
 import { ProfileRepositoryError } from "./repository";
 import type { ProfileSnapshot } from "./types";
@@ -18,9 +20,55 @@ const evidenceIds = [
   "61000000-0000-4000-8000-000000000003",
 ] as const;
 
+const fictionalEvidence = [
+  {
+    id: evidenceIds[0],
+    normalizedConcept: "analytics implementation",
+    label: "Analytics implementation",
+    category: "responsibility",
+    origin: "cv",
+    confidence: 0.96,
+    evidenceReference: "character:44-68",
+    evidenceExcerpt:
+      "Fictional evidence: delivered governed analytics implementation programmes.",
+    proficiencySignal: "advanced",
+    lastUsedAt: "2026-06-30",
+    confirmationState: "confirmed",
+  },
+  {
+    id: evidenceIds[1],
+    normalizedConcept: "stakeholder management",
+    label: "Stakeholder management",
+    category: "skill",
+    origin: "cv",
+    confidence: 0.96,
+    evidenceReference: "character:112-134",
+    evidenceExcerpt:
+      "Fictional evidence: facilitated stakeholder decisions across delivery teams.",
+    proficiencySignal: "advanced",
+    lastUsedAt: "2026-06-30",
+    confirmationState: "confirmed",
+  },
+  {
+    id: evidenceIds[2],
+    normalizedConcept: "sql",
+    label: "SQL",
+    category: "tool",
+    origin: "cv",
+    confidence: 0.99,
+    evidenceReference: "character:188-191",
+    evidenceExcerpt:
+      "Fictional evidence: used SQL for implementation validation and analysis.",
+    proficiencySignal: "demonstrated",
+    lastUsedAt: null,
+    confirmationState: "proposed",
+  },
+] satisfies CareerEvidenceItem[];
+
 const snapshot = deepFreeze<ProfileSnapshot>({
   generation: 0,
   dataMode: "fixtures",
+  evidence: fictionalEvidence,
   uploadCapability: { enabled: false, reason: "fictional_preview" },
   currentCv: {
     id: "60000000-0000-4000-8000-000000000001",
@@ -47,50 +95,7 @@ const snapshot = deepFreeze<ProfileSnapshot>({
     ],
     domains: [{ normalizedConcept: "martech", label: "Marketing technology" }],
     keywords: ["measurement strategy", "data governance"],
-    evidence: [
-      {
-        id: evidenceIds[0],
-        normalizedConcept: "analytics implementation",
-        label: "Analytics implementation",
-        category: "responsibility",
-        origin: "cv",
-        confidence: 0.96,
-        evidenceReference: "character:44-68",
-        evidenceExcerpt:
-          "Fictional evidence: delivered governed analytics implementation programmes.",
-        proficiencySignal: "advanced",
-        lastUsedAt: "2026-06-30",
-        confirmationState: "confirmed",
-      },
-      {
-        id: evidenceIds[1],
-        normalizedConcept: "stakeholder management",
-        label: "Stakeholder management",
-        category: "skill",
-        origin: "cv",
-        confidence: 0.96,
-        evidenceReference: "character:112-134",
-        evidenceExcerpt:
-          "Fictional evidence: facilitated stakeholder decisions across delivery teams.",
-        proficiencySignal: "advanced",
-        lastUsedAt: "2026-06-30",
-        confirmationState: "confirmed",
-      },
-      {
-        id: evidenceIds[2],
-        normalizedConcept: "sql",
-        label: "SQL",
-        category: "tool",
-        origin: "cv",
-        confidence: 0.99,
-        evidenceReference: "character:188-191",
-        evidenceExcerpt:
-          "Fictional evidence: used SQL for implementation validation and analysis.",
-        proficiencySignal: "demonstrated",
-        lastUsedAt: null,
-        confirmationState: "proposed",
-      },
-    ],
+    evidence: fictionalEvidence,
   },
   suggestions: [
     {
@@ -146,10 +151,15 @@ const snapshot = deepFreeze<ProfileSnapshot>({
       currentSeniority: "senior",
       targetSeniority: "lead",
       employmentTypes: ["permanent", "contract"],
-      workingTimes: ["full_time"],
+      workingTimes: ["full_time", "part_time"],
       workplaceTypes: ["hybrid", "remote"],
-      ukLocations: ["London", "Remote within the United Kingdom"],
-      ir35Statuses: ["outside", "not_applicable", "unknown"],
+      ukLocations: [
+        "London",
+        "Manchester",
+        "Edinburgh",
+        "Remote within the United Kingdom",
+      ],
+      ir35Statuses: ["inside", "outside", "not_applicable", "unknown"],
       compensation: {
         minimum: null,
         maximum: null,

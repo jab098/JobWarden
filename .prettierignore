@@ -3,3 +3,4 @@ docs/superpowers/
 pnpm-lock.yaml
 .claude-flow/
 .claude/
+graphify-out/

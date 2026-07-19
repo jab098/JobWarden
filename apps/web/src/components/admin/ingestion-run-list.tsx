@@ -30,7 +30,7 @@ export function IngestionRunList({
         </p>
       </div>
       {runs.length === 0 ? (
-        <p className="border-l-2 border-[#9aa7b8] pl-4 text-sm text-[#596173]">
+        <p className="text-sm text-[#596173]">
           No ingestion runs have been recorded.
         </p>
       ) : (
@@ -61,7 +61,11 @@ export function IngestionRunList({
                 ))}
               </dl>
               {run.errorCode ? (
-                <p className="mt-4 border-l-2 border-[#b95d5d] pl-3 font-mono text-xs text-[#7d2d2d]">
+                <p className="mt-4 flex items-center gap-2 rounded border border-[#e7dcd9] bg-white px-3 py-2 font-mono text-xs text-[#7d2d2d]">
+                  <span
+                    aria-hidden="true"
+                    className="size-1.5 shrink-0 rounded-full bg-[#b95d5d]"
+                  />
                   {run.errorCode}
                 </p>
               ) : null}

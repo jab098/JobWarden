@@ -6,14 +6,20 @@ vi.mock("server-only", () => ({}));
 import type { JobsRepository } from "@/lib/jobs/repository";
 import type { JobDetail, JobsPageResult } from "@/lib/jobs/types";
 
-const { getJobsRepository, notFound } = vi.hoisted(() => ({
-  getJobsRepository: vi.fn(),
-  notFound: vi.fn(() => {
-    throw new Error("NEXT_NOT_FOUND");
+const { getJobsRepository, getTargetFeedRepository, notFound } = vi.hoisted(
+  () => ({
+    getJobsRepository: vi.fn(),
+    getTargetFeedRepository: vi.fn(),
+    notFound: vi.fn(() => {
+      throw new Error("NEXT_NOT_FOUND");
+    }),
   }),
-}));
+);
 
 vi.mock("@/lib/jobs/get-repository", () => ({ getJobsRepository }));
+vi.mock("@/lib/target-feed/get-repository", () => ({
+  getTargetFeedRepository,
+}));
 vi.mock("next/navigation", () => ({ notFound }));
 
 import JobDetailPage from "./[jobId]/page";
@@ -58,9 +64,22 @@ function repository(overrides: Partial<JobsRepository> = {}): JobsRepository {
   };
 }
 
+function targetFeedRepository(enabledProfileNames: string[] = []) {
+  return {
+    getFeed: vi.fn().mockResolvedValue({
+      items: [],
+      enabledProfileNames,
+      candidateCap: 200 as const,
+      dataMode: "fixtures" as const,
+    }),
+    decide: vi.fn(),
+  };
+}
+
 describe("jobs routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getTargetFeedRepository.mockResolvedValue(targetFeedRepository());
   });
 
   it("parses URL filters and loads the selected repository", async () => {
@@ -86,6 +105,34 @@ describe("jobs routes", () => {
       compensation: "all",
       page: 2,
     });
+    expect(
+      screen.getByRole("heading", { level: 1, name: "UK jobs" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the target feed by default when an enabled profile exists", async () => {
+    const jobsRepository = repository();
+    getJobsRepository.mockResolvedValue(jobsRepository);
+    getTargetFeedRepository.mockResolvedValue(
+      targetFeedRepository(["Data platform lead"]),
+    );
+
+    render(await JobsPage({ searchParams: Promise.resolve({}) }));
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Target feed" }),
+    ).toBeInTheDocument();
+  });
+
+  it("honours an explicit all view without consulting the target feed", async () => {
+    const jobsRepository = repository();
+    getJobsRepository.mockResolvedValue(jobsRepository);
+    const feed = targetFeedRepository(["Data platform lead"]);
+    getTargetFeedRepository.mockResolvedValue(feed);
+
+    render(await JobsPage({ searchParams: Promise.resolve({ view: "all" }) }));
+
+    expect(feed.getFeed).not.toHaveBeenCalled();
     expect(
       screen.getByRole("heading", { level: 1, name: "UK jobs" }),
     ).toBeInTheDocument();

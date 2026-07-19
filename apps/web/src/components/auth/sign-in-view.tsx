@@ -41,8 +41,12 @@ export function SignInView({ action, error }: SignInViewProps) {
           {error ? (
             <div
               role="alert"
-              className="mt-7 border-l-2 border-[#b4473d] bg-[#f8eae6] px-4 py-3 text-sm leading-6 text-[#7d2e29]"
+              className="mt-7 flex items-start gap-2 rounded-md border border-[#e2ddd3] bg-white px-4 py-3 text-sm leading-6 text-[#7d2e29]"
             >
+              <span
+                aria-hidden="true"
+                className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#b4473d]"
+              />
               We could not complete sign-in. Please try again.
             </div>
           ) : null}
