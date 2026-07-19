@@ -141,6 +141,21 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
         </div>
       ) : null}
 
+      {/* The evidence list posts its own decision per item, so it stays outside
+          the step form. Nesting it would be invalid HTML, and the browser drops
+          the inner form — turning Confirm into "advance past this step". */}
+      {step === "confirm_evidence" ? (
+        <div className="mt-6 space-y-4">
+          <p className="max-w-prose text-sm leading-6 text-[#596173]">
+            We found {view.cv.conceptCount} things we could match you on.
+            Confirm the ones you actually want to be matched on — nothing
+            becomes active until you say so, and anything you leave unconfirmed
+            is simply not used.
+          </p>
+          <ProfileEvidenceList evidence={view.evidence} readOnly={readOnly} />
+        </div>
+      ) : null}
+
       {/* One form per step: the answers post inside the same action that
           records the step, so nobody is advanced past a question whose answer
           was lost on the way. */}
@@ -148,21 +163,6 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
         <form action={advance} className="mt-6 space-y-6">
           <input type="hidden" name="path" value={view.path} />
           <input type="hidden" name="step" value={step} />
-
-          {step === "confirm_evidence" ? (
-            <>
-              <p className="max-w-prose text-sm leading-6 text-[#596173]">
-                We found {view.cv.conceptCount} things we could match you on.
-                Confirm the ones you actually want to be matched on — nothing
-                becomes active until you say so, and anything you leave
-                unconfirmed is simply not used.
-              </p>
-              <ProfileEvidenceList
-                evidence={view.evidence}
-                readOnly={readOnly}
-              />
-            </>
-          ) : null}
 
           {step === "aspirations" ? (
             <>
@@ -267,9 +267,10 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
       {step === null ? (
         view.hasSignal ? (
           <p className="mt-6 max-w-prose text-sm leading-6 text-[#596173]">
-            That is everything. Finishing takes you to your feed, with the
-            preferences you chose already applied — and shown in the address
-            bar, so any of them is one click from being lifted.
+            That is everything. Finishing takes you to UK listings already
+            narrowed to the preferences you chose — shown in the address bar, so
+            any of them is one click from being lifted. Your scored matches are
+            one link away from there.
           </p>
         ) : (
           <p
@@ -325,7 +326,7 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
               type="submit"
               disabled={readOnly || completePending || !view.hasSignal}
             >
-              {completePending ? "Finishing…" : "Finish and open my feed"}
+              {completePending ? "Finishing…" : "Finish and see UK jobs"}
             </Button>
           </form>
         ) : null}

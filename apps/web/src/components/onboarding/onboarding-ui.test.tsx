@@ -284,11 +284,14 @@ describe("OnboardingFlow", () => {
               label: "SQL",
               normalizedConcept: "sql",
               evidenceExcerpt: null,
+              evidenceReference: null,
+              confidence: 0.9,
+              lastUsedAt: null,
               confirmationState: "proposed",
               origin: "cv",
               proficiencySignal: "stated",
             },
-          ] as OnboardingView["evidence"],
+          ] as unknown as OnboardingView["evidence"],
         })}
       />,
     );
@@ -296,11 +299,40 @@ describe("OnboardingFlow", () => {
     expect(screen.getByRole("button", { name: "Confirm SQL" })).toBeEnabled();
   });
 
+  it("never nests the evidence decision forms inside the step form", () => {
+    // A nested form is invalid HTML: the browser drops the inner one, and
+    // Confirm silently becomes "advance past this step" instead.
+    const { container } = render(
+      <OnboardingFlow
+        view={view({
+          currentStep: "confirm_evidence",
+          evidence: [
+            {
+              id: "3f1f6c30-3b0a-4a37-9a3e-3f0a5c2f9a10",
+              category: "skill",
+              label: "SQL",
+              normalizedConcept: "sql",
+              evidenceExcerpt: null,
+              evidenceReference: "Fictional CV",
+              confidence: 0.9,
+              lastUsedAt: null,
+              confirmationState: "proposed",
+              origin: "cv",
+              proficiencySignal: "working",
+            },
+          ] as unknown as OnboardingView["evidence"],
+        })}
+      />,
+    );
+
+    expect(container.querySelector("form form")).toBeNull();
+  });
+
   it("offers to finish only once every step is done", () => {
     render(<OnboardingFlow view={view({ currentStep: null })} />);
 
     expect(
-      screen.getByRole("button", { name: "Finish and open my feed" }),
+      screen.getByRole("button", { name: "Finish and see UK jobs" }),
     ).toBeEnabled();
   });
 
@@ -311,7 +343,7 @@ describe("OnboardingFlow", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: "Finish and open my feed" }),
+      screen.getByRole("button", { name: "Finish and see UK jobs" }),
     ).toBeDisabled();
     expect(screen.getByRole("alert")).toHaveTextContent(
       /something to match you on/,

@@ -64,6 +64,8 @@ export async function decideJobAction(
     await (
       await getTargetFeedRepository()
     ).decide(parsed.data.jobId, parsed.data.decision);
+    // A decision changes the save state on the search results too.
+    revalidatePath("/matches");
     revalidatePath("/jobs");
     return { kind: "success", message: "Job decision saved." };
   } catch (error) {

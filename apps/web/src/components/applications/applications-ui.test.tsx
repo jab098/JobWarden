@@ -52,6 +52,7 @@ function item(overrides: Partial<Item> = {}): Item {
       compensationPeriod: "unknown",
       compensationProvenance: "unknown",
       postedAt: "2026-07-15T09:00:00.000Z",
+      closesAt: null,
     },
     stage: "screening",
     nextAction: "Prepare fictional call notes",

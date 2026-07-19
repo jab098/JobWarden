@@ -35,6 +35,7 @@ function toCandidate(
     compensationPeriod: job.compensationPeriod,
     compensationProvenance: job.compensationProvenance,
     postedAt: job.postedAt,
+    closesAt: job.closesAt,
     descriptionText: job.descriptionText,
   };
 }
@@ -64,6 +65,10 @@ export function createDevelopmentTargetFeedRepository(): TargetFeedRepository {
     },
     decide() {
       return Promise.reject(new PreviewDecisionUnavailableError());
+    },
+    async getDecisions() {
+      // The preview cannot record a decision, so it has none to report.
+      return new Map<string, JobDecision>();
     },
   };
 }

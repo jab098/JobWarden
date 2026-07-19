@@ -29,8 +29,9 @@ vi.mock("@/lib/applications/get-repository", () => ({
 }));
 vi.mock("next/navigation", () => ({ notFound }));
 
+import MatchesPage from "../matches/page";
 import JobDetailPage from "./[jobId]/page";
-import JobsPage from "./page";
+import SearchJobsPage from "./page";
 
 const result: JobsPageResult = {
   items: [],
@@ -56,6 +57,7 @@ const job: JobDetail = {
   compensationPeriod: "unknown",
   compensationProvenance: "unknown",
   postedAt: null,
+  closesAt: null,
   descriptionText: "A fictional UK role.",
   applicationUrl: "https://example.test/apply/senior-software-engineer",
   ukEligibilityEvidence: ["The role is based in Manchester, England."],
@@ -80,6 +82,7 @@ function targetFeedRepository(enabledProfileNames: string[] = []) {
       dataMode: "fixtures" as const,
     }),
     decide: vi.fn(),
+    getDecisions: vi.fn().mockResolvedValue(new Map()),
   };
 }
 
@@ -94,9 +97,14 @@ describe("jobs routes", () => {
     getJobsRepository.mockResolvedValue(jobsRepository);
 
     render(
-      await JobsPage({
+      await SearchJobsPage({
         searchParams: Promise.resolve({
           q: "  engineer  ",
+          location: " Leeds ",
+          salaryMin: "45000",
+          salaryPeriod: "year",
+          posted: "7",
+          sort: "closing",
           workplace: "hybrid",
           page: "2",
         }),
@@ -105,43 +113,61 @@ describe("jobs routes", () => {
 
     expect(jobsRepository.list).toHaveBeenCalledWith({
       q: "engineer",
+      location: "Leeds",
       employment: "all",
       workingTime: "all",
       workplace: "hybrid",
       ir35: "all",
       compensation: "all",
+      salaryMin: 45_000,
+      salaryPeriod: "year",
+      posted: "7",
+      sort: "closing",
       page: 2,
     });
     expect(
-      screen.getByRole("heading", { level: 1, name: "UK jobs" }),
+      screen.getByRole("heading", { level: 1, name: "Search jobs" }),
     ).toBeInTheDocument();
   });
 
-  it("renders the target feed by default when an enabled profile exists", async () => {
+  it("searches every UK listing without consulting the scored feed", async () => {
+    // Search is the whole catalogue. An enabled profile narrows matches, and
+    // must not quietly narrow what a search returns.
+    const jobsRepository = repository();
+    getJobsRepository.mockResolvedValue(jobsRepository);
+    const feed = targetFeedRepository(["Data platform lead"]);
+    getTargetFeedRepository.mockResolvedValue(feed);
+
+    render(await SearchJobsPage({ searchParams: Promise.resolve({}) }));
+
+    expect(feed.getFeed).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Search jobs" }),
+    ).toBeInTheDocument();
+  });
+
+  it("reads existing decisions so search never offers to save a job twice", async () => {
+    const jobsRepository = repository();
+    getJobsRepository.mockResolvedValue(jobsRepository);
+    const feed = targetFeedRepository();
+    getTargetFeedRepository.mockResolvedValue(feed);
+
+    render(await SearchJobsPage({ searchParams: Promise.resolve({}) }));
+
+    expect(feed.getDecisions).toHaveBeenCalledOnce();
+  });
+
+  it("renders the scored feed on its own route", async () => {
     const jobsRepository = repository();
     getJobsRepository.mockResolvedValue(jobsRepository);
     getTargetFeedRepository.mockResolvedValue(
       targetFeedRepository(["Data platform lead"]),
     );
 
-    render(await JobsPage({ searchParams: Promise.resolve({}) }));
+    render(await MatchesPage({ searchParams: Promise.resolve({}) }));
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "Target feed" }),
-    ).toBeInTheDocument();
-  });
-
-  it("honours an explicit all view without consulting the target feed", async () => {
-    const jobsRepository = repository();
-    getJobsRepository.mockResolvedValue(jobsRepository);
-    const feed = targetFeedRepository(["Data platform lead"]);
-    getTargetFeedRepository.mockResolvedValue(feed);
-
-    render(await JobsPage({ searchParams: Promise.resolve({ view: "all" }) }));
-
-    expect(feed.getFeed).not.toHaveBeenCalled();
-    expect(
-      screen.getByRole("heading", { level: 1, name: "UK jobs" }),
+      screen.getByRole("heading", { level: 1, name: "Your matches" }),
     ).toBeInTheDocument();
   });
 

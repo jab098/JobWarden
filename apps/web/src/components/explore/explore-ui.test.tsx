@@ -7,7 +7,7 @@ import type { ExploreResult, ExploreSuggestionItem } from "@/lib/explore/types";
 
 import { ExploreView } from "./explore-view";
 
-vi.mock("@/app/(protected)/explore/actions", () => ({
+vi.mock("@/app/(protected)/pathways/actions", () => ({
   setExploreEnabledAction: vi.fn(async () => ({
     kind: "success",
     message: "Saved.",
@@ -78,11 +78,11 @@ describe("explore experience", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Explore adjacent careers" }),
+      screen.getByRole("heading", { name: "Career pathways" }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/opt-in/i).length).toBeGreaterThan(0);
     expect(
-      screen.getByRole("button", { name: "Turn on Explore" }),
+      screen.getByRole("button", { name: "Turn on pathways" }),
     ).toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
   });
@@ -107,7 +107,7 @@ describe("explore experience", () => {
       screen.getByRole("button", { name: "Promote to search profile" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Turn off Explore" }),
+      screen.getByRole("button", { name: "Turn off pathways" }),
     ).toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
   });
@@ -137,7 +137,7 @@ describe("explore experience", () => {
 
   it("submits a dismissal through the pathway action", async () => {
     const { decidePathwayAction } =
-      await import("@/app/(protected)/explore/actions");
+      await import("@/app/(protected)/pathways/actions");
     const user = userEvent.setup();
     render(<ExploreView result={result()} />);
 

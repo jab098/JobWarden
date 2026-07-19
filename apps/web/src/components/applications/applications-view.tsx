@@ -90,10 +90,10 @@ export function ApplicationsViewPage({
             — it never submits applications or contacts recruiters.
           </p>
           <Link
-            href="/jobs"
+            href="/matches"
             className="mt-6 inline-flex rounded-sm text-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
           >
-            Browse your target feed
+            Open my matches
           </Link>
         </div>
       ) : view === "list" ? (

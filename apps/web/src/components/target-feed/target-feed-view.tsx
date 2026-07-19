@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { TargetFeedItem } from "@/components/target-feed/target-feed-item";
-import { targetFeedHref } from "@/lib/target-feed/view";
+import { matchesHref } from "@/lib/target-feed/view";
 import type { TargetFeedResult } from "@/lib/target-feed/types";
 
 function formatFreshness(latestListingUpdate: string | null): string {
@@ -34,14 +34,14 @@ export function TargetFeedView({
               United Kingdom only
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-[#172033] sm:text-4xl">
-              Target feed
+              Your matches
             </h1>
           </div>
           <Link
-            href={targetFeedHref({ view: "all" })}
+            href="/jobs"
             className="rounded-sm text-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
           >
-            Browse all jobs
+            Search all UK jobs
           </Link>
         </div>
         <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-[#ece9e2] pt-4 text-sm text-[#596173]">
@@ -61,8 +61,8 @@ export function TargetFeedView({
             <Link
               href={
                 includeDismissed
-                  ? targetFeedHref({})
-                  : targetFeedHref({ includeDismissed: true })
+                  ? matchesHref({})
+                  : matchesHref({ includeDismissed: true })
               }
               className="rounded-sm font-medium text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
             >
@@ -79,9 +79,9 @@ export function TargetFeedView({
               No enabled search profile yet
             </h2>
             <p className="mt-3 max-w-xl text-sm leading-6 text-[#596173]">
-              The target feed scores UK listings against your enabled search
-              profiles. Set one up and enable it to see scored matches with the
-              evidence behind each score.
+              Matches score UK listings against your enabled search profiles.
+              Set one up and enable it to see scored matches with the evidence
+              behind each score. You can search every UK listing without one.
             </p>
             <Link
               href="/profile"
@@ -99,11 +99,12 @@ export function TargetFeedView({
               Every indexed UK listing was excluded by your eligibility gates or
               no listings are available yet. This is the honest result, not a
               hidden filter. Check back after the next listing update or widen
-              your search profile.
+              your search profile. Every UK listing is still browsable from
+              search.
             </p>
             {!includeDismissed ? (
               <Link
-                href={targetFeedHref({ includeDismissed: true })}
+                href={matchesHref({ includeDismissed: true })}
                 className="mt-6 inline-flex rounded-sm text-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
               >
                 Include dismissed jobs

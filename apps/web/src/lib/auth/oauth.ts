@@ -18,7 +18,7 @@ export async function startGoogleOAuth(
   siteOrigin: string,
 ): Promise<{ kind: "redirect"; destination: string } | { kind: "error" }> {
   const callbackUrl = new URL("/auth/callback", siteOrigin);
-  callbackUrl.searchParams.set("next", "/jobs");
+  callbackUrl.searchParams.set("next", "/matches");
 
   const { data, error } = await client.auth.signInWithOAuth({
     provider: "google",

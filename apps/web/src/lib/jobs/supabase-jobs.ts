@@ -33,6 +33,7 @@ const listRowSchema = z.object({
   compensation_period: z.enum(compensationPeriods),
   compensation_provenance: z.enum(compensationProvenances),
   posted_at: z.iso.datetime().nullable(),
+  closes_at: z.iso.datetime().nullable(),
   last_seen_at: z.iso.datetime(),
   job_locations: z.array(locationSchema).nullable(),
 });
@@ -45,7 +46,7 @@ const detailRowSchema = listRowSchema.extend({
   uk_eligibility_evidence: z.array(z.string().min(1).max(500)).min(1),
 });
 
-const listColumns = [
+const baseColumns = [
   "id",
   "title",
   "employer",
@@ -59,8 +60,20 @@ const listColumns = [
   "compensation_period",
   "compensation_provenance",
   "posted_at",
+  "closes_at",
   "last_seen_at",
-  "job_locations(raw_location)",
+];
+
+const listColumns = [...baseColumns, "job_locations(raw_location)"].join(",");
+
+/**
+ * Filtering on a stated location has to join the location rows, and an inner
+ * join drops listings that have none. That is only correct while the user is
+ * actually asking about location, so the join is narrowed only then.
+ */
+const locationFilteredColumns = [
+  ...baseColumns,
+  "job_locations!inner(raw_location)",
 ].join(",");
 
 const detailColumns = [
@@ -79,6 +92,9 @@ type QueryResponse = {
 type QueryBuilder = {
   select(columns: string, options?: { count: "exact" }): QueryBuilder;
   eq(column: string, value: string): QueryBuilder;
+  gte(column: string, value: string | number): QueryBuilder;
+  ilike(column: string, pattern: string): QueryBuilder;
+  not(column: string, operator: string, value: null): QueryBuilder;
   or(filters: string): QueryBuilder;
   order(
     column: string,
@@ -123,6 +139,7 @@ function toListItem(row: ListRow): JobListItem {
     compensationPeriod: row.compensation_period,
     compensationProvenance: row.compensation_provenance,
     postedAt: row.posted_at,
+    closesAt: row.closes_at,
   };
 }
 
@@ -148,10 +165,35 @@ function escapePostgrestQuotedValue(value: string): string {
   return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
+function likePattern(value: string): string {
+  return escapePostgrestQuotedValue(`%${escapeSqlLikeLiteral(value)}%`);
+}
+
+/**
+ * Keyword search covers the advert body as well as its title and employer,
+ * which is what someone searching "dbt" or "SC cleared" expects.
+ *
+ * ponytail: unindexed ILIKE over description_text; add a pg_trgm index or a
+ * generated tsvector column if the catalogue outgrows a sequential scan.
+ */
 function createSearchFilter(value: string): string {
-  const sqlLikePattern = `%${escapeSqlLikeLiteral(value)}%`;
-  const pattern = escapePostgrestQuotedValue(sqlLikePattern);
-  return `title.ilike."${pattern}",employer.ilike."${pattern}"`;
+  const pattern = likePattern(value);
+  return [
+    `title.ilike."${pattern}"`,
+    `employer.ilike."${pattern}"`,
+    `description_text.ilike."${pattern}"`,
+  ].join(",");
+}
+
+/** Whole pounds as entered, in the minor units every job record stores. */
+function toMinorUnits(pounds: number): number {
+  return Math.round(pounds) * 100;
+}
+
+export function postedSince(window: string, now: Date): string | null {
+  const days = Number(window);
+  if (!Number.isFinite(days) || days <= 0) return null;
+  return new Date(now.getTime() - days * 86_400_000).toISOString();
 }
 
 function newestLastSeenAt(rows: readonly ListRow[]): string | null {
@@ -171,7 +213,9 @@ export function createSupabaseJobsRepository(client: object): JobsRepository {
       try {
         let query = supabaseClient
           .from("jobs")
-          .select(listColumns, { count: "exact" })
+          .select(filters.location ? locationFilteredColumns : listColumns, {
+            count: "exact",
+          })
           .eq("lifecycle_status", "active");
 
         if (filters.employment !== "all") {
@@ -189,11 +233,37 @@ export function createSupabaseJobsRepository(client: object): JobsRepository {
         if (filters.compensation !== "all") {
           query = query.eq("compensation_provenance", filters.compensation);
         }
+        if (filters.location) {
+          query = query.ilike(
+            "job_locations.raw_location",
+            likePattern(filters.location),
+          );
+        }
+        // A floor and its period apply together or not at all, so a day rate is
+        // never weighed against an annual salary. Listings that state no salary
+        // cannot meet a floor, so a floor necessarily excludes them.
+        if (filters.salaryMin !== null && filters.salaryPeriod !== "all") {
+          query = query
+            .eq("compensation_period", filters.salaryPeriod)
+            .gte("compensation_minimum", toMinorUnits(filters.salaryMin));
+        }
+        const since = postedSince(filters.posted, new Date());
+        if (since !== null) {
+          // A listing with no stated posting date cannot satisfy a window;
+          // including it would be inventing a date it never carried.
+          query = query.not("posted_at", "is", null).gte("posted_at", since);
+        }
         if (filters.q) query = query.or(createSearchFilter(filters.q));
 
         const start = (filters.page - 1) * 25;
-        const response = await query
-          .order("posted_at", { ascending: false, nullsFirst: false })
+        const ordered =
+          filters.sort === "closing"
+            ? query.order("closes_at", { ascending: true, nullsFirst: false })
+            : query.order("posted_at", {
+                ascending: false,
+                nullsFirst: false,
+              });
+        const response = await ordered
           .order("id", { ascending: false })
           .range(start, start + 24);
 

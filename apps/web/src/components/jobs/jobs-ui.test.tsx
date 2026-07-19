@@ -1,29 +1,28 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "vitest-axe";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// The save control imports a server action; the component test only needs the
+// control's own behaviour, not the action's server module graph.
+vi.mock("@/app/(protected)/matches/actions", () => ({
+  decideJobAction: vi.fn(async () => ({
+    kind: "success" as const,
+    message: "Job decision saved.",
+  })),
+}));
 
 import { AppShell } from "@/components/app-shell";
 import { JobsErrorView } from "@/components/jobs/jobs-error-view";
 import { JobDetailView } from "@/components/jobs/job-detail-view";
 import { JobsFeedView } from "@/components/jobs/jobs-feed-view";
 import { JobsLoadingView } from "@/components/jobs/jobs-loading-view";
-import type {
-  JobDetail,
-  JobFilters,
-  JobListItem,
-  JobsPageResult,
-} from "@/lib/jobs/types";
+import { parseJobFilters } from "@/lib/jobs/filters";
+import type { JobDetail, JobListItem, JobsPageResult } from "@/lib/jobs/types";
+import type { JobDecision } from "@/lib/target-feed/types";
 
-const defaultFilters: JobFilters = {
-  q: "",
-  employment: "all",
-  workingTime: "all",
-  workplace: "all",
-  ir35: "all",
-  compensation: "all",
-  page: 1,
-};
+const defaultFilters = parseJobFilters({});
+const noDecisions = new Map<string, JobDecision>();
 
 const populatedJob: JobListItem = {
   id: "0d74a055-d0e6-4f50-a77a-9c8fd8543af3",
@@ -40,6 +39,7 @@ const populatedJob: JobListItem = {
   compensationPeriod: "year",
   compensationProvenance: "advertised",
   postedAt: "2026-07-15T09:00:00.000Z",
+  closesAt: null,
 };
 
 const unknownContract: JobListItem = {
@@ -57,6 +57,7 @@ const unknownContract: JobListItem = {
   compensationPeriod: "unknown",
   compensationProvenance: "unknown",
   postedAt: null,
+  closesAt: null,
 };
 
 function createResult(overrides: Partial<JobsPageResult> = {}): JobsPageResult {
@@ -97,17 +98,38 @@ afterEach(() => {
 
 describe("jobs workspace", () => {
   it("renders one semantic feed with labelled GET filters and stable job metadata", () => {
-    render(<JobsFeedView filters={defaultFilters} result={createResult()} />);
+    render(
+      <JobsFeedView
+        decisions={noDecisions}
+        filters={defaultFilters}
+        result={createResult()}
+      />,
+    );
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "UK jobs" }),
+      screen.getByRole("heading", { level: 1, name: "Search jobs" }),
     ).toBeInTheDocument();
     expect(
-      screen.getAllByRole("form", { name: "Filter jobs" })[0],
+      screen.getAllByRole("form", { name: "Search jobs" })[0],
     ).toHaveAttribute("method", "get");
-    expect(screen.getAllByLabelText("Search jobs")[0]).toHaveAttribute(
+    expect(screen.getAllByLabelText("Keywords")[0]).toHaveAttribute(
       "name",
       "q",
+    );
+    expect(screen.getAllByLabelText("Location")[0]).toHaveAttribute(
+      "name",
+      "location",
+    );
+    expect(screen.getAllByLabelText("Date posted")[0]).toHaveAttribute(
+      "name",
+      "posted",
+    );
+    expect(
+      screen.getAllByLabelText("Minimum salary in pounds")[0],
+    ).toHaveAttribute("name", "salaryMin");
+    expect(screen.getAllByLabelText("Salary period")[0]).toHaveAttribute(
+      "name",
+      "salaryPeriod",
     );
     expect(screen.getAllByLabelText("Employment type")[0]).toHaveAttribute(
       "name",
@@ -130,7 +152,7 @@ describe("jobs workspace", () => {
       "compensation",
     );
     expect(
-      screen.getAllByRole("link", { name: "Clear all filters" })[0],
+      screen.getAllByRole("link", { name: "Clear all" })[0],
     ).toHaveAttribute("href", "/jobs");
 
     const firstJob = screen
@@ -168,11 +190,68 @@ describe("jobs workspace", () => {
     expect(screen.getByText("Development data")).toBeInTheDocument();
   });
 
+  it("offers every active choice as a chip that lifts only itself", async () => {
+    const filters = parseJobFilters({
+      q: "engineer",
+      location: "Leeds",
+      workplace: "remote",
+      page: "3",
+    });
+
+    render(
+      <JobsFeedView
+        decisions={noDecisions}
+        filters={filters}
+        result={createResult()}
+      />,
+    );
+
+    const chips = screen.getByRole("list", { name: "Active filters" });
+    expect(
+      within(chips).getByRole("link", { name: /In Leeds/ }),
+    ).toHaveAttribute("href", "/jobs?q=engineer&workplace=remote");
+    expect(within(chips).getByRole("link", { name: /remote/ })).toHaveAttribute(
+      "href",
+      "/jobs?q=engineer&location=Leeds",
+    );
+  });
+
+  it("keeps the sort order as links so it works without JavaScript", () => {
+    render(
+      <JobsFeedView
+        decisions={noDecisions}
+        filters={parseJobFilters({ q: "engineer" })}
+        result={createResult()}
+      />,
+    );
+
+    const sort = screen.getByRole("navigation", { name: "Sort results" });
+    expect(
+      within(sort).getByRole("link", { name: "Closing soonest" }),
+    ).toHaveAttribute("href", "/jobs?q=engineer&sort=closing");
+  });
+
+  it("says a job is already saved rather than offering to save it twice", () => {
+    render(
+      <JobsFeedView
+        decisions={new Map([[populatedJob.id, "saved" as const]])}
+        filters={defaultFilters}
+        result={createResult()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Saved" })).toBeInTheDocument();
+  });
+
   it("opens and closes accessible mobile navigation and filter sheets", async () => {
     const user = userEvent.setup();
     render(
       <AppShell dataMode="fixtures">
-        <JobsFeedView filters={defaultFilters} result={createResult()} />
+        <JobsFeedView
+          decisions={noDecisions}
+          filters={defaultFilters}
+          result={createResult()}
+        />
       </AppShell>,
     );
 
@@ -192,17 +271,18 @@ describe("jobs workspace", () => {
 
     await user.click(screen.getByRole("button", { name: "Open job filters" }));
     expect(
-      screen.getByRole("dialog", { name: "Filter jobs" }),
+      screen.getByRole("dialog", { name: "Search jobs" }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(
-      screen.queryByRole("dialog", { name: "Filter jobs" }),
+      screen.queryByRole("dialog", { name: "Search jobs" }),
     ).not.toBeInTheDocument();
   });
 
   it("designs empty and no-results states without losing active filters", () => {
     const { rerender } = render(
       <JobsFeedView
+        decisions={noDecisions}
         filters={defaultFilters}
         result={createResult({
           items: [],
@@ -221,6 +301,7 @@ describe("jobs workspace", () => {
 
     rerender(
       <JobsFeedView
+        decisions={noDecisions}
         filters={{ ...defaultFilters, q: "cobol" }}
         result={createResult({
           items: [],
@@ -230,7 +311,7 @@ describe("jobs workspace", () => {
       />,
     );
     expect(
-      screen.getByRole("heading", { name: "No jobs match these filters" }),
+      screen.getByRole("heading", { name: "No jobs match this search" }),
     ).toBeInTheDocument();
     expect(screen.getAllByDisplayValue("cobol")[0]).toBeInTheDocument();
     expect(
@@ -239,6 +320,7 @@ describe("jobs workspace", () => {
 
     rerender(
       <JobsFeedView
+        decisions={noDecisions}
         filters={{ ...defaultFilters, page: 2 }}
         result={createResult({ items: [], total: 6, page: 2 })}
       />,
@@ -252,6 +334,7 @@ describe("jobs workspace", () => {
 
     rerender(
       <JobsFeedView
+        decisions={noDecisions}
         filters={{ ...defaultFilters, page: 1_000 }}
         result={createResult({ items: [], total: 6, page: 1_000 })}
       />,
@@ -278,6 +361,7 @@ describe("jobs workspace", () => {
 
     render(
       <JobsFeedView
+        decisions={noDecisions}
         filters={defaultFilters}
         result={createResult({ items: [hourly, singleAmount] })}
       />,
@@ -356,7 +440,11 @@ describe("jobs workspace", () => {
   it("contains none of the deferred or prohibited product language", () => {
     render(
       <AppShell dataMode="fixtures">
-        <JobsFeedView filters={defaultFilters} result={createResult()} />
+        <JobsFeedView
+          decisions={noDecisions}
+          filters={defaultFilters}
+          result={createResult()}
+        />
       </AppShell>,
     );
     const page = document.body.textContent ?? "";
@@ -376,13 +464,18 @@ describe("jobs workspace", () => {
 
   it("has no detectable axe violations in populated, no-results, and detail views", async () => {
     const populated = render(
-      <JobsFeedView filters={defaultFilters} result={createResult()} />,
+      <JobsFeedView
+        decisions={noDecisions}
+        filters={defaultFilters}
+        result={createResult()}
+      />,
     );
     expect(await axe(populated.container)).toHaveNoViolations();
     populated.unmount();
 
     const noResults = render(
       <JobsFeedView
+        decisions={noDecisions}
         filters={{ ...defaultFilters, workplace: "remote" }}
         result={createResult({
           items: [],
@@ -401,12 +494,18 @@ describe("jobs workspace", () => {
   });
 
   it("uses visible focus styles for every primary workspace action", () => {
-    render(<JobsFeedView filters={defaultFilters} result={createResult()} />);
+    render(
+      <JobsFeedView
+        decisions={noDecisions}
+        filters={defaultFilters}
+        result={createResult()}
+      />,
+    );
 
     for (const action of [
       screen.getByRole("button", { name: "Open job filters" }),
-      screen.getAllByRole("button", { name: "Apply filters" })[0],
-      screen.getAllByRole("link", { name: "Clear all filters" })[0],
+      screen.getAllByRole("button", { name: "Search" })[0],
+      screen.getAllByRole("link", { name: "Clear all" })[0],
       screen.getAllByRole("link", { name: "View details" })[0],
     ]) {
       expect(action.className).toMatch(/focus-visible:/);

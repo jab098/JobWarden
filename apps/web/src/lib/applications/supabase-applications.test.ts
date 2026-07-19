@@ -26,6 +26,7 @@ function jobRow() {
     compensation_period: "unknown",
     compensation_provenance: "unknown",
     posted_at: "2026-07-15T09:00:00.000Z",
+    closes_at: null,
     job_locations: [{ raw_location: "Remote within the United Kingdom" }],
   };
 }

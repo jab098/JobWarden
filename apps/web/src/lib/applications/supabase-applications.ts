@@ -42,6 +42,7 @@ const jobRowSchema = z.object({
   compensation_period: z.enum(compensationPeriods),
   compensation_provenance: z.enum(compensationProvenances),
   posted_at: z.iso.datetime().nullable(),
+  closes_at: z.iso.datetime().nullable(),
   job_locations: z.array(locationSchema).nullable(),
 });
 
@@ -74,7 +75,7 @@ export const applicationColumns = [
     "jobs(id,title,employer,employment_type,working_time,workplace_type",
     "ir35_status,compensation_minimum,compensation_maximum",
     "compensation_currency,compensation_period,compensation_provenance",
-    "posted_at,job_locations(raw_location))",
+    "posted_at,closes_at,job_locations(raw_location))",
   ].join(","),
 ].join(",");
 
@@ -123,6 +124,7 @@ function toJob(row: z.infer<typeof jobRowSchema>): JobListItem {
     compensationPeriod: row.compensation_period,
     compensationProvenance: row.compensation_provenance,
     postedAt: row.posted_at,
+    closesAt: row.closes_at,
   };
 }
 

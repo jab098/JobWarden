@@ -216,7 +216,7 @@ export function DashboardView({ result }: { result: DashboardResult }) {
         </div>
       </Section>
 
-      <Section title="Target feed" href="/jobs" linkLabel="Open target feed">
+      <Section title="Matches" href="/matches" linkLabel="Open matches">
         <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
           <div className="grid grid-cols-2 gap-4">
             <Figure
@@ -242,7 +242,7 @@ export function DashboardView({ result }: { result: DashboardResult }) {
 
       <Section
         title="Your decisions"
-        href="/jobs"
+        href="/matches"
         linkLabel="Review saved roles"
       >
         <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
@@ -269,7 +269,7 @@ export function DashboardView({ result }: { result: DashboardResult }) {
         </div>
       </Section>
 
-      <Section title="Explore" href="/explore" linkLabel="Open explore">
+      <Section title="Pathways" href="/pathways" linkLabel="Open pathways">
         {result.explore.enabled ? (
           <div className="mt-3 grid grid-cols-3 gap-4">
             <Figure
@@ -281,8 +281,8 @@ export function DashboardView({ result }: { result: DashboardResult }) {
           </div>
         ) : (
           <p className="mt-3 max-w-prose text-sm text-[#596173]">
-            Explore is off. Turn it on to see credible adjacent careers built
-            from your confirmed evidence.
+            Pathways is off. Turn it on to see adjacent careers built from your
+            confirmed evidence.
           </p>
         )}
       </Section>

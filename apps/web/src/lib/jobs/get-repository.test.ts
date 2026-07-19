@@ -10,6 +10,7 @@ const { createClient } = vi.hoisted(() => ({
 
 vi.mock("@/lib/supabase/server", () => ({ createClient }));
 
+import { parseJobFilters } from "./filters";
 import { getJobsRepository } from "./get-repository";
 
 describe("server jobs repository selector", () => {
@@ -32,12 +33,7 @@ describe("server jobs repository selector", () => {
     expect(createClient).not.toHaveBeenCalled();
     await expect(
       repository.list({
-        q: "",
-        employment: "all",
-        workingTime: "all",
-        workplace: "all",
-        ir35: "all",
-        compensation: "all",
+        ...parseJobFilters({}),
         page: 1,
       }),
     ).resolves.toMatchObject({ dataMode: "fixtures" });

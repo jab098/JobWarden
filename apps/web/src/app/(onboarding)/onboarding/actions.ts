@@ -117,8 +117,13 @@ export async function completeOnboardingAction(
   }
 
   revalidatePath("/", "layout");
-  // Land on the feed with the chosen preferences already applied — and visible
-  // in the URL, so they are one click from being lifted.
+  // Land on the search with the chosen preferences applied and visible in the
+  // address bar, so any one of them is a click from being lifted. The scored
+  // feed the profile now drives is one link away in the header.
+  //
+  // This used to point at the combined page, where an enabled search profile —
+  // which finishing had just created — made it render the scored view instead.
+  // The parameters sat in the address bar applying nothing at all.
   redirect(
     `/jobs?${createJobFiltersQueryString(
       parseJobFilters({

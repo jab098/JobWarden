@@ -44,6 +44,7 @@ const candidateRowSchema = z.object({
   compensation_period: z.enum(compensationPeriods),
   compensation_provenance: z.enum(compensationProvenances),
   posted_at: z.iso.datetime().nullable(),
+  closes_at: z.iso.datetime().nullable(),
   description_text: z.string().max(100_000),
   job_locations: z.array(locationSchema).nullable(),
 });
@@ -67,6 +68,7 @@ const candidateColumns = [
   "compensation_period",
   "compensation_provenance",
   "posted_at",
+  "closes_at",
   "description_text",
   "job_locations(raw_location)",
 ].join(",");
@@ -125,6 +127,7 @@ function toCandidate(row: CandidateRow): TargetFeedCandidate {
     compensationPeriod: row.compensation_period,
     compensationProvenance: row.compensation_provenance,
     postedAt: row.posted_at,
+    closesAt: row.closes_at,
     descriptionText: row.description_text,
   };
 }
@@ -329,6 +332,22 @@ export function createSupabaseTargetFeedRepository(
         );
       } catch {
         throw new Error("Unable to update job decision");
+      }
+    },
+
+    async getDecisions() {
+      try {
+        // Row-level security scopes this to the caller, so no owner predicate
+        // is added here — the boundary is the database's, not this query's.
+        const response = await supabaseClient
+          .from("career_job_decisions")
+          .select("job_id,decision");
+        const rows = z.array(decisionRowSchema).parse(data(response));
+        return new Map<string, JobDecision>(
+          rows.map((row) => [row.job_id, row.decision]),
+        );
+      } catch {
+        throw new Error("Unable to load job decisions");
       }
     },
   };

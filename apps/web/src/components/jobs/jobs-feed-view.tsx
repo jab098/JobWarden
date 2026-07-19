@@ -1,28 +1,27 @@
 import Link from "next/link";
+import { X } from "lucide-react";
 
 import { JobFilters } from "@/components/jobs/job-filters";
 import { JobList } from "@/components/jobs/job-list";
-import { createJobFiltersQueryString } from "@/lib/jobs/filters";
+import { activeJobFilters, jobsHref } from "@/lib/jobs/filters";
 import type { JobFilters as Filters, JobsPageResult } from "@/lib/jobs/types";
+import type { JobDecision } from "@/lib/target-feed/types";
 
-function hasActiveFilters(filters: Filters) {
-  return (
-    filters.q !== "" ||
-    filters.employment !== "all" ||
-    filters.workingTime !== "all" ||
-    filters.workplace !== "all" ||
-    filters.ir35 !== "all"
-  );
-}
+const sortLabels: Record<Filters["sort"], string> = {
+  newest: "Newest first",
+  closing: "Closing soonest",
+};
 
 export function JobsFeedView({
   filters,
   result,
+  decisions,
 }: {
   filters: Filters;
   result: JobsPageResult;
+  decisions: ReadonlyMap<string, JobDecision>;
 }) {
-  const active = hasActiveFilters(filters);
+  const active = activeJobFilters(filters);
   const hasPreviousPage = result.page > 1;
   const hasNextPage = result.page * result.pageSize < result.total;
   const isOutOfRange = result.items.length === 0 && result.total > 0;
@@ -30,10 +29,8 @@ export function JobsFeedView({
     1,
     Math.ceil(result.total / result.pageSize),
   );
-  const pageHref = (page: number) => {
-    const query = createJobFiltersQueryString({ ...filters, page });
-    return query ? `/jobs?${query}` : "/jobs";
-  };
+  const pageHref = (page: number) => jobsHref({ ...filters, page });
+
   return (
     <div className="mx-auto min-h-screen max-w-[92rem] bg-white">
       <header className="border-b border-[#dedbd2] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
@@ -43,20 +40,20 @@ export function JobsFeedView({
               United Kingdom only
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-[#172033] sm:text-4xl">
-              UK jobs
+              Search jobs
             </h1>
           </div>
           <div className="flex items-center gap-4">
             <Link
-              href="/jobs?view=target"
+              href="/matches"
               className="rounded-sm text-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
             >
-              Target feed
+              My matches
             </Link>
             <JobFilters filters={filters} variant="mobile" />
           </div>
         </div>
-        <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 border-t border-[#ece9e2] pt-4 text-sm text-[#596173]">
+        <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-[#ece9e2] pt-4 text-sm text-[#596173]">
           <span className="font-medium text-[#263248]">
             {result.total} {result.total === 1 ? "job" : "jobs"}
           </span>
@@ -75,7 +72,57 @@ export function JobsFeedView({
               Development data
             </span>
           )}
+          {/* Sort is a link rather than a control so the whole surface keeps
+              working without JavaScript, exactly like the filters. */}
+          <nav
+            aria-label="Sort results"
+            className="flex flex-wrap items-center gap-3"
+          >
+            {(Object.keys(sortLabels) as Filters["sort"][]).map((order) => (
+              <Link
+                key={order}
+                href={jobsHref({ ...filters, sort: order, page: 1 })}
+                aria-current={filters.sort === order ? "true" : undefined}
+                className={`rounded-sm underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${
+                  filters.sort === order
+                    ? "font-semibold text-[#263248]"
+                    : "text-[#2458a6] hover:underline"
+                }`}
+              >
+                {sortLabels[order]}
+              </Link>
+            ))}
+          </nav>
         </div>
+        {active.length > 0 && (
+          <ul
+            aria-label="Active filters"
+            className="mt-4 flex flex-wrap items-center gap-2"
+          >
+            {active.map((filter) => (
+              <li key={filter.key}>
+                <Link
+                  href={jobsHref(filter.clearedFilters)}
+                  // first-letter, not capitalize: "£500+ per day" should not
+                  // become "£500+ Per Day".
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#d8dde6] bg-[#faf9f6] px-3 py-1 text-xs font-medium text-[#40495a] first-letter:uppercase hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+                >
+                  {filter.label}
+                  <X aria-hidden="true" className="size-3" />
+                  <span className="sr-only">Remove this filter</span>
+                </Link>
+              </li>
+            ))}
+            <li>
+              <Link
+                href="/jobs"
+                className="rounded-sm px-1 text-xs font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+              >
+                Clear all
+              </Link>
+            </li>
+          </ul>
+        )}
       </header>
       <div className="grid md:grid-cols-[18rem_minmax(0,1fr)]">
         <div className="hidden md:block">
@@ -83,24 +130,24 @@ export function JobsFeedView({
         </div>
         <section aria-label="Job results" className="min-w-0">
           {result.items.length > 0 ? (
-            <JobList jobs={result.items} />
+            <JobList jobs={result.items} decisions={decisions} />
           ) : (
             <div className="px-5 py-16 sm:px-8">
               <h2 className="text-2xl font-semibold tracking-[-0.025em]">
                 {isOutOfRange
                   ? "No jobs on this page"
-                  : active
-                    ? "No jobs match these filters"
+                  : active.length > 0
+                    ? "No jobs match this search"
                     : "Listings are not available yet"}
               </h2>
               <p className="mt-3 max-w-xl text-sm leading-6 text-[#596173]">
                 {isOutOfRange
                   ? "Go to the last available page to continue browsing these UK roles."
-                  : active
-                    ? "Adjust or clear the filters to see other UK roles."
+                  : active.length > 0
+                    ? "Remove one of the filters above, or widen the search, to see other UK roles."
                     : "Permitted sources have not produced active listings yet. Check back after the next listing update."}
               </p>
-              {active && (
+              {active.length > 0 && (
                 <Link
                   href="/jobs"
                   className="mt-6 inline-flex rounded-sm text-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"

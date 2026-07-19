@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import {
   decidePathwayAction,
   promotePathwayAction,
-} from "@/app/(protected)/explore/actions";
+} from "@/app/(protected)/pathways/actions";
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Button } from "@/components/ui/button";
 import type {

@@ -53,27 +53,66 @@ const options = {
     ["estimated", "Estimated salary"],
     ["unknown", "Salary not stated"],
   ],
+  posted: [
+    ["any", "Any time"],
+    ["1", "Last 24 hours"],
+    ["3", "Last 3 days"],
+    ["7", "Last week"],
+    ["14", "Last 2 weeks"],
+    ["30", "Last month"],
+  ],
+  salaryPeriod: [
+    ["all", "Not set"],
+    ["year", "Per year"],
+    ["day", "Per day"],
+    ["hour", "Per hour"],
+    ["month", "Per month"],
+    ["week", "Per week"],
+  ],
 } as const;
+
+const selectClass =
+  "h-10 w-full rounded-md border border-[#cbc7bd] bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]";
 
 function FilterForm({ filters }: { filters: JobFilters }) {
   return (
     <form
-      aria-label="Filter jobs"
+      aria-label="Search jobs"
       method="get"
       action="/jobs"
       className="space-y-5"
     >
+      {/* Sort survives a filter change, but the page cannot: the result set
+          the old page number referred to no longer exists. */}
+      <input type="hidden" name="sort" value={filters.sort} />
+      {/* The hint sits outside the label so the field's accessible name stays
+          "Keywords" rather than absorbing the whole sentence. */}
+      <div className="space-y-2">
+        <label className="block space-y-2 text-sm font-medium">
+          <span>Keywords</span>
+          <Input
+            name="q"
+            defaultValue={filters.q}
+            placeholder="Role, employer, or skill"
+            className="h-10 rounded-md bg-white"
+          />
+        </label>
+        <p className="text-xs text-[#697181]">
+          Searches the job title, the employer, and the advert itself.
+        </p>
+      </div>
       <label className="block space-y-2 text-sm font-medium">
-        <span>Search jobs</span>
+        <span>Location</span>
         <Input
-          name="q"
-          defaultValue={filters.q}
-          placeholder="Role or employer"
+          name="location"
+          defaultValue={filters.location}
+          placeholder="Manchester"
           className="h-10 rounded-md bg-white"
         />
       </label>
       {(
         [
+          ["posted", "Date posted"],
           ["employment", "Employment type"],
           ["workingTime", "Working time"],
           ["workplace", "Workplace"],
@@ -86,7 +125,7 @@ function FilterForm({ filters }: { filters: JobFilters }) {
           <select
             name={name}
             defaultValue={filters[name]}
-            className="h-10 w-full rounded-md border border-[#cbc7bd] bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+            className={selectClass}
           >
             {options[name].map(([value, copy]) => (
               <option key={value} value={value}>
@@ -96,18 +135,52 @@ function FilterForm({ filters }: { filters: JobFilters }) {
           </select>
         </label>
       ))}
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">Minimum salary</legend>
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={1_000_000}
+            step={500}
+            name="salaryMin"
+            aria-label="Minimum salary in pounds"
+            defaultValue={filters.salaryMin ?? ""}
+            placeholder="30000"
+            className="h-10 rounded-md bg-white"
+          />
+          <select
+            name="salaryPeriod"
+            aria-label="Salary period"
+            defaultValue={filters.salaryPeriod}
+            className={selectClass}
+          >
+            {options.salaryPeriod.map(([value, copy]) => (
+              <option key={value} value={value}>
+                {copy}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="text-xs text-[#697181]">
+          Needs both an amount and a period, so a day rate is never compared
+          against a yearly salary. Setting one hides listings with no stated
+          salary, because they cannot be shown to meet it.
+        </p>
+      </fieldset>
       <div className="flex items-center gap-3 pt-1">
         <Button
           type="submit"
           className="h-10 rounded-md bg-[#2458a6] px-4 text-white hover:bg-[#1d477f] focus-visible:ring-2 focus-visible:ring-[#2458a6]"
         >
-          Apply filters
+          Search
         </Button>
         <Link
           href="/jobs"
           className="rounded-sm text-sm text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
         >
-          Clear all filters
+          Clear all
         </Link>
       </div>
     </form>
@@ -147,11 +220,11 @@ export function JobFilters({
           <SlidersHorizontal aria-hidden="true" /> Filters
         </SheetTrigger>
         <SheetContent
-          aria-label="Filter jobs"
+          aria-label="Search jobs"
           className="w-[min(24rem,92vw)] overflow-y-auto bg-[#faf9f6] p-0"
         >
           <SheetHeader className="border-b border-[#dedbd2] px-6 py-5">
-            <SheetTitle>Filter jobs</SheetTitle>
+            <SheetTitle>Search jobs</SheetTitle>
             <SheetDescription>Narrow the UK listings shown.</SheetDescription>
           </SheetHeader>
           <div className="p-6">

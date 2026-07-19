@@ -19,6 +19,7 @@ export const developmentJobs = [
     compensationPeriod: "year",
     compensationProvenance: "advertised",
     postedAt: "2026-07-15T09:00:00.000Z",
+    closesAt: "2026-08-14T23:00:00.000Z",
     descriptionText:
       "A fictional permanent role building internal workflow tools. Two days each week are spent with the Manchester team.",
     applicationUrl: "https://example.test/apply/senior-software-engineer",
@@ -43,6 +44,7 @@ export const developmentJobs = [
     compensationPeriod: "year",
     compensationProvenance: "advertised",
     postedAt: "2026-07-14T12:00:00.000Z",
+    closesAt: "2026-07-28T23:00:00.000Z",
     descriptionText:
       "A fictional twelve-month fixed-term research post based in central Cardiff.",
     applicationUrl: "https://example.test/apply/public-policy-researcher",
@@ -67,6 +69,7 @@ export const developmentJobs = [
     compensationPeriod: "year",
     compensationProvenance: "advertised",
     postedAt: "2026-07-13T10:15:00.000Z",
+    closesAt: null,
     descriptionText:
       "A fictional twenty-hour-per-week support role that may be performed remotely from anywhere in the United Kingdom.",
     applicationUrl: "https://example.test/apply/customer-support-specialist",
@@ -91,6 +94,7 @@ export const developmentJobs = [
     compensationPeriod: "day",
     compensationProvenance: "advertised",
     postedAt: "2026-07-16T08:00:00.000Z",
+    closesAt: "2026-07-24T23:00:00.000Z",
     descriptionText:
       "A fictional six-month delivery contract explicitly assessed as inside IR35 and open to remote workers located in the UK.",
     applicationUrl: "https://example.test/apply/digital-delivery-lead",
@@ -115,6 +119,7 @@ export const developmentJobs = [
     compensationPeriod: "day",
     compensationProvenance: "advertised",
     postedAt: "2026-07-12T14:30:00.000Z",
+    closesAt: "2026-09-01T23:00:00.000Z",
     descriptionText:
       "A fictional outside-IR35 platform contract maintaining SQL reporting pipelines, with one agreed team day each fortnight in Edinburgh.",
     applicationUrl: "https://example.test/apply/platform-engineer-contract",
@@ -139,6 +144,7 @@ export const developmentJobs = [
     compensationPeriod: "day",
     compensationProvenance: "advertised",
     postedAt: null,
+    closesAt: null,
     descriptionText:
       "A fictional Bristol-based data migration contract. The fictional advert does not state an IR35 determination.",
     applicationUrl: "https://example.test/apply/data-migration-analyst",
@@ -166,15 +172,38 @@ function toListItem(job: JobDetail): JobListItem {
     compensationPeriod: job.compensationPeriod,
     compensationProvenance: job.compensationProvenance,
     postedAt: job.postedAt,
+    closesAt: job.closesAt,
   };
 }
 
+function matchesSalaryFloor(job: JobDetail, filters: JobFilters): boolean {
+  if (filters.salaryMin === null || filters.salaryPeriod === "all") return true;
+  // A listing that states no salary cannot be shown to meet a floor.
+  if (job.compensationMinimum === null) return false;
+  return (
+    job.compensationPeriod === filters.salaryPeriod &&
+    job.compensationMinimum >= filters.salaryMin * 100
+  );
+}
+
+function matchesPostedWindow(job: JobDetail, filters: JobFilters): boolean {
+  if (filters.posted === "any") return true;
+  if (job.postedAt === null) return false;
+  const cutoff = Date.now() - Number(filters.posted) * 86_400_000;
+  return new Date(job.postedAt).getTime() >= cutoff;
+}
+
 function matchesFilters(job: JobDetail, filters: JobFilters): boolean {
-  const searchText = `${job.title} ${job.employer}`.toLocaleLowerCase("en-GB");
+  const searchText =
+    `${job.title} ${job.employer} ${job.descriptionText}`.toLocaleLowerCase(
+      "en-GB",
+    );
   const query = filters.q.toLocaleLowerCase("en-GB");
+  const location = filters.location.toLocaleLowerCase("en-GB");
 
   return (
     searchText.includes(query) &&
+    job.location.toLocaleLowerCase("en-GB").includes(location) &&
     (filters.employment === "all" ||
       job.employmentType === filters.employment) &&
     (filters.workingTime === "all" ||
@@ -182,18 +211,34 @@ function matchesFilters(job: JobDetail, filters: JobFilters): boolean {
     (filters.workplace === "all" || job.workplaceType === filters.workplace) &&
     (filters.ir35 === "all" || job.ir35Status === filters.ir35) &&
     (filters.compensation === "all" ||
-      job.compensationProvenance === filters.compensation)
+      job.compensationProvenance === filters.compensation) &&
+    matchesSalaryFloor(job, filters) &&
+    matchesPostedWindow(job, filters)
   );
 }
 
-function compareJobs(left: JobDetail, right: JobDetail): number {
-  if (left.postedAt === null && right.postedAt !== null) return 1;
-  if (left.postedAt !== null && right.postedAt === null) return -1;
+/** Nulls sort last in both orders: an absent date is not a soonest or newest. */
+function byNullableDate(
+  left: string | null,
+  right: string | null,
+  ascending: boolean,
+): number {
+  if (left === null && right === null) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
+  return ascending ? left.localeCompare(right) : right.localeCompare(left);
+}
 
-  const postedAtOrder = (right.postedAt ?? "").localeCompare(
-    left.postedAt ?? "",
-  );
-  if (postedAtOrder !== 0) return postedAtOrder;
+function compareJobs(
+  left: JobDetail,
+  right: JobDetail,
+  sort: JobFilters["sort"],
+): number {
+  const primary =
+    sort === "closing"
+      ? byNullableDate(left.closesAt, right.closesAt, true)
+      : byNullableDate(left.postedAt, right.postedAt, false);
+  if (primary !== 0) return primary;
 
   return right.id.localeCompare(left.id);
 }
@@ -206,7 +251,7 @@ export function createDevelopmentJobsRepository(): JobsRepository {
       );
       const start = (filters.page - 1) * 25;
       const visibleJobs = filteredJobs
-        .toSorted(compareJobs)
+        .toSorted((left, right) => compareJobs(left, right, filters.sort))
         .slice(start, start + 25);
 
       return {
