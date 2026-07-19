@@ -63,6 +63,13 @@ export const postedWindows = ["any", "1", "3", "7", "14", "30"] as const;
  */
 export const jobSortOrders = ["newest", "closing"] as const;
 
+/**
+ * The periods a pay floor can be stated in. `unknown` is deliberately absent:
+ * a floor against an unstated period cannot be compared to anything.
+ */
+export const salaryPeriods = ["year", "month", "week", "day", "hour"] as const;
+
+export type SalaryPeriod = (typeof salaryPeriods)[number];
 export type PostedWindow = (typeof postedWindows)[number];
 export type JobSortOrder = (typeof jobSortOrders)[number];
 export type EmploymentType = (typeof employmentTypes)[number];
@@ -104,7 +111,7 @@ export type JobFilters = {
    * compare a day rate to an annual salary, so neither applies without both.
    */
   salaryMin: number | null;
-  salaryPeriod: CompensationPeriod | "all";
+  salaryPeriod: SalaryPeriod | "all";
   posted: PostedWindow;
   sort: JobSortOrder;
   page: number;

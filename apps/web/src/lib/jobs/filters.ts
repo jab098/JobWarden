@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 import {
-  compensationPeriods,
   compensationProvenances,
   employmentTypes,
   ir35Statuses,
   jobSortOrders,
   postedWindows,
+  salaryPeriods,
   workplaceTypes,
   workingTimes,
   type JobFilters,
@@ -27,7 +27,7 @@ export const jobFilterSchema = z.object({
     .max(1_000_000)
     .nullable()
     .catch(null),
-  salaryPeriod: z.enum([...compensationPeriods, "all"]).catch("all"),
+  salaryPeriod: z.enum([...salaryPeriods, "all"]).catch("all"),
   posted: z.enum(postedWindows).catch("any"),
   sort: z.enum(jobSortOrders).catch("newest"),
   page: z.coerce.number().int().min(1).max(1000).catch(1),
@@ -57,9 +57,10 @@ export function parseJobFilters(input: JobFilterInput): JobFilters {
     page: text(input.page),
   });
 
-  // A pay floor is only meaningful against a stated period. Half an answer
-  // applies nothing rather than silently comparing day rates to salaries.
-  return filters.salaryMin === null || filters.salaryPeriod === "all"
+  // A pay floor is only meaningful against a stated period, and a floor of zero
+  // narrows nothing while still hiding every listing with no stated salary.
+  // Half an answer applies nothing rather than misleading the result count.
+  return !filters.salaryMin || filters.salaryPeriod === "all"
     ? { ...filters, salaryMin: null, salaryPeriod: "all" }
     : filters;
 }
@@ -171,8 +172,8 @@ const removals: readonly {
       filters.posted === "any"
         ? null
         : filters.posted === "1"
-          ? "Posted today"
-          : `Posted in ${filters.posted} days`,
+          ? "Posted in the last 24 hours"
+          : `Posted in the last ${filters.posted} days`,
     clear: () => ({ posted: "any" as const }),
   },
 ];

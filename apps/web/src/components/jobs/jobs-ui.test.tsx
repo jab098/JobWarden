@@ -110,7 +110,7 @@ describe("jobs workspace", () => {
       screen.getByRole("heading", { level: 1, name: "Search jobs" }),
     ).toBeInTheDocument();
     expect(
-      screen.getAllByRole("form", { name: "Search jobs" })[0],
+      screen.getAllByRole("form", { name: "Refine job search" })[0],
     ).toHaveAttribute("method", "get");
     expect(screen.getAllByLabelText("Keywords")[0]).toHaveAttribute(
       "name",
@@ -271,11 +271,11 @@ describe("jobs workspace", () => {
 
     await user.click(screen.getByRole("button", { name: "Open job filters" }));
     expect(
-      screen.getByRole("dialog", { name: "Search jobs" }),
+      screen.getByRole("dialog", { name: "Job search filters" }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(
-      screen.queryByRole("dialog", { name: "Search jobs" }),
+      screen.queryByRole("dialog", { name: "Job search filters" }),
     ).not.toBeInTheDocument();
   });
 

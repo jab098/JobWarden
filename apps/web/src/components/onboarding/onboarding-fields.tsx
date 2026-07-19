@@ -97,7 +97,13 @@ export function SeniorityField({
     >
       <select
         name="targetSeniority"
-        defaultValue={defaultValue ?? ""}
+        // "unspecified" is the stored form of no preference; it is shown as
+        // the empty option rather than as a level.
+        defaultValue={
+          defaultValue === undefined || defaultValue === "unspecified"
+            ? ""
+            : defaultValue
+        }
         className="h-10 w-full rounded-md border border-[#cbc7bd] bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
       >
         <option value="">No preference</option>
@@ -238,7 +244,10 @@ export function PayFloorField({
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <FieldShell label="Lowest pay you would accept" hint="Whole pounds.">
+        <FieldShell
+          label="Lowest pay you would accept"
+          hint="Whole pounds. Needs a period below, or it is not applied."
+        >
           <Input
             type="number"
             inputMode="numeric"
@@ -259,7 +268,9 @@ export function PayFloorField({
         >
           <select
             name="compensationPeriod"
-            defaultValue={period ?? ""}
+            defaultValue={
+              period === undefined || period === "unknown" ? "" : period
+            }
             className="h-10 w-full rounded-md border border-[#cbc7bd] bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
           >
             <option value="">Not set</option>

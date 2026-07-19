@@ -146,6 +146,44 @@ describe("readStepAnswers", () => {
     });
   });
 
+  it("clears a select the user set back to no preference", () => {
+    // The stored answers are merged, not replaced, so omitting the key would
+    // silently keep the level the user just declined.
+    const answers = readStepAnswers(
+      "aspiration",
+      "aspirations",
+      form({ roleFamilies: "Data analyst", targetSeniority: "" }),
+    );
+
+    expect(answers?.targetSeniority).toBe("unspecified");
+  });
+
+  it("drops a pay floor given without the period that makes it comparable", () => {
+    // The same refusal the search page makes. Storing £45,000 against an
+    // unknown period would save a floor the matching gate then discards.
+    const answers = readStepAnswers(
+      "aspiration",
+      "preferences",
+      form({ compensationMinimum: "45000", compensationPeriod: "" }),
+    );
+
+    expect(answers?.compensationMinimum).toBeNull();
+    expect(answers?.compensationPeriod).toBe("unknown");
+  });
+
+  it("keeps a pay floor that states its period", () => {
+    const answers = readStepAnswers(
+      "aspiration",
+      "preferences",
+      form({ compensationMinimum: "45000", compensationPeriod: "year" }),
+    );
+
+    expect(answers).toMatchObject({
+      compensationMinimum: 4_500_000,
+      compensationPeriod: "year",
+    });
+  });
+
   it("refuses a value outside the vocabulary rather than storing it", () => {
     expect(
       readStepAnswers(

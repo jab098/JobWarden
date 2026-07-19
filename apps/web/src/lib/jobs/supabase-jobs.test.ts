@@ -176,18 +176,32 @@ describe("RLS-bound Supabase jobs list", () => {
     );
   });
 
-  it("escapes a hostile location the same way it escapes a keyword", async () => {
-    const builder = createBuilder({ data: [], error: null, count: 0 });
+  it.each([
+    // `ilike` carries its own value, so it needs SQL LIKE escaping only. The
+    // quoted-string layer `or()` needs would arrive at SQL as literal
+    // backslashes, turning "contains a percent" into a match on nothing.
+    ["50%", String.raw`%50\%%`],
+    ["a_b", String.raw`%a\_b%`],
+    [String.raw`c\d`, String.raw`%c\\d%`],
+    // PostgREST rewrites `*` to `%`, so an asterisk must not become a wildcard.
+    ["*", String.raw`%\*%`],
+    // A quote is not special outside a quoted operand and passes through.
+    ['say "hi"', '%say "hi"%'],
+  ])(
+    "escapes the location pattern %s for a value-carrying filter",
+    async (location, expected) => {
+      const builder = createBuilder({ data: [], error: null, count: 0 });
 
-    await createSupabaseJobsRepository({
-      from: vi.fn().mockReturnValue(builder),
-    }).list({ ...allFilters, location: String.raw`50%_"x` });
+      await createSupabaseJobsRepository({
+        from: vi.fn().mockReturnValue(builder),
+      }).list({ ...allFilters, location });
 
-    expect(builder.ilike).toHaveBeenCalledWith(
-      "job_locations.raw_location",
-      String.raw`%50\\%\\_\"x%`,
-    );
-  });
+      expect(builder.ilike).toHaveBeenCalledWith(
+        "job_locations.raw_location",
+        expected,
+      );
+    },
+  );
 
   it("converts a pay floor to minor units and pins it to its period", async () => {
     const builder = createBuilder({ data: [], error: null, count: 0 });

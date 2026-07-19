@@ -114,10 +114,13 @@ export function readStepAnswers(
         break;
       case "targetSeniority":
       case "compensationPeriod": {
-        // An unanswered select stays unanswered rather than defaulting to a
-        // level or period the user never chose.
+        // Both vocabularies carry an explicit "not answered" member, and the
+        // key is always written: omitting it would leave the merge holding the
+        // answer the user just cleared.
         const value = form.get(field);
-        if (value !== "") draft[field] = value;
+        const unanswered =
+          field === "targetSeniority" ? "unspecified" : "unknown";
+        draft[field] = value === "" ? unanswered : value;
         break;
       }
       case "compensationMinimum":
@@ -131,6 +134,17 @@ export function readStepAnswers(
         draft[field] = form.get(field) === "on";
         break;
     }
+  }
+
+  // A floor and its period apply together or not at all, exactly as the search
+  // page refuses a half-answered one. Storing £45,000 against an unknown period
+  // would save a floor the matching gate then discards without telling anyone.
+  if (
+    draft.compensationMinimum !== undefined &&
+    (draft.compensationPeriod === undefined ||
+      draft.compensationPeriod === "unknown")
+  ) {
+    draft.compensationMinimum = null;
   }
 
   const parsed = onboardingAnswersSchema.safeParse(draft);

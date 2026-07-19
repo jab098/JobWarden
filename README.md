@@ -6,8 +6,9 @@ The durable recovery map is [project status](docs/project-status.md), Tasks 7–
 
 ## Product surfaces
 
-- `/jobs` — the primary explainable Target Feed (deterministic 45/20/15/10/10 scoring against enabled search profiles) with the broad UK list behind `?view=all` (Tasks 6 and 11).
-- `/explore` — the opt-in adjacent-career pathways feed; deterministic ≥70% weighted overlap against confirmed evidence, at most two significant gaps, dismiss/promote/disable controls (Task 12).
+- `/matches` — the explainable Target Feed (deterministic 45/20/15/10/10 scoring against enabled search profiles) (Tasks 6, 11, and 22).
+- `/jobs` — Search jobs: every indexed UK listing, with keyword, location, date-posted, salary-floor, and category filters, sort, and removable filter chips. Job detail lives at `/jobs/[jobId]` (Tasks 6 and 22).
+- `/pathways` — the opt-in adjacent-career pathways feed; deterministic ≥70% weighted overlap against confirmed evidence, at most two significant gaps, dismiss/promote/disable controls (Tasks 12 and 22).
 - `/profile` — career profile, evidence review, and named search profiles (Task 10).
 - `/admin` — administrator operations (production requires server-derived administrator access); `/development/admin-preview` is the separate fictional read-only preview (Task 7).
 

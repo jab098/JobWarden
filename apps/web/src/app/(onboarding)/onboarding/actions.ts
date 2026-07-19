@@ -127,6 +127,7 @@ export async function completeOnboardingAction(
   redirect(
     `/jobs?${createJobFiltersQueryString(
       parseJobFilters({
+        location: filters.location,
         employment: filters.employment,
         workingTime: filters.workingTime,
         workplace: filters.workplace,

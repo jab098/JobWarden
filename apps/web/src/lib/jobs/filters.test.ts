@@ -22,13 +22,18 @@ describe("job URL filters", () => {
         compensation: "advertised",
         page: "2",
       }),
-    ).toMatchObject({
+    ).toEqual({
       q: "platform engineer",
+      location: "",
       employment: "contract",
       workingTime: "part_time",
       workplace: "remote",
       ir35: "outside",
       compensation: "advertised",
+      salaryMin: null,
+      salaryPeriod: "all",
+      posted: "any",
+      sort: "newest",
       page: 2,
     });
   });
@@ -89,6 +94,22 @@ describe("job URL filters", () => {
     expect(
       parseJobFilters({ salaryMin: "", salaryPeriod: "year" }).salaryMin,
     ).toBeNull();
+  });
+
+  it("refuses a salary period it never offers", () => {
+    // A floor against an unstated period compares nothing to nothing, so
+    // "unknown" is not a period a floor can be expressed in.
+    expect(
+      parseJobFilters({ salaryMin: "30000", salaryPeriod: "unknown" }),
+    ).toMatchObject({ salaryMin: null, salaryPeriod: "all" });
+  });
+
+  it("treats a zero floor as no floor", () => {
+    // £0+ narrows nothing while still hiding every unstated salary, which
+    // would drop the result count for no stated reason.
+    expect(
+      parseJobFilters({ salaryMin: "0", salaryPeriod: "year" }),
+    ).toMatchObject({ salaryMin: null, salaryPeriod: "all" });
   });
 
   it("falls back for a posting window or sort order it does not offer", () => {

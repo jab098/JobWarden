@@ -155,18 +155,37 @@ function toDetail(row: DetailRow): JobDetail {
 }
 
 function escapeSqlLikeLiteral(value: string): string {
-  return value
-    .replaceAll("\\", "\\\\")
-    .replaceAll("%", "\\%")
-    .replaceAll("_", "\\_");
+  return (
+    value
+      .replaceAll("\\", "\\\\")
+      .replaceAll("%", "\\%")
+      .replaceAll("_", "\\_")
+      // PostgREST rewrites `*` to `%` before PostgreSQL sees it, so an unescaped
+      // asterisk would turn "contains an asterisk" into "matches everything".
+      .replaceAll("*", "\\*")
+  );
 }
 
 function escapePostgrestQuotedValue(value: string): string {
   return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
+/**
+ * A contains-pattern for a filter that carries its own value, such as `ilike`.
+ * PostgREST also maps `*` onto `%` for these operators, so an asterisk has to
+ * be neutralised or a search for one silently matches everything.
+ */
 function likePattern(value: string): string {
-  return escapePostgrestQuotedValue(`%${escapeSqlLikeLiteral(value)}%`);
+  return `%${escapeSqlLikeLiteral(value)}%`;
+}
+
+/**
+ * The same pattern for `or()`, whose operands live inside a quoted string and
+ * therefore need a second layer of escaping. Applying this layer to a value
+ * that is not inside quotes would send the escape characters through literally.
+ */
+function quotedLikePattern(value: string): string {
+  return escapePostgrestQuotedValue(likePattern(value));
 }
 
 /**
@@ -177,7 +196,7 @@ function likePattern(value: string): string {
  * generated tsvector column if the catalogue outgrows a sequential scan.
  */
 function createSearchFilter(value: string): string {
-  const pattern = likePattern(value);
+  const pattern = quotedLikePattern(value);
   return [
     `title.ilike."${pattern}"`,
     `employer.ilike."${pattern}"`,

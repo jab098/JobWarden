@@ -77,7 +77,7 @@ const selectClass =
 function FilterForm({ filters }: { filters: JobFilters }) {
   return (
     <form
-      aria-label="Search jobs"
+      aria-label="Refine job search"
       method="get"
       action="/jobs"
       className="space-y-5"
@@ -219,12 +219,9 @@ export function JobFilters({
         >
           <SlidersHorizontal aria-hidden="true" /> Filters
         </SheetTrigger>
-        <SheetContent
-          aria-label="Search jobs"
-          className="w-[min(24rem,92vw)] overflow-y-auto bg-[#faf9f6] p-0"
-        >
+        <SheetContent className="w-[min(24rem,92vw)] overflow-y-auto bg-[#faf9f6] p-0">
           <SheetHeader className="border-b border-[#dedbd2] px-6 py-5">
-            <SheetTitle>Search jobs</SheetTitle>
+            <SheetTitle>Job search filters</SheetTitle>
             <SheetDescription>Narrow the UK listings shown.</SheetDescription>
           </SheetHeader>
           <div className="p-6">
