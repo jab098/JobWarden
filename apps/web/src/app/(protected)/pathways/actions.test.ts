@@ -93,7 +93,7 @@ describe("explore server actions", () => {
       setExploreEnabledAction({ kind: "idle" }, form({ enabled: "false" })),
     ).resolves.toMatchObject({ kind: "success" });
     expect(setEnabled).toHaveBeenCalledWith(false);
-    expect(mocks.revalidatePath).toHaveBeenCalledWith("/explore");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/pathways");
   });
 
   it("records a dismissal and a restore", async () => {
@@ -124,8 +124,8 @@ describe("explore server actions", () => {
       promotePathwayAction({ kind: "idle" }, form({ pathwayConcept: concept })),
     ).resolves.toMatchObject({ kind: "success" });
     expect(promote).toHaveBeenCalledWith(concept);
-    expect(mocks.revalidatePath).toHaveBeenCalledWith("/explore");
-    expect(mocks.revalidatePath).toHaveBeenCalledWith("/jobs");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/pathways");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/matches");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/profile");
   });
 

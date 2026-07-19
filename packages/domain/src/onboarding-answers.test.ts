@@ -72,6 +72,7 @@ describe("buildFirstRunFilters", () => {
 
   it("leaves an unanswered facet unfiltered", () => {
     expect(buildFirstRunFilters({})).toEqual({
+      location: "",
       employment: "all",
       workingTime: "all",
       workplace: "all",
@@ -80,15 +81,20 @@ describe("buildFirstRunFilters", () => {
     });
   });
 
-  it("includes unknown pay unless the user excluded it", () => {
-    // Excluding unknown pay by default would silently hide most of the market.
-    expect(buildFirstRunFilters({}).compensation).toBe("all");
-    expect(
-      buildFirstRunFilters({ allowUnknownCompensation: true }).compensation,
-    ).toBe("all");
-    expect(
-      buildFirstRunFilters({ allowUnknownCompensation: false }).compensation,
-    ).toBe("advertised");
+  it("never narrows salary provenance, whatever the user chose", () => {
+    // The filter holds one provenance. Turning "exclude unknown pay" into
+    // "advertised only" would also hide every estimated salary — which the
+    // matching gate keeps — so the two surfaces would disagree about the same
+    // preference. The preference still shapes matching through the profile.
+    for (const allowUnknownCompensation of [undefined, true, false]) {
+      expect(
+        buildFirstRunFilters(
+          allowUnknownCompensation === undefined
+            ? {}
+            : { allowUnknownCompensation },
+        ).compensation,
+      ).toBe("all");
+    }
   });
 });
 

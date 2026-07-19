@@ -31,6 +31,7 @@ function toJob(job: (typeof developmentJobs)[number]) {
     compensationPeriod: job.compensationPeriod,
     compensationProvenance: job.compensationProvenance,
     postedAt: job.postedAt,
+    closesAt: job.closesAt,
   };
 }
 

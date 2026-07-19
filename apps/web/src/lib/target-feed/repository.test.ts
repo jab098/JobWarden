@@ -15,6 +15,7 @@ const fixtureRepository: TargetFeedRepository = {
     dataMode: "fixtures" as const,
   })),
   decide: vi.fn(async () => undefined),
+  getDecisions: vi.fn(async () => new Map<string, never>()),
 };
 
 describe("target-feed repository factory gating", () => {

@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 
-import { setExploreEnabledAction } from "@/app/(protected)/explore/actions";
+import { setExploreEnabledAction } from "@/app/(protected)/pathways/actions";
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Button } from "@/components/ui/button";
 import type { ExploreActionState } from "@/lib/explore/types";
@@ -24,7 +24,7 @@ export function ExploreToggle({ enabled }: { enabled: boolean }) {
         variant={enabled ? "outline" : "default"}
         disabled={pending}
       >
-        {enabled ? "Turn off Explore" : "Turn on Explore"}
+        {enabled ? "Turn off pathways" : "Turn on pathways"}
       </Button>
       <ActionFeedback state={state} />
     </form>

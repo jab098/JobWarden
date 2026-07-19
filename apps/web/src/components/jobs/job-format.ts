@@ -78,6 +78,24 @@ export function formatIr35(job: JobListItem): string | null {
   }
 }
 
+/**
+ * Only stated when it is close enough to act on. A closing date months away is
+ * noise on a results row, and one that is absent is not a deadline of "never".
+ */
+export function formatClosingSoon(
+  closesAt: string | null,
+  now: Date = new Date(),
+): string | null {
+  if (!closesAt) return null;
+  const days = Math.ceil(
+    (new Date(closesAt).getTime() - now.getTime()) / 86_400_000,
+  );
+  if (days < 0 || days > 14) return null;
+  if (days === 0) return "Closes today";
+  if (days === 1) return "Closes tomorrow";
+  return `Closes in ${days} days`;
+}
+
 export function formatPostedAge(postedAt: string | null): string {
   if (!postedAt) return "Posting date not stated";
   const days = Math.max(

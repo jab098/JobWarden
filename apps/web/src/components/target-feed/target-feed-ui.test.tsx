@@ -7,7 +7,7 @@ vi.mock("server-only", () => ({}));
 const actionMocks = vi.hoisted(() => ({
   decideJobAction: vi.fn(),
 }));
-vi.mock("@/app/(protected)/jobs/actions", () => ({
+vi.mock("@/app/(protected)/matches/actions", () => ({
   decideJobAction: actionMocks.decideJobAction,
 }));
 
@@ -16,11 +16,7 @@ import { ProfileSuggestionList } from "@/components/profile/profile-suggestion-l
 import { SourceList } from "@/components/admin/source-list";
 import { IngestionRunList } from "@/components/admin/ingestion-run-list";
 import { TargetFeedView } from "@/components/target-feed/target-feed-view";
-import {
-  parseIncludeDismissed,
-  resolveJobsView,
-  targetFeedHref,
-} from "@/lib/target-feed/view";
+import { matchesHref, parseIncludeDismissed } from "@/lib/target-feed/view";
 import type { TargetFeedItem, TargetFeedResult } from "@/lib/target-feed/types";
 import type { JobListItem } from "@/lib/jobs/types";
 
@@ -39,6 +35,7 @@ const job: JobListItem = {
   compensationPeriod: "year",
   compensationProvenance: "advertised",
   postedAt: "2026-07-15T09:00:00.000Z",
+  closesAt: null,
 };
 
 function makeItem(overrides: Partial<TargetFeedItem> = {}): TargetFeedItem {
@@ -86,24 +83,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("resolveJobsView", () => {
-  it("defaults to target only when an enabled profile exists", () => {
-    expect(resolveJobsView(undefined, 1)).toBe("target");
-    expect(resolveJobsView(undefined, 0)).toBe("all");
-    expect(resolveJobsView("all", 3)).toBe("all");
-    expect(resolveJobsView("target", 0)).toBe("target");
-    expect(resolveJobsView("nonsense", 2)).toBe("target");
-  });
-
+describe("matches view state", () => {
   it("parses the include-dismissed flag and builds hrefs", () => {
     expect(parseIncludeDismissed("1")).toBe(true);
     expect(parseIncludeDismissed(undefined)).toBe(false);
     expect(parseIncludeDismissed("0")).toBe(false);
-    expect(targetFeedHref({ includeDismissed: true })).toBe(
-      "/jobs?includeDismissed=1",
+    expect(matchesHref({ includeDismissed: true })).toBe(
+      "/matches?includeDismissed=1",
     );
-    expect(targetFeedHref({ view: "all" })).toBe("/jobs?view=all");
-    expect(targetFeedHref({})).toBe("/jobs");
+    expect(matchesHref({})).toBe("/matches");
   });
 });
 
@@ -119,7 +107,7 @@ describe("target feed view", () => {
     );
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "Target feed" }),
+      screen.getByRole("heading", { level: 1, name: "Your matches" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Fit 82 of 100")).toBeInTheDocument();
     expect(screen.getByText("Data platform lead")).toBeInTheDocument();
@@ -258,7 +246,7 @@ describe("target feed view", () => {
     expect(row?.hasAttribute("inert")).toBe(false);
     expect(
       screen.getByRole("link", { name: /hide dismissed/i }),
-    ).toHaveAttribute("href", "/jobs");
+    ).toHaveAttribute("href", "/matches");
   });
 
   it("links to include dismissed when it is off", () => {
@@ -271,7 +259,7 @@ describe("target feed view", () => {
     );
     expect(
       screen.getByRole("link", { name: /include dismissed/i }),
-    ).toHaveAttribute("href", "/jobs?includeDismissed=1");
+    ).toHaveAttribute("href", "/matches?includeDismissed=1");
   });
 
   it("designs the no-enabled-profiles state pointing at the profile", () => {

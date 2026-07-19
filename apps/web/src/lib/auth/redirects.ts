@@ -1,4 +1,4 @@
-const FALLBACK_PATH = "/jobs";
+const FALLBACK_PATH = "/matches";
 const MAX_DECODE_LAYERS = 2;
 const unsafeRedirectCharacter = /[\\\u0000-\u001f\u007f-\u009f]/;
 

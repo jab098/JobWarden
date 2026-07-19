@@ -12,7 +12,7 @@ export function ExploreView({ result }: { result: ExploreResult }) {
           United Kingdom only
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-[#172033] sm:text-4xl">
-          Explore adjacent careers
+          Career pathways
         </h1>
         <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-[#ece9e2] pt-4 text-sm text-[#596173]">
           {result.enabled ? (
@@ -20,7 +20,7 @@ export function ExploreView({ result }: { result: ExploreResult }) {
               {count} {count === 1 ? "credible pathway" : "credible pathways"}
             </span>
           ) : (
-            <span className="font-medium text-[#263248]">Explore is off</span>
+            <span className="font-medium text-[#263248]">Pathways are off</span>
           )}
           {result.dataMode === "fixtures" ? (
             <span className="font-mono text-[0.7rem] uppercase tracking-[0.12em] text-[#7a5a20]">
@@ -32,18 +32,18 @@ export function ExploreView({ result }: { result: ExploreResult }) {
       </header>
 
       {!result.enabled ? (
-        <section aria-label="About Explore" className="px-5 py-16 sm:px-8">
+        <section aria-label="About pathways" className="px-5 py-16 sm:px-8">
           <h2 className="text-2xl font-semibold tracking-[-0.025em]">
-            An opt-in feed for credible adjacent careers
+            Adjacent careers your confirmed skills already cover
           </h2>
           <p className="mt-3 max-w-xl text-sm leading-6 text-[#596173]">
-            Explore is opt-in and off by default. When you turn it on, JobWarden
-            deterministically compares your confirmed evidence with a curated UK
-            pathway taxonomy. A pathway is suggested only when it reaches at
-            least 70% weighted overlap with your demonstrated core skills, has
-            no more than two significant trainable gaps, and sits outside your
-            active target role families. Keyword coincidence is never enough,
-            and nothing here changes your selected targets.
+            Pathways is opt-in and off by default. When you turn it on,
+            JobWarden deterministically compares your confirmed evidence with a
+            curated UK pathway taxonomy. A pathway is suggested only when it
+            reaches at least 70% weighted overlap with your demonstrated core
+            skills, has no more than two significant trainable gaps, and sits
+            outside your active target role families. Keyword coincidence is
+            never enough, and nothing here changes your selected targets.
           </p>
         </section>
       ) : (

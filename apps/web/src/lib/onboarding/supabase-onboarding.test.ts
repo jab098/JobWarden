@@ -271,9 +271,10 @@ describe("finish", () => {
     },
   };
 
-  it("writes the profile, preferences, and completion in that order", async () => {
-    // The search profile must exist before the hub unlocks, or the user lands
-    // on the empty feed this whole flow exists to prevent.
+  it("writes the profile, preferences, and completion in one transaction", async () => {
+    // Four sequential RPCs could strand a saved search behind a hub that never
+    // unlocked, or unlock one whose preferences were never recorded. A single
+    // call means the database rolls the whole configuration back together.
     const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
     mocks.getSnapshot.mockResolvedValue(
       snapshot({
@@ -293,13 +294,7 @@ describe("finish", () => {
       client({ state: answered, rpc }),
     ).finish();
 
-    const called = rpc.mock.calls.map(([name]) => name);
-    expect(called).toEqual([
-      "save_search_profile",
-      "set_career_notification_settings",
-      "set_explore_enabled",
-      "complete_onboarding",
-    ]);
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual(["finish_onboarding"]);
   });
 
   it("uses the live generation rather than assuming a fresh account", async () => {
@@ -311,7 +306,7 @@ describe("finish", () => {
     ).finish();
 
     expect(rpc).toHaveBeenCalledWith(
-      "save_search_profile",
+      "finish_onboarding",
       expect.objectContaining({ expected_generation: 7 }),
     );
   });
@@ -323,12 +318,13 @@ describe("finish", () => {
       client({ state: answered, rpc }),
     ).finish();
 
-    expect(rpc).toHaveBeenCalledWith("set_career_notification_settings", {
-      target_enabled: true,
-    });
-    expect(rpc).toHaveBeenCalledWith("set_explore_enabled", {
-      target_enabled: true,
-    });
+    expect(rpc).toHaveBeenCalledWith(
+      "finish_onboarding",
+      expect.objectContaining({
+        notifications_enabled: true,
+        explore_enabled: true,
+      }),
+    );
   });
 
   it("returns the filters to pre-apply on the first feed", async () => {
@@ -354,22 +350,19 @@ describe("finish", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("does not complete when writing the profile fails", async () => {
+  it("reports a refused completion without leaving a second call behind", async () => {
+    // A stale generation rolls the transaction back inside the database, so
+    // there is nothing for the repository to undo — only an honest failure to
+    // report, and no follow-up write that could half-apply the configuration.
     const rpc = vi
       .fn()
-      .mockImplementation(async (name: string) =>
-        name === "save_search_profile"
-          ? { data: null, error: { message: "stale" } }
-          : { data: null, error: null },
-      );
+      .mockResolvedValue({ data: null, error: { message: "stale" } });
 
     await expect(
       createSupabaseOnboardingRepository(
         client({ state: answered, rpc }),
       ).finish(),
     ).rejects.toThrow("Unable to finish onboarding");
-    expect(rpc.mock.calls.map(([name]) => name)).not.toContain(
-      "complete_onboarding",
-    );
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
 });

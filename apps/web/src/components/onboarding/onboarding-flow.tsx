@@ -8,6 +8,17 @@ import {
   advanceOnboardingAction,
   completeOnboardingAction,
 } from "@/app/(onboarding)/onboarding/actions";
+import {
+  ChoiceField,
+  ConceptListField,
+  EmploymentTypeField,
+  Ir35Field,
+  PayFloorField,
+  SeniorityField,
+  WorkingTimeField,
+  WorkplaceField,
+} from "@/components/onboarding/onboarding-fields";
+import { ProfileEvidenceList } from "@/components/profile/profile-evidence-list";
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Button } from "@/components/ui/button";
 import type {
@@ -130,44 +141,136 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
         </div>
       ) : null}
 
+      {/* The evidence list posts its own decision per item, so it stays outside
+          the step form. Nesting it would be invalid HTML, and the browser drops
+          the inner form — turning Confirm into "advance past this step". */}
       {step === "confirm_evidence" ? (
-        <p className="mt-6 max-w-prose text-sm leading-6 text-[#596173]">
-          We found {view.cv.conceptCount} things we could match you on. Next you
-          will confirm which of them you actually want to be matched on —
-          nothing becomes active until you say so.
-        </p>
+        <div className="mt-6 space-y-4">
+          <p className="max-w-prose text-sm leading-6 text-[#596173]">
+            We found {view.cv.conceptCount} things we could match you on.
+            Confirm the ones you actually want to be matched on — nothing
+            becomes active until you say so, and anything you leave unconfirmed
+            is simply not used.
+          </p>
+          <ProfileEvidenceList evidence={view.evidence} readOnly={readOnly} />
+        </div>
       ) : null}
 
-      {step === "aspirations" ? (
-        <p className="mt-6 max-w-prose text-sm leading-6 text-[#596173]">
-          Tell us the kind of work you want and the skills you have or want to
-          build. No experience is required: this is how JobWarden helps people
-          starting out or changing direction.
-        </p>
-      ) : null}
+      {/* One form per step: the answers post inside the same action that
+          records the step, so nobody is advanced past a question whose answer
+          was lost on the way. */}
+      {step !== null && step !== "cv" ? (
+        <form action={advance} className="mt-6 space-y-6">
+          <input type="hidden" name="path" value={view.path} />
+          <input type="hidden" name="step" value={step} />
 
-      {step === "preferences" ? (
-        <p className="mt-6 max-w-prose text-sm leading-6 text-[#596173]">
-          Set what you will and will not take — location, working pattern,
-          contract type, and a pay floor. These become filters on your feed that
-          you can lift at any time.
-        </p>
-      ) : null}
+          {step === "aspirations" ? (
+            <>
+              <p className="max-w-prose text-sm leading-6 text-[#596173]">
+                Tell us the kind of work you want and the skills you have or
+                want to build. No experience is required: this is how JobWarden
+                helps people starting out or changing direction.
+              </p>
+              <ConceptListField
+                name="roleFamilies"
+                label="What kind of work are you aiming for?"
+                hint="Separate several with commas."
+                placeholder="Data analyst, business analyst"
+                defaultValue={view.answers.roleFamilies}
+              />
+              <ConceptListField
+                name="skillConcepts"
+                label="Skills you already have"
+                hint="Anything you would be comfortable being matched on today."
+                placeholder="SQL, Excel, stakeholder reporting"
+                defaultValue={view.answers.skillConcepts}
+              />
+              <ConceptListField
+                name="developingSkills"
+                label="Skills you want to build"
+                hint="Recorded as an aim. These are not claimed as experience you have."
+                placeholder="Python, dbt"
+                defaultValue={view.answers.developingSkills}
+              />
+              <SeniorityField defaultValue={view.answers.targetSeniority} />
+            </>
+          ) : null}
 
-      {step === "notifications" ? (
-        <p className="mt-6 max-w-prose text-sm leading-6 text-[#596173]">
-          JobWarden can email you when genuinely new matches appear, at most
-          once per weekday slot. It is off unless you turn it on, and you can
-          stop it from any email.
-        </p>
+          {step === "preferences" ? (
+            <>
+              <p className="max-w-prose text-sm leading-6 text-[#596173]">
+                Set what you will and will not take. These become filters on
+                your feed, shown in the address bar, that you can lift at any
+                time.
+              </p>
+              {/* The CV path never reaches the aspirations step, and confirmed
+                  evidence says what someone has done, never what they want
+                  next — so this path is asked here instead. */}
+              {view.path === "cv" ? (
+                <>
+                  <ConceptListField
+                    name="roleFamilies"
+                    label="What kind of work are you aiming for?"
+                    hint="Separate several with commas."
+                    placeholder="Data analyst, business analyst"
+                    defaultValue={view.answers.roleFamilies}
+                  />
+                  <SeniorityField defaultValue={view.answers.targetSeniority} />
+                </>
+              ) : null}
+              <EmploymentTypeField selected={view.answers.employmentTypes} />
+              <WorkingTimeField selected={view.answers.workingTimes} />
+              <WorkplaceField selected={view.answers.workplaceTypes} />
+              <Ir35Field selected={view.answers.ir35Statuses} />
+              <ConceptListField
+                name="ukLocations"
+                label="Where in the UK"
+                hint="Town, city, or region. Remote roles are never excluded by this."
+                placeholder="Manchester, Leeds"
+                defaultValue={view.answers.ukLocations}
+              />
+              <PayFloorField
+                minimum={view.answers.compensationMinimum}
+                period={view.answers.compensationPeriod}
+                allowUnknown={view.answers.allowUnknownCompensation}
+              />
+            </>
+          ) : null}
+
+          {step === "notifications" ? (
+            <>
+              <p className="max-w-prose text-sm leading-6 text-[#596173]">
+                Two things you can turn on now or later. Both are off unless you
+                choose them.
+              </p>
+              <ChoiceField
+                name="notificationsEnabled"
+                title="Email me when genuinely new matches appear"
+                description="At most once per weekday slot, and never a repeat of a match you have already been sent. You can stop it from any email."
+                defaultChecked={view.answers.notificationsEnabled}
+              />
+              <ChoiceField
+                name="exploreEnabled"
+                title="Show me adjacent careers I already qualify for"
+                description="Pathways your confirmed skills substantially cover. Off by default, and it changes nothing about your matches."
+                defaultChecked={view.answers.exploreEnabled}
+              />
+            </>
+          ) : null}
+
+          <Button type="submit" disabled={readOnly || advancePending}>
+            {advancePending ? "Saving…" : "Save and continue"}
+          </Button>
+        </form>
       ) : null}
 
       {step === null ? (
         view.hasSignal ? (
           <p className="mt-6 max-w-prose text-sm leading-6 text-[#596173]">
-            That is everything. Finishing takes you to your feed, with the
-            preferences you chose already applied — and shown in the address
-            bar, so any of them is one click from being lifted.
+            That is everything. Finishing takes you to UK listings already
+            narrowed to the preferences you chose — shown in the address bar, so
+            any of them is one click from being lifted. Your scored matches are
+            one link away from there.
           </p>
         ) : (
           <p
@@ -217,23 +320,13 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
           </>
         ) : null}
 
-        {step !== null && step !== "cv" ? (
-          <form action={advance}>
-            <input type="hidden" name="path" value={view.path} />
-            <input type="hidden" name="step" value={step} />
-            <Button type="submit" disabled={readOnly || advancePending}>
-              {advancePending ? "Saving…" : "Continue"}
-            </Button>
-          </form>
-        ) : null}
-
         {step === null ? (
           <form action={complete}>
             <Button
               type="submit"
               disabled={readOnly || completePending || !view.hasSignal}
             >
-              {completePending ? "Finishing…" : "Finish and open my feed"}
+              {completePending ? "Finishing…" : "Finish and see UK jobs"}
             </Button>
           </form>
         ) : null}

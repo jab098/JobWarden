@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 
-import { decideJobAction } from "@/app/(protected)/jobs/actions";
+import { decideJobAction } from "@/app/(protected)/matches/actions";
 import { Button } from "@/components/ui/button";
 import {
   formatCompensation,

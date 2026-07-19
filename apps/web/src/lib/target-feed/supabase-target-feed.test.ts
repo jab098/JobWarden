@@ -56,6 +56,7 @@ function jobRow(overrides: Partial<Record<string, unknown>> = {}) {
     compensation_period: "unknown",
     compensation_provenance: "unknown",
     posted_at: "2026-07-15T09:00:00.000Z",
+    closes_at: null,
     description_text: "A fictional remote platform role using SQL daily.",
     job_locations: [{ raw_location: "Remote within the United Kingdom" }],
     ...overrides,
@@ -288,11 +289,13 @@ describe("Supabase target-feed repository", () => {
           jobRow({
             id: "00000000-0000-4000-8000-000000000001",
             posted_at: "2026-07-10T09:00:00.000Z",
+            closes_at: null,
             description_text: "No matching skills here.",
           }),
           jobRow({
             id: "00000000-0000-4000-8000-000000000002",
             posted_at: "2026-07-16T09:00:00.000Z",
+            closes_at: null,
             description_text: "A fictional role using SQL daily.",
           }),
         ],

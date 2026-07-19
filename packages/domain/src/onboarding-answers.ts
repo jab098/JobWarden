@@ -37,11 +37,12 @@ export const onboardingAnswersSchema = z
     workplaceTypes: z.array(z.enum(workplaceTypes)).max(4).optional(),
     ir35Statuses: z.array(z.enum(ir35Statuses)).max(4).optional(),
     ukLocations: z.array(z.string().trim().min(1).max(120)).max(10).optional(),
+    /** Minor units, so a £1,000,000 ceiling is not a wall a real salary hits. */
     compensationMinimum: z
       .number()
       .int()
       .min(0)
-      .max(10_000_000)
+      .max(100_000_000)
       .nullable()
       .optional(),
     compensationPeriod: z.enum(compensationPeriods).optional(),
@@ -61,6 +62,8 @@ export function parseOnboardingAnswers(input: unknown): OnboardingAnswers {
 }
 
 export interface FirstRunFilters {
+  /** Empty when the user named several, for the same reason as the rest. */
+  location: string;
   employment: (typeof employmentTypes)[number] | "all";
   workingTime: (typeof workingTimes)[number] | "all";
   workplace: (typeof workplaceTypes)[number] | "all";
@@ -82,14 +85,17 @@ export function buildFirstRunFilters(
     values?.length === 1 ? values[0]! : undefined;
 
   return {
+    location: only(answers.ukLocations) ?? "",
     employment: only(answers.employmentTypes) ?? "all",
     workingTime: only(answers.workingTimes) ?? "all",
     workplace: only(answers.workplaceTypes) ?? "all",
     ir35: only(answers.ir35Statuses) ?? "all",
-    // Unknown pay is included unless the user said otherwise, because excluding
-    // it by default would silently hide most of the UK market.
-    compensation:
-      answers.allowUnknownCompensation === false ? "advertised" : "all",
+    // Never narrowed. The filter holds one provenance, so excluding unknown pay
+    // would have to mean "advertised only" — which also hides every estimated
+    // salary the matching gate keeps. Two surfaces would then answer the same
+    // preference differently, and estimated pay must stay visibly distinct from
+    // both advertised and unknown.
+    compensation: "all",
   };
 }
 

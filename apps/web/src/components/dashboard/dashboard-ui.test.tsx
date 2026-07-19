@@ -128,7 +128,7 @@ describe("DashboardView", () => {
       />,
     );
 
-    expect(screen.getByText(/Explore is off/)).toBeInTheDocument();
+    expect(screen.getByText(/Pathways is off/)).toBeInTheDocument();
     expect(screen.queryByText("pathways qualifying")).not.toBeInTheDocument();
   });
 
@@ -137,8 +137,8 @@ describe("DashboardView", () => {
 
     for (const [name, href] of [
       ["Open tracker", "/applications"],
-      ["Open target feed", "/jobs"],
-      ["Open explore", "/explore"],
+      ["Open matches", "/matches"],
+      ["Open pathways", "/pathways"],
       ["Open career profile", "/profile"],
     ] as const) {
       expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);

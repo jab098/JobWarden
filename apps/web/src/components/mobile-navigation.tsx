@@ -18,7 +18,8 @@ export function MobileNavigation({
   activePath,
 }: {
   dataMode: "supabase" | "fixtures";
-  activePath: "home" | "jobs" | "explore" | "applications" | "profile";
+  activePath:
+    "home" | "matches" | "jobs" | "pathways" | "applications" | "profile";
 }) {
   return (
     <div className="lg:hidden">
@@ -57,18 +58,25 @@ export function MobileNavigation({
               Home
             </Link>
             <Link
+              href="/matches"
+              aria-current={activePath === "matches" ? "page" : undefined}
+              className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium text-[#172033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "matches" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173]"}`}
+            >
+              Matches
+            </Link>
+            <Link
               href="/jobs"
               aria-current={activePath === "jobs" ? "page" : undefined}
               className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium text-[#172033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "jobs" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173]"}`}
             >
-              Jobs
+              Search jobs
             </Link>
             <Link
-              href="/explore"
-              aria-current={activePath === "explore" ? "page" : undefined}
-              className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium text-[#172033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "explore" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173]"}`}
+              href="/pathways"
+              aria-current={activePath === "pathways" ? "page" : undefined}
+              className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium text-[#172033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "pathways" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173]"}`}
             >
-              Explore
+              Pathways
             </Link>
             <Link
               href="/applications"

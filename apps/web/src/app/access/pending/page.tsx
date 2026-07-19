@@ -20,7 +20,7 @@ export default async function AccessPendingPage() {
     repository.hasAdminRole(user.id),
   ]);
 
-  if (record?.status === "approved" || isAdmin) redirect("/jobs");
+  if (record?.status === "approved" || isAdmin) redirect("/matches");
 
   return (
     <AccessStateView

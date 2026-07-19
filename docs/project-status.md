@@ -25,6 +25,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - [Task 18 completion review](reviews/task-18-onboarding-gate.md)
 - [Task 19 completion review](reviews/task-19-guided-setup.md)
 - [Task 20 completion review](reviews/task-20-admin-observability.md)
+- [Task 22 completion review](reviews/task-22-search-jobs.md)
 - [Production setup runbook](setup/production-setup.md)
 - [Privacy policy](privacy/privacy-policy.md)
 - [Canonical Tasks 7–17 roadmap](product/roadmap.md)
@@ -37,7 +38,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - Last independently reviewed task implementation commit: Task 18 (delivered by merge `51f8eaf`)
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
 - Active feature branch: none
-- Active task: none. Tasks 18-20 are merged. Task 21 (Authentication activation) is the only task left and requires owner platform setup. Tasks 1–17 are merged; the owner approved four further tasks on 2026-07-19. Tasks 18–20 need no platform setup; Task 21 requires setup runbook steps 1–4
+- Active task: Task 22 (Search Jobs, route naming, and onboarding follow-ups) on `codex/task-22-search-jobs`. Tasks 18-20 are merged. Task 21 (Authentication activation) is the only task left and requires owner platform setup. Tasks 1–17 are merged; the owner approved four further tasks on 2026-07-19. Tasks 18–20 need no platform setup; Task 21 requires setup runbook steps 1–4
 
 ## Task progress
 
@@ -64,6 +65,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 19. Guided setup and first-run population                              | reviewed | Independent review clean; writes the profile before unlocking   |
 | 20. Administrator audit log and operational health                     | reviewed | Independent review clean; no new data is collected              |
 | 21. Authentication activation                                          | pending  | Owner-approved 2026-07-19; needs owner platform setup           |
+| 22. Search Jobs, route naming, and onboarding follow-ups               | pending  | Owner-approved 2026-07-19; no platform setup required           |
 
 ## Last verification commands
 

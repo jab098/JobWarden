@@ -10,6 +10,7 @@ import {
   createJobFiltersQueryString,
   parseJobFilters,
 } from "@/lib/jobs/filters";
+import { readStepAnswers } from "@/lib/onboarding/answers-form";
 import { getOnboardingRepository } from "@/lib/onboarding/get-repository";
 import { PreviewOnboardingUnavailableError } from "@/lib/onboarding/repository";
 import type { OnboardingActionState } from "@/lib/onboarding/types";
@@ -69,6 +70,17 @@ export async function advanceOnboardingAction(
     return { kind: "invalid", message: "Check this step and try again." };
   }
 
+  // Answers are read against the step that submitted them, so a crafted field
+  // cannot record an answer to a question this step never asked.
+  const answers = readStepAnswers(parsed.data.path, parsed.data.step, {
+    get: (name) => value(formData, name),
+    getAll: (name) =>
+      formData.getAll(name).filter((entry) => typeof entry === "string"),
+  });
+  if (answers === null) {
+    return { kind: "invalid", message: "Check this step and try again." };
+  }
+
   try {
     await (
       await getOnboardingRepository()
@@ -76,6 +88,7 @@ export async function advanceOnboardingAction(
       path: parsed.data.path,
       step: parsed.data.step,
       cvOutcome: parsed.data.cvOutcome ? parsed.data.cvOutcome : null,
+      answers,
     });
     revalidatePath("/onboarding");
     return { kind: "success", message: "Saved." };
@@ -104,11 +117,17 @@ export async function completeOnboardingAction(
   }
 
   revalidatePath("/", "layout");
-  // Land on the feed with the chosen preferences already applied — and visible
-  // in the URL, so they are one click from being lifted.
+  // Land on the search with the chosen preferences applied and visible in the
+  // address bar, so any one of them is a click from being lifted. The scored
+  // feed the profile now drives is one link away in the header.
+  //
+  // This used to point at the combined page, where an enabled search profile —
+  // which finishing had just created — made it render the scored view instead.
+  // The parameters sat in the address bar applying nothing at all.
   redirect(
     `/jobs?${createJobFiltersQueryString(
       parseJobFilters({
+        location: filters.location,
         employment: filters.employment,
         workingTime: filters.workingTime,
         workplace: filters.workplace,

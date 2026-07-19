@@ -22,6 +22,7 @@ export const requiredMigrationFiles = [
   "202607190007_onboarding_state.sql",
   "202607190008_onboarding_answers.sql",
   "202607190009_admin_observability.sql",
+  "202607190010_onboarding_completion.sql",
 ];
 
 const publicTables = [

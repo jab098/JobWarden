@@ -73,7 +73,7 @@ export async function setExploreEnabledAction(
 
   try {
     await (await getExploreRepository()).setEnabled(enabled);
-    revalidatePath("/explore");
+    revalidatePath("/pathways");
     return {
       kind: "success",
       message: enabled ? "Explore is on." : "Explore is off.",
@@ -101,7 +101,7 @@ export async function decidePathwayAction(
     await (
       await getExploreRepository()
     ).decide(parsed.data.pathwayConcept, parsed.data.decision);
-    revalidatePath("/explore");
+    revalidatePath("/pathways");
     return {
       kind: "success",
       message:
@@ -129,8 +129,8 @@ export async function promotePathwayAction(
 
   try {
     await (await getExploreRepository()).promote(parsed.data.pathwayConcept);
-    revalidatePath("/explore");
-    revalidatePath("/jobs");
+    revalidatePath("/pathways");
+    revalidatePath("/matches");
     revalidatePath("/profile");
     return {
       kind: "success",

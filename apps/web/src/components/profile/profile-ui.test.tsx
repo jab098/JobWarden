@@ -626,6 +626,8 @@ describe("career profile onboarding", () => {
     expect(
       screen.getAllByRole("link", { name: "Career profile" }),
     ).not.toHaveLength(0);
-    expect(screen.getAllByRole("link", { name: "Jobs" })).not.toHaveLength(0);
+    expect(
+      screen.getAllByRole("link", { name: "Search jobs" }),
+    ).not.toHaveLength(0);
   });
 });

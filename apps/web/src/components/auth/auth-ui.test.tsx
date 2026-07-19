@@ -34,7 +34,7 @@ describe("public private-beta entry", () => {
 
     expect(
       screen.getByRole("link", { name: /open jobs workspace/i }),
-    ).toHaveAttribute("href", "/jobs");
+    ).toHaveAttribute("href", "/matches");
     expect(screen.getByText(/development data/i)).toBeInTheDocument();
     expect(
       screen.getByText("Explicitly fictional fixtures are enabled locally."),

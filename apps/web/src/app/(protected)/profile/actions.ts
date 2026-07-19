@@ -131,6 +131,9 @@ export async function decideEvidenceAction(
       await repository.rejectEvidence(parsed.data.evidenceId);
     }
     revalidatePath("/profile");
+    // Onboarding's confirmation step renders the same list, and a confirmation
+    // there decides what the first search profile is built from.
+    revalidatePath("/onboarding");
     return { kind: "success", message: "Evidence reviewed." };
   } catch (error) {
     return mapError(error);

@@ -47,7 +47,7 @@ export function PublicHome({ dataMode }: PublicHomeProps) {
             </p>
             <div className="mt-9 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
               <Link
-                href={isDevelopment ? "/jobs" : "/auth/sign-in"}
+                href={isDevelopment ? "/matches" : "/auth/sign-in"}
                 className={cn(
                   buttonVariants({ size: "lg" }),
                   "h-11 rounded-md bg-[#2458a6] px-5 text-white hover:bg-[#1d477f] focus-visible:ring-[#2458a6]/40",

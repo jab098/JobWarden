@@ -4,18 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import type { JobFilters } from "./types";
+import { parseJobFilters } from "./filters";
+import { postedSince } from "./supabase-jobs";
 import { createSupabaseJobsRepository } from "./supabase-jobs";
 
-const allFilters: JobFilters = {
-  q: "",
-  employment: "all",
-  workingTime: "all",
-  workplace: "all",
-  ir35: "all",
-  compensation: "all",
-  page: 1,
-};
+const allFilters = parseJobFilters({});
 
 const listRow = {
   id: "0d74a055-d0e6-4f50-a77a-9c8fd8543af3",
@@ -31,6 +24,7 @@ const listRow = {
   compensation_period: "day",
   compensation_provenance: "advertised",
   posted_at: "2026-07-12T14:30:00.000Z",
+  closes_at: null,
   last_seen_at: "2026-07-17T08:00:00.000Z",
   job_locations: [
     { raw_location: "Manchester, England" },
@@ -45,6 +39,14 @@ const detailRow = {
   uk_eligibility_evidence: ["Location: Edinburgh, Scotland"],
 };
 
+function searchFilter(pattern: string): string {
+  return [
+    `title.ilike."${pattern}"`,
+    `employer.ilike."${pattern}"`,
+    `description_text.ilike."${pattern}"`,
+  ].join(",");
+}
+
 function createBuilder(response: {
   data: unknown;
   error: unknown;
@@ -53,16 +55,26 @@ function createBuilder(response: {
   const builder = {
     select: vi.fn(),
     eq: vi.fn(),
+    gte: vi.fn(),
+    ilike: vi.fn(),
+    not: vi.fn(),
     or: vi.fn(),
     order: vi.fn(),
     range: vi.fn().mockResolvedValue(response),
     maybeSingle: vi.fn().mockResolvedValue(response),
   };
 
-  builder.select.mockReturnValue(builder);
-  builder.eq.mockReturnValue(builder);
-  builder.or.mockReturnValue(builder);
-  builder.order.mockReturnValue(builder);
+  for (const method of [
+    builder.select,
+    builder.eq,
+    builder.gte,
+    builder.ilike,
+    builder.not,
+    builder.or,
+    builder.order,
+  ]) {
+    method.mockReturnValue(builder);
+  }
 
   return builder;
 }
@@ -105,6 +117,7 @@ describe("RLS-bound Supabase jobs list", () => {
           compensationPeriod: "day",
           compensationProvenance: "advertised",
           postedAt: "2026-07-12T14:30:00.000Z",
+          closesAt: null,
         },
       ],
       total: 1,
@@ -140,55 +153,156 @@ describe("RLS-bound Supabase jobs list", () => {
     expect(builder.range).toHaveBeenCalledWith(25, 49);
   });
 
+  it("joins location rows only while a location is actually being searched", async () => {
+    // An inner join drops listings that state no location, which would be a
+    // silent narrowing of an unrelated search.
+    const plain = createBuilder({ data: [], error: null, count: 0 });
+    await createSupabaseJobsRepository({
+      from: vi.fn().mockReturnValue(plain),
+    }).list(allFilters);
+    expect(plain.select.mock.calls[0]?.[0]).not.toContain("!inner");
+    expect(plain.ilike).not.toHaveBeenCalled();
+
+    const located = createBuilder({ data: [], error: null, count: 0 });
+    await createSupabaseJobsRepository({
+      from: vi.fn().mockReturnValue(located),
+    }).list({ ...allFilters, location: "Leeds" });
+    expect(located.select.mock.calls[0]?.[0]).toContain(
+      "job_locations!inner(raw_location)",
+    );
+    expect(located.ilike).toHaveBeenCalledWith(
+      "job_locations.raw_location",
+      "%Leeds%",
+    );
+  });
+
+  it.each([
+    // `ilike` carries its own value, so it needs SQL LIKE escaping only. The
+    // quoted-string layer `or()` needs would arrive at SQL as literal
+    // backslashes, turning "contains a percent" into a match on nothing.
+    ["50%", String.raw`%50\%%`],
+    ["a_b", String.raw`%a\_b%`],
+    [String.raw`c\d`, String.raw`%c\\d%`],
+    // PostgREST rewrites `*` to `%`, so an asterisk must not become a wildcard.
+    ["*", String.raw`%\*%`],
+    // A quote is not special outside a quoted operand and passes through.
+    ['say "hi"', '%say "hi"%'],
+  ])(
+    "escapes the location pattern %s for a value-carrying filter",
+    async (location, expected) => {
+      const builder = createBuilder({ data: [], error: null, count: 0 });
+
+      await createSupabaseJobsRepository({
+        from: vi.fn().mockReturnValue(builder),
+      }).list({ ...allFilters, location });
+
+      expect(builder.ilike).toHaveBeenCalledWith(
+        "job_locations.raw_location",
+        expected,
+      );
+    },
+  );
+
+  it("converts a pay floor to minor units and pins it to its period", async () => {
+    const builder = createBuilder({ data: [], error: null, count: 0 });
+
+    await createSupabaseJobsRepository({
+      from: vi.fn().mockReturnValue(builder),
+    }).list({ ...allFilters, salaryMin: 45_000, salaryPeriod: "year" });
+
+    expect(builder.eq).toHaveBeenCalledWith("compensation_period", "year");
+    expect(builder.gte).toHaveBeenCalledWith("compensation_minimum", 4_500_000);
+  });
+
+  it("excludes undated listings from a posting window rather than assuming one", async () => {
+    const builder = createBuilder({ data: [], error: null, count: 0 });
+
+    await createSupabaseJobsRepository({
+      from: vi.fn().mockReturnValue(builder),
+    }).list({ ...allFilters, posted: "7" });
+
+    expect(builder.not).toHaveBeenCalledWith("posted_at", "is", null);
+    expect(builder.gte).toHaveBeenCalledWith(
+      "posted_at",
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+    );
+  });
+
+  it.each([
+    ["1", "2026-07-16T12:00:00.000Z"],
+    ["30", "2026-06-17T12:00:00.000Z"],
+    ["any", null],
+  ])(
+    "resolves the %s posting window against a fixed clock",
+    (window, expected) => {
+      expect(postedSince(window, new Date("2026-07-17T12:00:00.000Z"))).toBe(
+        expected,
+      );
+    },
+  );
+
+  it("orders by closing date, nulls last, when asked for closing soonest", async () => {
+    const builder = createBuilder({ data: [], error: null, count: 0 });
+
+    await createSupabaseJobsRepository({
+      from: vi.fn().mockReturnValue(builder),
+    }).list({ ...allFilters, sort: "closing" });
+
+    expect(builder.order.mock.calls).toEqual([
+      ["closes_at", { ascending: true, nullsFirst: false }],
+      ["id", { ascending: false }],
+    ]);
+  });
+
   it.each([
     {
       label: "comma",
       input: ",",
-      expected: `title.ilike."%,%",employer.ilike."%,%"`,
+      pattern: `%,%`,
     },
     {
       label: "parentheses",
       input: "()",
-      expected: `title.ilike."%()%",employer.ilike."%()%"`,
+      pattern: `%()%`,
     },
     {
       label: "colon",
       input: ":",
-      expected: `title.ilike."%:%",employer.ilike."%:%"`,
+      pattern: `%:%`,
     },
     {
       label: "dot",
       input: ".",
-      expected: `title.ilike."%.%",employer.ilike."%.%"`,
+      pattern: `%.%`,
     },
     {
       label: "double quote",
       input: `"`,
-      expected: String.raw`title.ilike."%\"%",employer.ilike."%\"%"`,
+      pattern: String.raw`%\"%`,
     },
     {
       label: "backslash",
       input: "\\",
-      expected: String.raw`title.ilike."%\\\\%",employer.ilike."%\\\\%"`,
+      pattern: String.raw`%\\\\%`,
     },
     {
       label: "percent",
       input: "%",
-      expected: String.raw`title.ilike."%\\%%",employer.ilike."%\\%%"`,
+      pattern: String.raw`%\\%%`,
     },
     {
       label: "underscore",
       input: "_",
-      expected: String.raw`title.ilike."%\\_%",employer.ilike."%\\_%"`,
+      pattern: String.raw`%\\_%`,
     },
     {
       label: "combined backslash, percent, and underscore",
       input: String.raw`\%_`,
-      expected: String.raw`title.ilike."%\\\\\\%\\_%",employer.ilike."%\\\\\\%\\_%"`,
+      pattern: String.raw`%\\\\\\%\\_%`,
     },
   ])(
     "keeps $label literal inside raw PostgREST or syntax",
-    async ({ input, expected }) => {
+    async ({ input, pattern }) => {
       const builder = createBuilder({ data: [], error: null, count: 0 });
       const client = { from: vi.fn().mockReturnValue(builder) };
 
@@ -197,7 +311,7 @@ describe("RLS-bound Supabase jobs list", () => {
         q: input,
       });
 
-      expect(builder.or).toHaveBeenCalledWith(expected);
+      expect(builder.or).toHaveBeenCalledWith(searchFilter(pattern));
     },
   );
 
@@ -212,9 +326,7 @@ describe("RLS-bound Supabase jobs list", () => {
     });
 
     const escapedPattern = String.raw`%50\\%\\_ \"platform\"\\\\,(or.id.eq.00000000-0000-0000-0000-000000000000)%`;
-    expect(builder.or).toHaveBeenCalledWith(
-      `title.ilike."${escapedPattern}",employer.ilike."${escapedPattern}"`,
-    );
+    expect(builder.or).toHaveBeenCalledWith(searchFilter(escapedPattern));
   });
 
   it("maps missing locations and the newest visible last-seen timestamp safely", async () => {

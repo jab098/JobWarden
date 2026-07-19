@@ -37,6 +37,7 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 19   | Guided setup and first-run population                                      | reviewed | Delivered by PR #20 (`00a5ea7`)                                                       |
 | 20   | Administrator audit log and operational health                             | reviewed | Delivered by PR #21 (`babf725`)                                                       |
 | 21   | Authentication activation                                                  | pending  | Supabase project and Google OAuth — setup runbook steps 1–4                           |
+| 22   | Search Jobs, route naming, and onboarding follow-ups                       | pending  | None                                                                                  |
 
 ## Task 7 — Administrator operations
 
@@ -192,7 +193,7 @@ Acceptance:
 - every figure derives from the owner's own rows in existing owner-only tables (applications, application events, job decisions, pathway decisions, search profiles, evidence) through RLS-safe reads or owner-fenced RPCs; no cross-user data, no CV text, and no new analytics collection;
 - comparison windows ("last 7 days vs previous 7 days") are computed deterministically and label empty or short histories honestly instead of fabricating a baseline;
 - unknown/ghosted outcomes are shown as distinct observed states, never converted into implied rejections or invented recruiter activity;
-- the dashboard is a read-only surface: it links to `/jobs`, `/applications`, `/explore`, and `/profile` for action, and adds no new mutation paths;
+- the dashboard is a read-only surface: it links to `/matches`, `/applications`, `/pathways`, and `/profile` for action, and adds no new mutation paths;
 - the page is keyboard and mobile accessible, follows `docs/design/ui-direction.md` (quiet neutral surfaces, state dots, no decorative colour callouts), and renders sparkline-style trends without a charting dependency unless one is separately approved; and
 - the fictional development preview serves frozen fixture statistics and refuses mutations, exactly like every other surface.
 

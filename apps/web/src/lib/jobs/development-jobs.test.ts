@@ -5,17 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { createDevelopmentJobsRepository } from "./development-jobs";
+import { parseJobFilters } from "./filters";
 import { createJobsRepository } from "./repository";
 
-const allFilters = {
-  q: "",
-  employment: "all" as const,
-  workingTime: "all" as const,
-  workplace: "all" as const,
-  ir35: "all" as const,
-  compensation: "all" as const,
-  page: 1,
-};
+const allFilters = parseJobFilters({});
 
 describe("fictional development jobs", () => {
   it("applies text and category filters with AND semantics", async () => {
@@ -79,6 +72,94 @@ describe("fictional development jobs", () => {
       pageSize: 25,
       latestListingUpdate: null,
     });
+  });
+
+  it("searches the advert body, not only the title and employer", async () => {
+    const repository = createDevelopmentJobsRepository();
+
+    // "SQL" appears only in the Platform Engineer description.
+    await expect(
+      repository.list({ ...allFilters, q: "SQL reporting" }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [expect.objectContaining({ title: "Platform Engineer" })],
+    });
+  });
+
+  it("matches a location against the listing's stated location", async () => {
+    const repository = createDevelopmentJobsRepository();
+
+    await expect(
+      repository.list({ ...allFilters, location: "edinburgh" }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [expect.objectContaining({ title: "Platform Engineer" })],
+    });
+  });
+
+  it("applies a pay floor only within the period that makes it comparable", async () => {
+    const repository = createDevelopmentJobsRepository();
+
+    // £500 a day excludes the £400/day analyst but not the £550 or £625 roles.
+    await expect(
+      repository.list({
+        ...allFilters,
+        salaryMin: 500,
+        salaryPeriod: "day",
+      }),
+    ).resolves.toMatchObject({
+      total: 2,
+      items: [
+        expect.objectContaining({ title: "Digital Delivery Lead" }),
+        expect.objectContaining({ title: "Platform Engineer" }),
+      ],
+    });
+
+    // The same figure per year must not sweep in day-rate contracts.
+    await expect(
+      repository.list({
+        ...allFilters,
+        salaryMin: 500,
+        salaryPeriod: "year",
+      }),
+    ).resolves.toMatchObject({ total: 3 });
+  });
+
+  it("excludes listings with no stated posting date from a date window", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-17T12:00:00.000Z"));
+    try {
+      const repository = createDevelopmentJobsRepository();
+      const result = await repository.list({ ...allFilters, posted: "3" });
+
+      // The window is inclusive at its edge, and a listing with no posting
+      // date cannot be shown to meet it at all.
+      expect(result.items.map((item) => item.title)).toEqual([
+        "Digital Delivery Lead",
+        "Senior Software Engineer",
+        "Public Policy Researcher",
+      ]);
+      expect(result.items.map((item) => item.title)).not.toContain(
+        "Data Migration Analyst",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("sorts by closing date with undated listings last", async () => {
+    const repository = createDevelopmentJobsRepository();
+
+    const result = await repository.list({ ...allFilters, sort: "closing" });
+
+    expect(result.items.map((item) => item.title)).toEqual([
+      "Digital Delivery Lead",
+      "Public Policy Researcher",
+      "Senior Software Engineer",
+      "Platform Engineer",
+      "Data Migration Analyst",
+      "Customer Support Specialist",
+    ]);
   });
 
   it("returns an empty page and no listing update when filters match nothing", async () => {
