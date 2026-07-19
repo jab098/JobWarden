@@ -20,7 +20,7 @@ Personalisation follows `docs/superpowers/specs/2026-07-18-personalised-job-sear
 
 Prefer free services and deterministic local logic. Every metered AI path has a hard free-tier ceiling, input and concurrency limits, an auditable usage counter, and no automatic paid fallback. Supabase pgvector is the approved vector option if semantic retrieval becomes justified; do not add Pinecone, Upstash, or a paid model dependency by default.
 
-Resend remains dependency-guarded until Task 14. Task 14 may replace the global ban only with a server-only notification-module allowlist, daily/monthly free-tier counters, deduplication, and tests that reject client imports or use outside the approved email boundary.
+Resend is confined to the reviewed server-only notification adapter in the `send-digests` Supabase Edge Function. The executable guardrail rejects every other reference, in any form, including client components, other server modules, and workspace packages. Delivery keeps application-wide daily and monthly free-tier ceilings, per-slot idempotency, and a deduplication ledger. Email payloads never contain CV-derived text.
 
 Never commit a real CV, contact detail, raw extracted CV, or realistic personal-data fixture. CVs are private user data. Use fictional fixtures only; keep CV text out of logs, analytics, errors, URLs, emails, and source control. AI-generated profile or tailoring content is untrusted until schema-validated, evidence-checked, and accepted by the user.
 

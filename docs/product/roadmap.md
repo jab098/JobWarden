@@ -29,7 +29,7 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 11   | Target Feed and explainable fit scores                                     | reviewed | Delivered by PR #12 (`c86a14d`)                                                      |
 | 12   | Explore and career pathways                                                | reviewed | Delivered by PR #13 (`124216f`); deterministic taxonomy, no AI dependency            |
 | 13   | Application tracker and follow-ups                                         | reviewed | Delivered by PR #14 (`9e66b32`)                                                      |
-| 14   | Scheduled updates and notifications                                        | pending  | Resend account, verified sending domain, and DNS records                             |
+| 14   | Scheduled updates and notifications                                        | reviewed | Resend account, verified sending domain, and DNS records remain an owner gate        |
 | 15   | Evidence-bound CV tailoring                                                | pending  | Cloudflare Workers AI and private Storage; DOCX source required for preserved layout |
 | 16   | Privacy, production authentication, deployment, and full-path verification | pending  | Supabase OAuth, production domain, Cloudflare deployment, Sentry EU if enabled       |
 | 17   | Home activity dashboard                                                    | pending  | None; deterministic owner-only statistics over existing data                         |

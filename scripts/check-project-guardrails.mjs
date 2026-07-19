@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { extname, join } from "node:path";
 
-const permanentlyForbiddenDependencies = [
+const forbiddenDependencies = [
   "@clerk/nextjs",
   "@pinecone-database/pinecone",
   "@stripe/stripe-js",
@@ -10,13 +10,24 @@ const permanentlyForbiddenDependencies = [
   "pinecone",
   "stripe",
 ];
-// Resend remains forbidden until Task 14 delivers server-only notifications,
-// hard daily/monthly free-tier ceilings, and a path-scoped import guard.
-const deferredDependencies = ["resend"];
-const forbiddenDependencies = [
-  ...permanentlyForbiddenDependencies,
-  ...deferredDependencies,
+// Task 14 replaced the global Resend ban with this path allowlist. Delivery is
+// server-only by construction: the adapter lives in a Supabase Edge Function,
+// so it can never reach a client bundle. Any Resend reference elsewhere — a
+// client component, another server module, or a workspace package — is a
+// violation, whatever form it takes (npm specifier, import, API host, or key
+// name).
+//
+// The list is exact files, not a directory, so the provider stays out of the
+// notification function's own orchestration too: contracts, environment,
+// repository, and handler are all provider-agnostic and tested as such. Only
+// the adapter, its test, and the deployment entry point that wires them may
+// name it. The adapter owns its own credential parsing so nothing else needs to.
+const notificationAdapterPaths = [
+  "supabase/functions/send-digests/resend.ts",
+  "supabase/functions/send-digests/resend.test.ts",
+  "supabase/functions/send-digests/index.ts",
 ];
+const resendReference = /resend/i;
 const forbiddenProductCopy =
   /\b(billing|checkout|payments?|premium|pricing|subscribe|subscriptions?|trial|upgrade)\b/i;
 
@@ -44,7 +55,7 @@ async function walk(path) {
 }
 
 const workspaceFiles = (
-  await Promise.all(["apps", "packages"].map(walk))
+  await Promise.all(["apps", "packages", "supabase/functions"].map(walk))
 ).flat();
 const checkedFiles = workspaceFiles.filter((path) =>
   [".json", ".ts", ".tsx"].includes(extname(path)),
@@ -72,10 +83,16 @@ for (const path of dependencyFiles) {
       source.includes(`\"${dependency}\"`) ||
       source.includes(`'${dependency}'`)
     ) {
-      violations.push(
-        `${path}: ${deferredDependencies.includes(dependency) ? "deferred" : "forbidden"} dependency ${dependency}`,
-      );
+      violations.push(`${path}: forbidden dependency ${dependency}`);
     }
+  }
+  if (
+    !notificationAdapterPaths.includes(path) &&
+    resendReference.test(source)
+  ) {
+    violations.push(
+      `${path}: Resend is permitted only in the server-only notification adapter`,
+    );
   }
   if (
     path !== "package.json" &&

@@ -1,6 +1,14 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-import type { RuntimeEnvironment } from "../ingest-jobs/contracts.ts";
+/**
+ * Only the two fields a client actually needs. Depending on one function's full
+ * runtime contract here would drag that function's whole import graph into
+ * every other function that shares this module.
+ */
+export type ServiceRoleCredentials = {
+  supabaseUrl: string;
+  serviceRoleKey: string;
+};
 
 export type RpcResponse = Promise<{ data: unknown; error: unknown }>;
 
@@ -21,7 +29,7 @@ type ClientFactory = (
 ) => IngestionRpcClient;
 
 export function createServiceRoleClient(
-  environment: RuntimeEnvironment,
+  environment: ServiceRoleCredentials,
   createClient: ClientFactory = createSupabaseClient as unknown as ClientFactory,
 ): IngestionRpcClient {
   return createClient(environment.supabaseUrl, environment.serviceRoleKey, {

@@ -16,6 +16,7 @@ export const requiredMigrationFiles = [
   "202607190001_target_feed.sql",
   "202607190002_explore_pathways.sql",
   "202607190003_application_tracker.sql",
+  "202607190004_scheduled_notifications.sql",
 ];
 
 const publicTables = [
@@ -46,7 +47,16 @@ const publicTables = [
   "explore_pathways",
   "career_applications",
   "career_application_events",
+  "career_notification_settings",
+  "career_notification_announcements",
+  "career_notification_deliveries",
 ];
+
+// Reviewed exceptions to the "definer functions are closed to anon" rule.
+// Adding a name here is a security decision, not a convenience.
+const anonExecutableDefinerFunctions = new Set([
+  "public.unsubscribe_career_notifications",
+]);
 
 function compact(sql) {
   return sql.toLowerCase().replace(/\s+/g, " ").trim();
@@ -728,6 +738,62 @@ export function verifyFoundationSql(files) {
       "delete from public.career_application_events where owner_id = actor_user_id",
       "career profile deletion must also erase application events",
     ],
+    [
+      "channel_enabled boolean not null default false",
+      "notification digests must be opt-in",
+    ],
+    [
+      "constraint career_notification_announcements_unique unique (owner_id, search_profile_id, job_id)",
+      "notification announcements must be deduplicated per owner, profile, and job",
+    ],
+    [
+      "constraint career_notification_deliveries_slot_unique unique (owner_id, slot_key)",
+      "notification delivery must be idempotent per owner and slot",
+    ],
+    [
+      "on conflict (owner_id, slot_key) do nothing",
+      "a repeated digest invocation must not claim a slot twice",
+    ],
+    [
+      "delivery.status in ('pending', 'sent')",
+      "in-flight deliveries must count towards the free-tier ceiling",
+    ],
+    [
+      "where id = target_delivery_id and status = 'pending'",
+      "only a claimed digest slot may be completed",
+    ],
+    [
+      "if target_status <> 'sent' then return; end if;",
+      "a failed send must not record announcements",
+    ],
+    [
+      "'evidence_reference', item.evidence_reference, 'proficiency_signal'",
+      "the notification runtime must receive career evidence without its excerpt",
+    ],
+    [
+      "order by candidate.created_at, candidate.id limit 25",
+      "the digest read must bound searches per owner so one owner cannot fail the batch",
+    ],
+    [
+      "order by candidate.created_at, candidate.id limit 250",
+      "the digest read must bound evidence per owner so one owner cannot fail the batch",
+    ],
+    [
+      "jsonb_array_length(target_announcements) > 5000",
+      "the announcement bound must admit the runtime's own worst case",
+    ],
+    [
+      "delete from public.career_notification_deliveries where owner_id = actor_user_id",
+      "career profile deletion must also erase notification deliveries",
+    ],
+    [
+      "delete from public.career_notification_announcements where owner_id = actor_user_id",
+      "career profile deletion must also erase notification announcements",
+    ],
+    [
+      "delete from public.career_notification_settings where owner_id = actor_user_id",
+      "career profile deletion must also erase notification settings",
+    ],
   ];
 
   for (const [fragment, message] of requiredFragments) {
@@ -1014,6 +1080,20 @@ export function verifyFoundationSql(files) {
       "authenticated callers must save career profiles through the generation-fenced RPC",
     );
   }
+  for (const table of [
+    "career_notification_settings",
+    "career_notification_announcements",
+    "career_notification_deliveries",
+  ]) {
+    if (
+      hasAuthenticatedMutationGrant(table) ||
+      hasAuthenticatedMutationPolicy(table)
+    ) {
+      failures.push(
+        `authenticated callers must change ${table} through the owner-fenced RPC`,
+      );
+    }
+  }
   if (
     hasAuthenticatedMutationGrant("career_job_decisions") ||
     hasAuthenticatedMutationPolicy("career_job_decisions")
@@ -1141,6 +1221,25 @@ export function verifyFoundationSql(files) {
     }
 
     const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // An unsubscribe link has to work from an email client, so this one
+    // function is reachable without a session. It stays safe because a token is
+    // its only input, it returns nothing but whether a row matched, and it can
+    // only clear a boolean flag. It must still be revoked from public, and no
+    // other definer function may join this list without the same review.
+    if (anonExecutableDefinerFunctions.has(name)) {
+      const revokePublicPattern = new RegExp(
+        `revoke\\s+all\\s+on\\s+function\\s+${escapedName}\\s*\\([^)]*\\)\\s*from\\s+public\\s*;`,
+        "i",
+      );
+      if (!revokePublicPattern.test(sql)) {
+        failures.push(
+          `deliberately anon-executable function ${name} must still revoke public execution`,
+        );
+      }
+      continue;
+    }
+
     const revokePattern = new RegExp(
       `revoke\\s+all\\s+on\\s+function\\s+${escapedName}[^;]*\\sfrom\\s[^;]*\\bpublic\\b[^;]*\\banon\\b`,
       "i",
@@ -1153,7 +1252,7 @@ export function verifyFoundationSql(files) {
   }
 
   const forbiddenMutationPolicy =
-    /create\s+policy[\s\S]*?on\s+public\.(jobs|user_roles|audit_log|access_requests|career_job_decisions|career_pathway_decisions|career_explore_settings|explore_pathway_analytics|career_applications|career_application_events)\s+for\s+(insert|update|delete|all)\b/gi;
+    /create\s+policy[\s\S]*?on\s+public\.(jobs|user_roles|audit_log|access_requests|career_job_decisions|career_pathway_decisions|career_explore_settings|explore_pathway_analytics|career_applications|career_application_events|career_notification_settings|career_notification_announcements|career_notification_deliveries)\s+for\s+(insert|update|delete|all)\b/gi;
   for (const match of sql.matchAll(forbiddenMutationPolicy)) {
     failures.push(
       `browser mutation policy forbidden on public.${match[1].toLowerCase()}`,

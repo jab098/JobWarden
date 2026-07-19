@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createServiceRoleClient } from "./supabase";
 
-describe("ingestion service-role client", () => {
+describe("shared service-role client", () => {
   it("creates a per-invocation non-persistent client", () => {
     const createClient = vi.fn(() => ({ rpc: vi.fn() }));
 
@@ -10,7 +10,6 @@ describe("ingestion service-role client", () => {
       {
         supabaseUrl: "https://fixture.supabase.co",
         serviceRoleKey: "fixture-service-role-key-with-adequate-length",
-        cronSecret: "cron-fixture-".repeat(3),
       },
       createClient,
     );
@@ -26,6 +25,23 @@ describe("ingestion service-role client", () => {
           persistSession: false,
         },
       },
+    );
+  });
+
+  it("accepts a function's fuller runtime environment", () => {
+    const createClient = vi.fn(() => ({ rpc: vi.fn() }));
+    const ingestionEnvironment = {
+      supabaseUrl: "https://fixture.supabase.co",
+      serviceRoleKey: "fixture-service-role-key-with-adequate-length",
+      cronSecret: "cron-fixture-".repeat(3),
+    };
+
+    createServiceRoleClient(ingestionEnvironment, createClient);
+
+    expect(createClient).toHaveBeenCalledWith(
+      "https://fixture.supabase.co",
+      "fixture-service-role-key-with-adequate-length",
+      expect.anything(),
     );
   });
 });

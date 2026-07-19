@@ -28,14 +28,18 @@ describe("project guardrails", () => {
     expect(agents).toContain("advertised, estimated, and unknown");
   });
 
-  it("keeps Resend deferred until the server-only Task 14 boundary", async () => {
+  it("confines Resend to the server-only Task 14 notification adapter", async () => {
     const guardrail = await readFile(
       "scripts/check-project-guardrails.mjs",
       "utf8",
     );
-    expect(guardrail).toContain('const deferredDependencies = ["resend"]');
+    expect(guardrail).toContain('"supabase/functions/send-digests/resend.ts"');
+    expect(guardrail).toContain("const resendReference = /resend/i");
     expect(guardrail).toContain("Task 14");
-    expect(guardrail).toContain("server-only notifications");
+    expect(guardrail).not.toContain("deferredDependencies");
+    // The adapter is only genuinely server-only if the guard actually reads
+    // the function tree it lives in.
+    expect(guardrail).toContain('"supabase/functions"');
   });
 
   it("pins the approved matching, scheduling, cost, and preview boundaries", async () => {
