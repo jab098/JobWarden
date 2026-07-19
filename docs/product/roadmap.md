@@ -20,19 +20,19 @@ Status changes to `reviewed` only after independent review, full verification, p
 
 ## Delivery sequence
 
-| Task | Deliverable                                                                | Status   | External setup gate                                                                  |
-| ---- | -------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------ |
-| 7    | Administrator operations                                                   | reviewed | None for fixture development                                                         |
-| 8    | Shared ingestion runtime                                                   | reviewed | Supabase project for live deployment; local implementation does not wait             |
-| 9    | UK coverage and compensation                                               | reviewed | Reed credential only after terms, pgTAP, and controlled live validation              |
-| 10   | Career profile, onboarding, and CV extraction                              | reviewed | Delivered by PR #11 (`06b5a9c`); real-CV gates remain pending                        |
-| 11   | Target Feed and explainable fit scores                                     | reviewed | Delivered by PR #12 (`c86a14d`)                                                      |
-| 12   | Explore and career pathways                                                | reviewed | Delivered by PR #13 (`124216f`); deterministic taxonomy, no AI dependency            |
-| 13   | Application tracker and follow-ups                                         | reviewed | Delivered by PR #14 (`9e66b32`)                                                      |
-| 14   | Scheduled updates and notifications                                        | reviewed | Resend account, verified sending domain, and DNS records remain an owner gate        |
-| 15   | Evidence-bound CV tailoring                                                | pending  | Cloudflare Workers AI and private Storage; DOCX source required for preserved layout |
-| 16   | Privacy, production authentication, deployment, and full-path verification | pending  | Supabase OAuth, production domain, Cloudflare deployment, Sentry EU if enabled       |
-| 17   | Home activity dashboard                                                    | pending  | None; deterministic owner-only statistics over existing data                         |
+| Task | Deliverable                                                                | Status   | External setup gate                                                                   |
+| ---- | -------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------- |
+| 7    | Administrator operations                                                   | reviewed | None for fixture development                                                          |
+| 8    | Shared ingestion runtime                                                   | reviewed | Supabase project for live deployment; local implementation does not wait              |
+| 9    | UK coverage and compensation                                               | reviewed | Reed credential only after terms, pgTAP, and controlled live validation               |
+| 10   | Career profile, onboarding, and CV extraction                              | reviewed | Delivered by PR #11 (`06b5a9c`); real-CV gates remain pending                         |
+| 11   | Target Feed and explainable fit scores                                     | reviewed | Delivered by PR #12 (`c86a14d`)                                                       |
+| 12   | Explore and career pathways                                                | reviewed | Delivered by PR #13 (`124216f`); deterministic taxonomy, no AI dependency             |
+| 13   | Application tracker and follow-ups                                         | reviewed | Delivered by PR #14 (`9e66b32`)                                                       |
+| 14   | Scheduled updates and notifications                                        | reviewed | Delivered by PR #15 (`41ab43f`); Resend account, domain, and DNS remain an owner gate |
+| 15   | Evidence-bound CV tailoring                                                | pending  | Cloudflare Workers AI and private Storage; DOCX source required for preserved layout  |
+| 16   | Privacy, production authentication, deployment, and full-path verification | pending  | Supabase OAuth, production domain, Cloudflare deployment, Sentry EU if enabled        |
+| 17   | Home activity dashboard                                                    | pending  | None; deterministic owner-only statistics over existing data                          |
 
 ## Task 7 — Administrator operations
 
