@@ -4,7 +4,7 @@
 
 **Base:** `main` after the Task 20 publication record (`4c6d93b`)
 
-**Review status:** independent review run; every finding remediated test-first; confirmation pass requested.
+**Review status:** independent review APPROVED on the remediated head. All four important findings fixed test-first; the reviewer's three residual minors were also closed.
 
 ## Why this task exists
 
@@ -83,11 +83,13 @@ The review found four important defects and a bad test of my own. Each fix has a
 
 Minor findings also fixed: `README.md` and `docs/product/roadmap.md` still described `?view=all` and `/explore`; `salaryPeriod=unknown` and `salaryMin=0` were URL-reachable; the chip and the option disagreed about the 24-hour window; three landmarks shared the accessible name "Search jobs"; a `toEqual` I had weakened to `toMatchObject` is restored; and a single stated location is now carried into the first-run redirect.
 
-Accepted without change: `getDecisions` reads the owner's whole decision history unbounded. It is RLS-scoped and holds one row per decision the user personally made, so a bound would be speculative.
+Accepted without change, with the reviewer's agreement: `getDecisions` reads the owner's whole decision history unbounded. It is RLS-scoped and holds one row per decision the user personally made, so a bound would be speculative.
+
+The confirmation pass raised three residuals, all closed: the decisions fallback had no test (added, and verified to fail with the fallback removed); the `*` comment claimed the escape restores "contains an asterisk", which PostgREST's unconditional rewrite makes impossible — it matches nothing rather than everything, which is the part that mattered; and the salary-period options are now derived from the `salaryPeriods` vocabulary rather than hand-copied.
 
 ## Verification evidence
 
-- `pnpm verify` passed on the remediated head: 1,133 workspace tests across 83 files, plus 130 function tests — 1,263 automated tests total. Formatting, lint, all typechecks, Deno graphs, guardrails, and the production build are included.
+- `pnpm verify` passed on the final head after a frozen install: 1,134 workspace tests across 83 files, plus 130 function tests — 1,264 automated tests total. Formatting, lint, all typechecks, Deno graphs, guardrails, and the production build are included.
 - `pnpm check:supabase`: 20 migrations, 32 forced-RLS tables.
 - `pnpm check:production`: the development bypass still fails closed in a production build.
 - `pnpm audit --prod --audit-level high`: no known vulnerabilities. No dependency was added.

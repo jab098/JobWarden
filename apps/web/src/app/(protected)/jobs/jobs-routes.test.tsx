@@ -157,6 +157,24 @@ describe("jobs routes", () => {
     expect(feed.getDecisions).toHaveBeenCalledOnce();
   });
 
+  it("still lists jobs when the decisions read fails", async () => {
+    // Browsing the catalogue must not depend on a personalisation read. The
+    // save controls fall back to unsaved rather than the search failing.
+    const jobsRepository = repository();
+    getJobsRepository.mockResolvedValue(jobsRepository);
+    const feed = targetFeedRepository();
+    feed.getDecisions.mockRejectedValue(
+      new Error("Unable to load job decisions"),
+    );
+    getTargetFeedRepository.mockResolvedValue(feed);
+
+    render(await SearchJobsPage({ searchParams: Promise.resolve({}) }));
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Search jobs" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders the scored feed on its own route", async () => {
     const jobsRepository = repository();
     getJobsRepository.mockResolvedValue(jobsRepository);

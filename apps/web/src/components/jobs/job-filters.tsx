@@ -11,7 +11,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import type { JobFilters } from "@/lib/jobs/types";
+import { salaryPeriods, type JobFilters } from "@/lib/jobs/types";
 
 const options = {
   employment: [
@@ -61,15 +61,22 @@ const options = {
     ["14", "Last 2 weeks"],
     ["30", "Last month"],
   ],
-  salaryPeriod: [
-    ["all", "Not set"],
-    ["year", "Per year"],
-    ["day", "Per day"],
-    ["hour", "Per hour"],
-    ["month", "Per month"],
-    ["week", "Per week"],
-  ],
 } as const;
+
+const salaryPeriodLabels: Record<(typeof salaryPeriods)[number], string> = {
+  year: "Per year",
+  month: "Per month",
+  week: "Per week",
+  day: "Per day",
+  hour: "Per hour",
+};
+
+// Derived from the vocabulary the schema accepts, so an offered period and a
+// valid one cannot drift apart.
+const salaryPeriodOptions = [
+  ["all", "Not set"],
+  ...salaryPeriods.map((period) => [period, salaryPeriodLabels[period]]),
+] as const;
 
 const selectClass =
   "h-10 w-full rounded-md border border-[#cbc7bd] bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]";
@@ -156,7 +163,7 @@ function FilterForm({ filters }: { filters: JobFilters }) {
             defaultValue={filters.salaryPeriod}
             className={selectClass}
           >
-            {options.salaryPeriod.map(([value, copy]) => (
+            {salaryPeriodOptions.map(([value, copy]) => (
               <option key={value} value={value}>
                 {copy}
               </option>
