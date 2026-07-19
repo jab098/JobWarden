@@ -20,6 +20,7 @@ export const requiredMigrationFiles = [
   "202607190005_cv_tailoring.sql",
   "202607190006_data_export.sql",
   "202607190007_onboarding_state.sql",
+  "202607190008_onboarding_answers.sql",
 ];
 
 const publicTables = [
@@ -802,6 +803,10 @@ export function verifyFoundationSql(files) {
     [
       "delete from public.career_cv_variants where owner_id = actor_user_id",
       "career profile deletion must also erase tailored CV variants",
+    ],
+    [
+      "set answers = public.career_onboarding_state.answers || excluded.answers",
+      "revisiting an onboarding step must merge answers rather than wipe later ones",
     ],
     [
       "where not (required = any (current_state.completed_steps))",

@@ -2,6 +2,8 @@ import "server-only";
 
 import type {
   CvOutcome,
+  FirstRunFilters,
+  OnboardingAnswers,
   OnboardingPath,
   OnboardingStep,
 } from "@jobwarden/domain";
@@ -21,6 +23,12 @@ export interface OnboardingRepository {
     path: OnboardingPath;
     step: OnboardingStep;
     cvOutcome: CvOutcome | null;
+    answers?: OnboardingAnswers;
   }): Promise<void>;
-  complete(): Promise<void>;
+  /**
+   * Writes the search profile, Explore choice, and digest preference the
+   * answers describe, then marks onboarding complete. Returns the filters to
+   * pre-apply on the first feed.
+   */
+  finish(): Promise<{ filters: FirstRunFilters }>;
 }

@@ -163,11 +163,22 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
       ) : null}
 
       {step === null ? (
-        <p className="mt-6 max-w-prose text-sm leading-6 text-[#596173]">
-          That is everything. Finishing takes you to your hub, with the
-          preferences you chose already applied to your feed — and removable
-          whenever you change your mind.
-        </p>
+        view.hasSignal ? (
+          <p className="mt-6 max-w-prose text-sm leading-6 text-[#596173]">
+            That is everything. Finishing takes you to your feed, with the
+            preferences you chose already applied — and shown in the address
+            bar, so any of them is one click from being lifted.
+          </p>
+        ) : (
+          <p
+            role="alert"
+            className="mt-6 max-w-prose text-sm leading-6 text-[#8a3328]"
+          >
+            We still need something to match you on — a role you are aiming for,
+            or a skill you want to be found for. Without one your feed would be
+            empty, so go back and add at least one.
+          </p>
+        )
       ) : null}
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -218,8 +229,11 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
 
         {step === null ? (
           <form action={complete}>
-            <Button type="submit" disabled={readOnly || completePending}>
-              {completePending ? "Finishing…" : "Finish and open my hub"}
+            <Button
+              type="submit"
+              disabled={readOnly || completePending || !view.hasSignal}
+            >
+              {completePending ? "Finishing…" : "Finish and open my feed"}
             </Button>
           </form>
         ) : null}
