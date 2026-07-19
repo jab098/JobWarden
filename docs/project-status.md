@@ -34,11 +34,11 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Handoff
 
-- Current integration branch: `main`; Task 20 was delivered by PR #21 at merge commit `babf725`
+- Current integration branch: `main`; Task 22 was delivered by PR #22 at merge commit `0fa46de`
 - Last independently reviewed task implementation commit: Task 18 (delivered by merge `51f8eaf`)
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
 - Active feature branch: none
-- Active task: Task 22 (Search Jobs, route naming, and onboarding follow-ups) on `codex/task-22-search-jobs`. Tasks 18-20 are merged. Task 21 (Authentication activation) is the only task left and requires owner platform setup. Tasks 1–17 are merged; the owner approved four further tasks on 2026-07-19. Tasks 18–20 need no platform setup; Task 21 requires setup runbook steps 1–4
+- Active task: none. Tasks 18-20 and 22 are merged. Task 21 (Authentication activation) is the only task left and requires owner platform setup. Tasks 1–17 are merged; the owner approved four further tasks on 2026-07-19. Tasks 18–20 need no platform setup; Task 21 requires setup runbook steps 1–4
 
 ## Task progress
 
@@ -65,7 +65,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 19. Guided setup and first-run population                              | reviewed | Independent review clean; writes the profile before unlocking   |
 | 20. Administrator audit log and operational health                     | reviewed | Independent review clean; no new data is collected              |
 | 21. Authentication activation                                          | pending  | Owner-approved 2026-07-19; needs owner platform setup           |
-| 22. Search Jobs, route naming, and onboarding follow-ups               | pending  | Owner-approved 2026-07-19; no platform setup required           |
+| 22. Search Jobs, route naming, and onboarding follow-ups               | reviewed | Delivered by PR #22; independent review APPROVED at `0fa46de`   |
 
 ## Last verification commands
 
@@ -142,3 +142,5 @@ Task 6 delivered the responsive shell, jobs feed, filters, and job detail experi
 ## Authentication deferral
 
 The owner explicitly deprioritised authentication setup on 2026-07-17. The reviewed Task 5 code remains intact, but Docker-backed database validation, Supabase/Google connection, administrator bootstrap, and live access-boundary verification do not block fictional local delivery through Tasks 7–15. Any task that handles real user/CV data or claims a live integration must still stop at its documented setup gate; Task 16 activates and verifies production authentication before the private beta accepts real users. Local work uses the fail-closed design in `docs/superpowers/specs/2026-07-17-authentication-deferral-design.md`. No deployed environment may enable the local bypass, and no task may weaken RLS to compensate for deferred setup.
+
+Task 22 splits the two surfaces that shared `/jobs` and renames the two whose names had stopped describing them. Browsing every indexed UK listing now owns `/jobs` — where job detail already lived, so no redirect or dead URL was introduced — and the deterministic scored feed moved to `/matches`. `/explore` became `/pathways`, because "Explore" read as a place to browse new listings rather than an opt-in adjacent-career feed. The `?view=` parameter and `resolveJobsView` were deleted rather than replaced. Internal vocabulary is untouched: `packages/domain/src/target-feed.ts`, `packages/domain/src/explore.ts`, the `explore_pathways` table, and `set_explore_enabled` keep their names, so the approved specification and the database still agree. Search gained keyword matching over the advert body as well as title and employer, a location filter, a date-posted window, a pay floor paired with its period, sort by newest or closing soonest, removable filter chips, and save straight from a result — all URL-backed and posted by GET, so the surface works without JavaScript. Salary sort is deliberately absent: ranking a day rate against an annual salary needs a conversion that invents working-day assumptions the adverts never state. Migration `202607190010` adds `finish_onboarding`, which wraps the four previously sequential completion RPCs in one plpgsql transaction without altering a single callee, so the whole first-run configuration lands or none of it does. The onboarding steps now actually collect answers; they previously collected none, so the answer schema and its profile builder always ran empty. Seven defects were found and fixed, four of them by the independent reviewer: the Task 19 redirect's filters were inert because an enabled profile made the old destination render the scored view; nested forms would have made Confirm advance past the confirmation step; the location filter was double-escaped and `*` was an unescaped wildcard; a pay floor without a period was stored then discarded; a cleared select could not be cleared through the JSONB merge; a failed decisions read took down the whole search page; and excluding unknown pay also hid every estimated salary, so two surfaces answered one preference differently. The final gate passed on the merge commit after a frozen install: 1,134 workspace tests across 83 files plus 130 function tests, the 20-migration/32-forced-RLS static verifier, the production fail-closed check, a clean production audit, and clean diff and secret scans. Docker remains unavailable, so pgTAP file `021` (6 assertions) is statically verified only.
