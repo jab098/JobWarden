@@ -3,6 +3,7 @@ import type { ValidatedCvFile } from "./file-gate.ts";
 import { extractPdfText } from "./pdf.ts";
 
 export * from "./docx.ts";
+export * from "./docx-edit.ts";
 export * from "./file-gate.ts";
 export * from "./pdf.ts";
 export * from "./proposal.ts";

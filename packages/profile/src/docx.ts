@@ -16,7 +16,7 @@ export interface ExtractedCvText {
   pageCount?: number;
 }
 
-interface ArchiveEntry {
+export interface ArchiveEntry {
   compressedSize: number;
   crc32: number;
   dataOffset: number;
@@ -191,7 +191,10 @@ function findEndOfCentralDirectory(bytes: Uint8Array): number {
   fail("unsafe_archive");
 }
 
-function inspectArchive(bytes: Uint8Array, startedAt: number): ArchiveEntry[] {
+export function inspectArchive(
+  bytes: Uint8Array,
+  startedAt: number,
+): ArchiveEntry[] {
   if (
     !(bytes instanceof Uint8Array) ||
     bytes.length === 0 ||
@@ -366,7 +369,7 @@ function updateCrc32(current: number, bytes: Uint8Array): number {
   return crc >>> 0;
 }
 
-function extractArchiveEntry(
+export function extractArchiveEntry(
   archive: Uint8Array,
   entry: ArchiveEntry,
   startedAt: number,
@@ -442,7 +445,7 @@ function decodeUtf16(bytes: Uint8Array, littleEndian: boolean): string {
   }).decode(bytes);
 }
 
-function decodeXml(bytes: Uint8Array): string {
+export function decodeXml(bytes: Uint8Array): string {
   try {
     if (bytes[0] === 0xff && bytes[1] === 0xfe) {
       return decodeUtf16(bytes.subarray(2), true);
