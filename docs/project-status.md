@@ -34,11 +34,11 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Handoff
 
-- Current integration branch: `main`; Task 22 was delivered by PR #22 at merge commit `0fa46de`
+- Current integration branch: `main`; Task 23 was delivered by PR #23 at merge commit `25314de`
 - Last independently reviewed task implementation commit: Task 18 (delivered by merge `51f8eaf`)
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
 - Active feature branch: none
-- Active task: Task 23 (single landing destination and public legal footer) on `codex/task-23-landing-and-footer`. Tasks 18-20 and 22 are merged. Task 21 (Authentication activation) is the only task left and requires owner platform setup. Tasks 1–17 are merged; the owner approved four further tasks on 2026-07-19. Tasks 18–20 need no platform setup; Task 21 requires setup runbook steps 1–4
+- Active task: none. Tasks 18-20, 22, and 23 are merged. Task 21 (Authentication activation) is the only task left and requires owner platform setup. Tasks 1–17 are merged; the owner approved four further tasks on 2026-07-19. Tasks 18–20 need no platform setup; Task 21 requires setup runbook steps 1–4
 
 ## Task progress
 
@@ -66,7 +66,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 20. Administrator audit log and operational health                     | reviewed | Independent review clean; no new data is collected              |
 | 21. Authentication activation                                          | pending  | Owner-approved 2026-07-19; needs owner platform setup           |
 | 22. Search Jobs, route naming, and onboarding follow-ups               | reviewed | Delivered by PR #22; independent review APPROVED at `0fa46de`   |
-| 23. Single landing destination and public legal footer                 | pending  | Owner-approved 2026-07-19; no platform setup required           |
+| 23. Single landing destination and public legal footer                 | reviewed | Delivered by PR #23; independent review APPROVED at `25314de`   |
 
 ## Last verification commands
 

@@ -38,7 +38,7 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 20   | Administrator audit log and operational health                             | reviewed | Delivered by PR #21 (`babf725`)                                                       |
 | 21   | Authentication activation                                                  | pending  | Supabase project and Google OAuth — setup runbook steps 1–4                           |
 | 22   | Search Jobs, route naming, and onboarding follow-ups                       | reviewed | Delivered by PR #22 (`0fa46de`); no platform setup was required                       |
-| 23   | Single landing destination and public legal footer                         | pending  | None                                                                                  |
+| 23   | Single landing destination and public legal footer                         | reviewed | Delivered by PR #23 (`25314de`); no platform setup was required                       |
 
 ## Task 7 — Administrator operations
 
