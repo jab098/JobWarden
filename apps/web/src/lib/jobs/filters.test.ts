@@ -25,6 +25,7 @@ describe("job URL filters", () => {
     ).toEqual({
       q: "platform engineer",
       location: "",
+      radius: null,
       employment: "contract",
       workingTime: "part_time",
       workplace: "remote",

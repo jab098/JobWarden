@@ -94,6 +94,7 @@ type QueryBuilder = {
   eq(column: string, value: string): QueryBuilder;
   gte(column: string, value: string | number): QueryBuilder;
   ilike(column: string, pattern: string): QueryBuilder;
+  in(column: string, values: readonly string[]): QueryBuilder;
   not(column: string, operator: string, value: null): QueryBuilder;
   or(filters: string): QueryBuilder;
   order(
@@ -106,7 +107,23 @@ type QueryBuilder = {
 
 type SupabaseJobsClient = {
   from(table: "jobs"): QueryBuilder;
+  rpc(
+    name: string,
+    parameters: Record<string, unknown>,
+  ): Promise<QueryResponse>;
 };
+
+/**
+ * The most job ids a radius search will carry back into the listing query.
+ *
+ * ponytail: bounded id set rather than a single SQL query that does the
+ * distance and every other filter at once. That rewrite is the right answer if
+ * the catalogue ever gets big enough for a wide radius around London to exceed
+ * this, and the guard below makes that state visible rather than silent.
+ */
+const maximumRadiusMatches = 5_000;
+
+const radiusJobIdSchema = z.array(z.object({ job_id: z.string().uuid() }));
 
 type ListRow = z.infer<typeof listRowSchema>;
 type DetailRow = z.infer<typeof detailRowSchema>;
@@ -230,12 +247,39 @@ export function createSupabaseJobsRepository(client: object): JobsRepository {
   return {
     async list(filters: JobFilters) {
       try {
+        // A radius is answered by the database, which owns the coordinates and
+        // the distance function. It comes back as job ids so the rest of the
+        // filters, the ordering, and the paging stay exactly as they were.
+        let radiusJobIds: string[] | null = null;
+        if (filters.location && filters.radius !== null) {
+          const response = await supabaseClient.rpc("jobs_within_radius", {
+            location_text: filters.location,
+            radius_miles: filters.radius,
+          });
+          if (response.error) throw new Error("Supabase query failed");
+          radiusJobIds = radiusJobIdSchema
+            .parse(response.data ?? [])
+            .map((row) => row.job_id)
+            .slice(0, maximumRadiusMatches);
+        }
+
+        // The inner join belongs to the text filter alone. Under a radius the
+        // ids already encode the location test, and an inner join would drop
+        // listings whose location rows the join could not match.
+        const useLocationJoin =
+          Boolean(filters.location) && radiusJobIds === null;
         let query = supabaseClient
           .from("jobs")
-          .select(filters.location ? locationFilteredColumns : listColumns, {
+          .select(useLocationJoin ? locationFilteredColumns : listColumns, {
             count: "exact",
           })
           .eq("lifecycle_status", "active");
+
+        if (radiusJobIds !== null) {
+          // No place within the radius carries a job. Saying so with an empty
+          // set is honest; skipping the filter would show the whole country.
+          query = query.in("id", radiusJobIds);
+        }
 
         if (filters.employment !== "all") {
           query = query.eq("employment_type", filters.employment);
@@ -252,7 +296,7 @@ export function createSupabaseJobsRepository(client: object): JobsRepository {
         if (filters.compensation !== "all") {
           query = query.eq("compensation_provenance", filters.compensation);
         }
-        if (filters.location) {
+        if (useLocationJoin) {
           query = query.ilike(
             "job_locations.raw_location",
             likePattern(filters.location),

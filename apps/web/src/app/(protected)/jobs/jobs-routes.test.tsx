@@ -106,6 +106,7 @@ describe("jobs routes", () => {
           posted: "7",
           sort: "closing",
           workplace: "hybrid",
+          radius: "10",
           page: "2",
         }),
       }),
@@ -114,6 +115,7 @@ describe("jobs routes", () => {
     expect(jobsRepository.list).toHaveBeenCalledWith({
       q: "engineer",
       location: "Leeds",
+      radius: 10,
       employment: "all",
       workingTime: "all",
       workplace: "hybrid",

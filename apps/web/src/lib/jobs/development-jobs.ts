@@ -1,5 +1,7 @@
 import "server-only";
 
+import { placesWithinRadius, resolveUkPlaces } from "@jobwarden/domain";
+
 import type { JobsRepository } from "./repository";
 import type { JobDetail, JobFilters, JobListItem } from "./types";
 
@@ -193,17 +195,37 @@ function matchesPostedWindow(job: JobDetail, filters: JobFilters): boolean {
   return new Date(job.postedAt).getTime() >= cutoff;
 }
 
+/**
+ * The fixture preview resolves the radius the same way the database does, using
+ * the same bundled centroids, so the two agree about which towns are near.
+ */
+function matchesLocation(job: JobDetail, filters: JobFilters): boolean {
+  if (!filters.location) return true;
+  if (filters.radius === null) {
+    return job.location
+      .toLocaleLowerCase("en-GB")
+      .includes(filters.location.toLocaleLowerCase("en-GB"));
+  }
+  const near = placesWithinRadius(filters.location, filters.radius);
+  return near.some((place) =>
+    resolveUkPlaces(job.location).some(
+      (jobPlace) =>
+        jobPlace.latitude === place.latitude &&
+        jobPlace.longitude === place.longitude,
+    ),
+  );
+}
+
 function matchesFilters(job: JobDetail, filters: JobFilters): boolean {
   const searchText =
     `${job.title} ${job.employer} ${job.descriptionText}`.toLocaleLowerCase(
       "en-GB",
     );
   const query = filters.q.toLocaleLowerCase("en-GB");
-  const location = filters.location.toLocaleLowerCase("en-GB");
 
   return (
     searchText.includes(query) &&
-    job.location.toLocaleLowerCase("en-GB").includes(location) &&
+    matchesLocation(job, filters) &&
     (filters.employment === "all" ||
       job.employmentType === filters.employment) &&
     (filters.workingTime === "all" ||

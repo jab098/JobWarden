@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { SlidersHorizontal } from "lucide-react";
 
+import { radiusOptions } from "@jobwarden/domain";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -108,15 +110,36 @@ function FilterForm({ filters }: { filters: JobFilters }) {
           Searches the job title, the employer, and the advert itself.
         </p>
       </div>
-      <label className="block space-y-2 text-sm font-medium">
-        <span>Location</span>
-        <Input
-          name="location"
-          defaultValue={filters.location}
-          placeholder="Manchester"
-          className="h-10 rounded-md bg-white"
-        />
-      </label>
+      <div className="space-y-2">
+        <label className="block space-y-2 text-sm font-medium">
+          <span>Location</span>
+          <Input
+            name="location"
+            defaultValue={filters.location}
+            placeholder="Manchester"
+            className="h-10 rounded-md bg-white"
+          />
+        </label>
+        <label className="block space-y-2 text-sm font-medium">
+          <span>Distance</span>
+          <select
+            name="radius"
+            defaultValue={filters.radius === null ? "" : String(filters.radius)}
+            className={selectClass}
+          >
+            <option value="">This place only</option>
+            {radiusOptions.map((miles) => (
+              <option key={miles} value={miles}>
+                Within {miles} miles
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="text-xs text-[#697181]">
+          A distance also finds nearby towns. Within 10 miles of Manchester
+          includes Salford and Trafford Park.
+        </p>
+      </div>
       {(
         [
           ["posted", "Date posted"],

@@ -12,3 +12,4 @@ export * from "./onboarding.ts";
 export * from "./onboarding-answers.ts";
 export * from "./tailoring.ts";
 export * from "./target-feed.ts";
+export * from "./uk-places.ts";

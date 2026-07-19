@@ -1,3 +1,5 @@
+import type { RadiusMiles } from "@jobwarden/domain";
+
 export const employmentTypes = [
   "permanent",
   "fixed_term",
@@ -101,6 +103,13 @@ export type JobFilters = {
   q: string;
   /** Free text matched against the listing's stated UK locations. */
   location: string;
+  /**
+   * Miles around `location`. Null means match the stated location text alone,
+   * which is what every search did before radius existed. A radius without a
+   * location has nothing to be a radius around, so the two apply together or
+   * not at all.
+   */
+  radius: RadiusMiles | null;
   employment: EmploymentType | "all";
   workingTime: WorkingTime | "all";
   workplace: WorkplaceType | "all";
