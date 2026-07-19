@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { isTrustedMutationOrigin } from "@/lib/admin/origin";
+import { PreviewDecisionUnavailableError } from "@/lib/target-feed/development-target-feed";
 import { getTargetFeedRepository } from "@/lib/target-feed/get-repository";
 import type { TargetFeedActionState } from "@/lib/target-feed/types";
 
@@ -29,14 +30,20 @@ const invalid: TargetFeedActionState = {
   kind: "invalid",
   message: "Check the job decision and try again.",
 };
-const unavailable: TargetFeedActionState = {
+const unavailablePreview: TargetFeedActionState = {
   kind: "unavailable",
   message: "Job decisions are unavailable in this preview.",
+};
+const unavailableGeneric: TargetFeedActionState = {
+  kind: "unavailable",
+  message: "This job decision could not be saved. Try again.",
 };
 
 function mapError(error: unknown): TargetFeedActionState {
   if (error instanceof z.ZodError) return invalid;
-  return unavailable;
+  if (error instanceof PreviewDecisionUnavailableError)
+    return unavailablePreview;
+  return unavailableGeneric;
 }
 
 export async function decideJobAction(

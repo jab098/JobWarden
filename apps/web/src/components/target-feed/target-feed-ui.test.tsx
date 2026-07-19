@@ -172,12 +172,28 @@ describe("target feed view", () => {
     expect(formData.get("decision")).toBe("dismissed");
     expect(row?.getAttribute("data-decision")).toBe("dismissed");
     expect(row?.getAttribute("aria-hidden")).toBe("true");
+    expect(row?.hasAttribute("inert")).toBe(true);
+  });
+
+  it("marks a collapsed row inert so its controls stay out of the tab order", () => {
+    render(
+      <TargetFeedView
+        result={makeResult({ items: [makeItem({ decision: "dismissed" })] })}
+        includeDismissed={false}
+        latestListingUpdate={null}
+      />,
+    );
+
+    const row = document.querySelector("li[data-decision='dismissed']");
+    expect(row).not.toBeNull();
+    expect(row?.hasAttribute("inert")).toBe(true);
+    expect(row?.querySelector("button")).not.toBeNull();
   });
 
   it("rolls back a failed dismiss so the row stays visible with the error announced", async () => {
     actionMocks.decideJobAction.mockResolvedValue({
       kind: "unavailable",
-      message: "Job decisions are unavailable in this preview.",
+      message: "This job decision could not be saved. Try again.",
     });
     const user = userEvent.setup();
     render(
@@ -193,7 +209,7 @@ describe("target feed view", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(
-        "Job decisions are unavailable in this preview.",
+        "This job decision could not be saved. Try again.",
       );
       expect(row?.getAttribute("data-decision")).toBe("none");
     });
@@ -239,6 +255,7 @@ describe("target feed view", () => {
 
     const row = screen.getByRole("heading", { name: job.title }).closest("li");
     expect(row?.getAttribute("aria-hidden")).not.toBe("true");
+    expect(row?.hasAttribute("inert")).toBe(false);
     expect(
       screen.getByRole("link", { name: /hide dismissed/i }),
     ).toHaveAttribute("href", "/jobs");

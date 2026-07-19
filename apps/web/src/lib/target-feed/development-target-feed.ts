@@ -10,6 +10,13 @@ import {
 } from "./supabase-target-feed";
 import type { JobDecision } from "./types";
 
+export class PreviewDecisionUnavailableError extends Error {
+  constructor() {
+    super("Job decisions are unavailable in this preview.");
+    this.name = "PreviewDecisionUnavailableError";
+  }
+}
+
 function toCandidate(
   job: (typeof developmentJobs)[number],
 ): TargetFeedCandidate {
@@ -56,9 +63,7 @@ export function createDevelopmentTargetFeedRepository(): TargetFeedRepository {
       });
     },
     decide() {
-      return Promise.reject(
-        new Error("Job decisions are unavailable in this preview."),
-      );
+      return Promise.reject(new PreviewDecisionUnavailableError());
     },
   };
 }

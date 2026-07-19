@@ -630,4 +630,25 @@ describe("scoreJobForProfile: explanation payload", () => {
     expect(explanation.profileName).toBe("Backend engineering");
     expect(explanation.matchedEvidence).toContain("Python");
   });
+
+  it("deduplicates matched evidence labels shared by two confirmed items", () => {
+    const profile = baseProfile({ name: "Backend engineering" });
+    const job = baseJob();
+    const evidence = [
+      evidenceItem({
+        id: "71000000-0000-4000-8000-000000000001",
+        normalizedConcept: "python",
+        label: "Python",
+      }),
+      evidenceItem({
+        id: "71000000-0000-4000-8000-000000000002",
+        normalizedConcept: "python-scripting",
+        label: "Python",
+      }),
+    ];
+    const explanation = scoreJobForProfile(job, profile, evidence, now);
+    expect(
+      explanation.matchedEvidence.filter((label) => label === "Python"),
+    ).toHaveLength(1);
+  });
 });

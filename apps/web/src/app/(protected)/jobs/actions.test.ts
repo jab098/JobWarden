@@ -17,6 +17,7 @@ vi.mock("./action-context", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 
 import { decideJobAction } from "./actions";
+import { PreviewDecisionUnavailableError } from "@/lib/target-feed/development-target-feed";
 
 const trustedContext = {
   requestOrigin: "https://jobwarden.example",
@@ -92,7 +93,7 @@ describe("job decision server action", () => {
     expect(decide).toHaveBeenCalledWith(jobId, "clear");
   });
 
-  it("maps repository failures to an unavailable state", async () => {
+  it("maps a generic repository failure to mode-neutral copy", async () => {
     mocks.getTargetFeedRepository.mockResolvedValue({
       decide: vi.fn(async () => {
         throw new Error("Unable to update job decision");
@@ -101,6 +102,24 @@ describe("job decision server action", () => {
 
     await expect(
       decideJobAction({ kind: "idle" }, form({ jobId, decision: "saved" })),
-    ).resolves.toMatchObject({ kind: "unavailable" });
+    ).resolves.toMatchObject({
+      kind: "unavailable",
+      message: "This job decision could not be saved. Try again.",
+    });
+  });
+
+  it("maps the development repository's own rejection to preview-specific copy", async () => {
+    mocks.getTargetFeedRepository.mockResolvedValue({
+      decide: vi.fn(async () => {
+        throw new PreviewDecisionUnavailableError();
+      }),
+    });
+
+    await expect(
+      decideJobAction({ kind: "idle" }, form({ jobId, decision: "saved" })),
+    ).resolves.toMatchObject({
+      kind: "unavailable",
+      message: "Job decisions are unavailable in this preview.",
+    });
   });
 });

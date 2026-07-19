@@ -82,6 +82,7 @@ export function TargetFeedItem({
     <li
       data-decision={decision ?? "none"}
       aria-hidden={collapsed || undefined}
+      inert={collapsed}
       className={`overflow-hidden border-b border-[#e7e3da] transition-[max-height,opacity] duration-200 ease-out motion-reduce:transition-none ${
         collapsed
           ? "pointer-events-none max-h-0 opacity-0"

@@ -283,6 +283,9 @@ const seniorityOrder = [
 ] as const;
 type SeniorityMarker = (typeof seniorityOrder)[number];
 
+// First-match-in-order wins when a title carries multiple seniority markers
+// (e.g. "Senior Lead Engineer" resolves to "senior"). This is a deterministic
+// tie-break, not a bug.
 const seniorityMarkerRules: readonly [RegExp, SeniorityMarker][] = [
   [/\b(?:entry[-\s]level|apprentice|intern)\b/i, "entry"],
   [/\b(?:graduate|junior)\b/i, "junior"],
@@ -537,13 +540,17 @@ export function scoreJobForProfile(
     0,
   );
 
-  const matchedEvidence = confirmedEvidence
-    .filter(
-      (item) =>
-        wholeWordIncludes(haystack, item.label) ||
-        wholeWordIncludes(haystack, item.normalizedConcept),
-    )
-    .map((item) => item.label);
+  const matchedEvidence = [
+    ...new Set(
+      confirmedEvidence
+        .filter(
+          (item) =>
+            wholeWordIncludes(haystack, item.label) ||
+            wholeWordIncludes(haystack, item.normalizedConcept),
+        )
+        .map((item) => item.label),
+    ),
+  ];
 
   const importantGaps: string[] = [];
   for (const component of components) {
