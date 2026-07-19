@@ -99,7 +99,10 @@ it.each([
     'import { Resend } from "resend";',
   ],
   ["apps/web/src/lib/notifications/send.ts", 'const client = "resend";'],
-  ["packages/domain/src/notifications.ts", "// resend delivery lives here"],
+  [
+    "packages/domain/src/notifications.ts",
+    "const key = process.env.RESEND_API_KEY;",
+  ],
   [
     "supabase/functions/send-digests/handler.ts",
     'await fetch("https://api.resend.com/emails");',
@@ -207,3 +210,29 @@ it.each([
     await rm(workspace, { recursive: true });
   }
 });
+
+it.each(["posthog-js", "@vercel/analytics", "mixpanel-browser"])(
+  "rejects the browser analytics SDK %s",
+  async (analytics) => {
+    const workspace = await mkdtemp(join(tmpdir(), "jobwarden-guardrails-"));
+
+    try {
+      const app = join(workspace, "apps/web");
+      await mkdir(app, { recursive: true });
+      await writeFile(
+        join(app, "page.tsx"),
+        `import x from "${analytics}"; export default x;`,
+      );
+
+      await expect(
+        execFileAsync(process.execPath, [guardrailScript], { cwd: workspace }),
+      ).rejects.toMatchObject({
+        stderr: expect.stringContaining(
+          `apps/web/page.tsx: forbidden browser analytics ${analytics}`,
+        ),
+      });
+    } finally {
+      await rm(workspace, { recursive: true });
+    }
+  },
+);

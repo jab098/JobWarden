@@ -180,6 +180,23 @@ export function NotificationSettings({
           notification settings.
         </p>
       ) : null}
+
+      <div className="mt-8 border-t border-[#ece9e2] pt-6">
+        <h3 className="text-sm font-medium text-[#263248]">Your data</h3>
+        <p className="mt-2 max-w-prose text-sm text-[#596173]">
+          Download everything JobWarden holds about you as a JSON file. Your CV
+          file itself stays where it is; the export lists it rather than copying
+          it.
+        </p>
+        <p className="mt-3">
+          <a
+            href="/profile/export"
+            className="text-sm underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+          >
+            Export my data
+          </a>
+        </p>
+      </div>
     </section>
   );
 }
