@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { AccessStateView } from "./access-state-view";
@@ -6,7 +6,6 @@ import { PublicHome } from "./public-home";
 import { SignInView } from "./sign-in-view";
 import { ProtectedErrorView } from "./protected-error-view";
 import { ProtectedLoadingView } from "./protected-loading-view";
-import { WorkspaceHoldingView } from "./workspace-holding-view";
 
 describe("public private-beta entry", () => {
   it("explains the UK job-search purpose without commercial promises", () => {
@@ -34,7 +33,7 @@ describe("public private-beta entry", () => {
 
     expect(
       screen.getByRole("link", { name: /open jobs workspace/i }),
-    ).toHaveAttribute("href", "/matches");
+    ).toHaveAttribute("href", "/home");
     expect(screen.getByText(/development data/i)).toBeInTheDocument();
     expect(
       screen.getByText("Explicitly fictional fixtures are enabled locally."),
@@ -43,6 +42,56 @@ describe("public private-beta entry", () => {
       screen.queryByRole("link", { name: /request access/i }),
     ).not.toBeInTheDocument();
   });
+});
+describe("public legal footer", () => {
+  it.each([
+    ["landing", () => render(<PublicHome />)],
+    ["sign-in", () => render(<SignInView action={() => {}} />)],
+    // The terminal screen for a rejected or suspended user: their identity and
+    // access request are already stored and there is no route onward, so this
+    // is the page most likely to want the policy.
+    [
+      "access status",
+      () =>
+        render(<AccessStateView status="rejected" signOutAction={() => {}} />),
+    ],
+  ])(
+    "reaches the privacy policy and terms from the %s page",
+    (_page, mount) => {
+      // A beta that reads CVs must not make its privacy policy a direct-URL
+      // secret, even while the surface stays deliberately quiet.
+      mount();
+
+      const legal = screen.getByRole("contentinfo");
+      expect(
+        within(legal).getByRole("link", { name: "Privacy" }),
+      ).toHaveAttribute("href", "/privacy");
+      expect(
+        within(legal).getByRole("link", { name: "Terms" }),
+      ).toHaveAttribute("href", "/terms");
+    },
+  );
+
+  it.each([
+    ["landing", () => render(<PublicHome />)],
+    ["sign-in", () => render(<SignInView action={() => {}} />)],
+    [
+      "access status",
+      () =>
+        render(<AccessStateView status="rejected" signOutAction={() => {}} />),
+    ],
+  ])(
+    "keeps the %s footer outside main, so it stays a landmark",
+    (_page, mount) => {
+      // <footer> maps to contentinfo only when it is not nested inside a
+      // sectioning element. Testing Library reports the role either way, so
+      // the structure is the only thing that catches a regression here.
+      const { container } = mount();
+
+      expect(container.querySelector("footer")).not.toBeNull();
+      expect(container.querySelector("main footer")).toBeNull();
+    },
+  );
 });
 
 describe("sign-in state", () => {
@@ -128,17 +177,5 @@ describe("protected workspace states", () => {
       /could not open the workspace/i,
     );
     expect(screen.getByRole("button", { name: /try again/i })).toBeEnabled();
-  });
-
-  it("provides a real protected jobs destination without fake data", () => {
-    render(<WorkspaceHoldingView signOutAction={vi.fn()} />);
-
-    expect(
-      screen.getByRole("heading", { name: /jobs workspace/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/your access is active/i)).toBeInTheDocument();
-    expect(document.body).not.toHaveTextContent(
-      /match score|jobs found|upgrade/i,
-    );
   });
 });

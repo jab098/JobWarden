@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import type { CareerEvidenceItem } from "./career-profile.ts";
 import {
-  buildFirstRunFilters,
   buildSearchProfileFromAnswers,
   hasSearchSignal,
   parseOnboardingAnswers,
@@ -49,52 +48,6 @@ describe("parseOnboardingAnswers", () => {
 
   it("rejects an unknown field rather than storing it", () => {
     expect(parseOnboardingAnswers({ salaryExpectation: 90000 })).toEqual({});
-  });
-});
-
-describe("buildFirstRunFilters", () => {
-  it("applies a single selection as a filter", () => {
-    expect(
-      buildFirstRunFilters({
-        employmentTypes: ["permanent"],
-        workplaceTypes: ["remote"],
-      }),
-    ).toMatchObject({ employment: "permanent", workplace: "remote" });
-  });
-
-  it("does not collapse a multi-selection into one filter", () => {
-    // The feed's filters hold one value per facet. Picking one of the user's
-    // three choices would apply a preference they never expressed.
-    expect(
-      buildFirstRunFilters({ employmentTypes: ["permanent", "contract"] }),
-    ).toMatchObject({ employment: "all" });
-  });
-
-  it("leaves an unanswered facet unfiltered", () => {
-    expect(buildFirstRunFilters({})).toEqual({
-      location: "",
-      employment: "all",
-      workingTime: "all",
-      workplace: "all",
-      ir35: "all",
-      compensation: "all",
-    });
-  });
-
-  it("never narrows salary provenance, whatever the user chose", () => {
-    // The filter holds one provenance. Turning "exclude unknown pay" into
-    // "advertised only" would also hide every estimated salary — which the
-    // matching gate keeps — so the two surfaces would disagree about the same
-    // preference. The preference still shapes matching through the profile.
-    for (const allowUnknownCompensation of [undefined, true, false]) {
-      expect(
-        buildFirstRunFilters(
-          allowUnknownCompensation === undefined
-            ? {}
-            : { allowUnknownCompensation },
-        ).compensation,
-      ).toBe("all");
-    }
   });
 });
 

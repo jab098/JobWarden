@@ -1,7 +1,6 @@
 import "server-only";
 
 import {
-  buildFirstRunFilters,
   buildSearchProfileFromAnswers,
   classifyCvOutcome,
   hasSearchSignal,
@@ -198,8 +197,6 @@ export function createSupabaseOnboardingRepository(
       } catch {
         throw new Error("Unable to finish onboarding");
       }
-
-      return { filters: buildFirstRunFilters(view.answers) };
     },
   };
 }

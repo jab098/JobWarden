@@ -6,10 +6,6 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { isTrustedMutationOrigin } from "@/lib/admin/origin";
-import {
-  createJobFiltersQueryString,
-  parseJobFilters,
-} from "@/lib/jobs/filters";
 import { readStepAnswers } from "@/lib/onboarding/answers-form";
 import { getOnboardingRepository } from "@/lib/onboarding/get-repository";
 import { PreviewOnboardingUnavailableError } from "@/lib/onboarding/repository";
@@ -106,34 +102,22 @@ export async function completeOnboardingAction(
     return forbidden;
   }
 
-  let filters;
   try {
     // Writes the search profile, digest preference, and Explore choice, then
     // asks the database to complete. The database refuses unless every step of
     // the chosen path is recorded, so finishing cannot be forced from here.
-    ({ filters } = await (await getOnboardingRepository()).finish());
+    await (await getOnboardingRepository()).finish();
   } catch (error) {
     return mapError(error);
   }
 
   revalidatePath("/", "layout");
-  // Land on the search with the chosen preferences applied and visible in the
-  // address bar, so any one of them is a click from being lifted. The scored
-  // feed the profile now drives is one link away in the header.
+  // The hub, which is where every other "signed in and set up" path lands.
+  // The chosen preferences are already applied — they were written into the
+  // search profile that drives matching — and are edited from /profile.
   //
-  // This used to point at the combined page, where an enabled search profile —
-  // which finishing had just created — made it render the scored view instead.
-  // The parameters sat in the address bar applying nothing at all.
-  redirect(
-    `/jobs?${createJobFiltersQueryString(
-      parseJobFilters({
-        location: filters.location,
-        employment: filters.employment,
-        workingTime: filters.workingTime,
-        workplace: filters.workplace,
-        ir35: filters.ir35,
-        compensation: filters.compensation,
-      }),
-    )}`,
-  );
+  // They used to be carried here as URL filters instead. That only ever worked
+  // on a page that reads them, and the destination an enabled profile produced
+  // was not one, so the parameters sat in the address bar applying nothing.
+  redirect("/home");
 }

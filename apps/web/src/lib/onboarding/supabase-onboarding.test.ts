@@ -327,14 +327,22 @@ describe("finish", () => {
     );
   });
 
-  it("returns the filters to pre-apply on the first feed", async () => {
+  it("carries the stated preferences into the saved search profile", async () => {
+    // The preferences reach matching through the profile, which is what makes
+    // them applied. There is no second mechanism carrying them anywhere.
     const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
 
-    const result = await createSupabaseOnboardingRepository(
+    await createSupabaseOnboardingRepository(
       client({ state: answered, rpc }),
     ).finish();
 
-    expect(result.filters).toMatchObject({ employment: "permanent" });
+    const [, parameters] = rpc.mock.calls[0]!;
+    expect(parameters.draft_value).toMatchObject({
+      employmentTypes: ["permanent"],
+      roleFamilies: [
+        expect.objectContaining({ label: "Analytics implementation" }),
+      ],
+    });
   });
 
   it("refuses to finish with nothing to match on", async () => {

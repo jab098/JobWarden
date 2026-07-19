@@ -1,4 +1,4 @@
-const FALLBACK_PATH = "/matches";
+const FALLBACK_PATH = "/home";
 const MAX_DECODE_LAYERS = 2;
 const unsafeRedirectCharacter = /[\\\u0000-\u001f\u007f-\u009f]/;
 

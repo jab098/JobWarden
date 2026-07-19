@@ -267,10 +267,9 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
       {step === null ? (
         view.hasSignal ? (
           <p className="mt-6 max-w-prose text-sm leading-6 text-[#596173]">
-            That is everything. Finishing takes you to UK listings already
-            narrowed to the preferences you chose — shown in the address bar, so
-            any of them is one click from being lifted. Your scored matches are
-            one link away from there.
+            That is everything. Finishing opens your hub, with the preferences
+            you chose already shaping what JobWarden matches you to. Every one
+            of them stays editable from your career profile.
           </p>
         ) : (
           <p
@@ -326,7 +325,7 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
               type="submit"
               disabled={readOnly || completePending || !view.hasSignal}
             >
-              {completePending ? "Finishing…" : "Finish and see UK jobs"}
+              {completePending ? "Finishing…" : "Finish and open my hub"}
             </Button>
           </form>
         ) : null}
