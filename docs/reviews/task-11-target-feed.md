@@ -6,13 +6,13 @@
 
 **Current implementation head:** `0d360cc`
 
-**Task-slice review status:** Tasks 1–4 each passed a focused independent review; every review-wave finding is remediated at `HEAD` with clean confirmation. This is not the required final whole-branch review and does not change Task 11 from `active`.
+**Task-slice review status:** Tasks 1–4 each passed a focused independent review; every review-wave finding, including the final whole-branch review's five findings, is remediated at `4ec2157` with clean confirmation. The final whole-branch review returned specification PASS and quality APPROVED, and Task 11 is `reviewed`.
 
 ## Outcome
 
 Task 11 implements a deterministic, evidence-bound target feed: a scoring engine that applies a hard eligibility gate before an integer 45/20/15/10/10 score, a repository layer that reuses the existing profile snapshot (extended with a top-level confirmed-evidence field) to feed the scorer without duplicating extraction, and a `/jobs` UI that makes the target feed the primary experience while preserving the broad list behind `?view=all`. Save/dismiss/considering decisions are owner-fenced at the database boundary and optimistic in the UI with a verified rollback on failure. The path is AI-free by design, so model unavailability cannot hide a deterministic match.
 
-Task 11 has not been published. PR #12, the final whole-branch review, and the merge to GitHub `main` remain pending.
+Those conditions are now met: the final whole-branch review of `393e22b..4ec2157` returned specification PASS and quality APPROVED with every finding remediated, PR #12 was merged to GitHub `main` at `c86a14d`, and the merge commit passed the full verification gate (667 workspace, 27 ingestion, and 26 extraction tests; 11-migration/21-forced-RLS static Supabase verification) on the updated local `main`. Task 12 has not started.
 
 ## Acceptance mapping
 
