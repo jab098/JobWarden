@@ -2,10 +2,7 @@ import Link from "next/link";
 
 import type { ApplicationStage } from "@jobwarden/domain";
 
-import {
-  ApplicationItem,
-  stageLabels,
-} from "@/components/applications/application-item";
+import { ApplicationItem } from "@/components/applications/application-item";
 import { InsightsPanel } from "@/components/applications/insights-panel";
 import type { ApplicationsResult } from "@/lib/applications/types";
 
@@ -146,9 +143,6 @@ export function ApplicationsViewPage({
           </div>
         </section>
       )}
-      <p className="sr-only">
-        Stages available: {Object.values(stageLabels).join(", ")}.
-      </p>
     </div>
   );
 }
