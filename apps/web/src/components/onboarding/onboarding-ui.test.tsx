@@ -162,10 +162,138 @@ describe("OnboardingFlow", () => {
     expect(screen.getByText(/lift at any time/)).toBeInTheDocument();
   });
 
-  it("says notifications are off unless turned on", () => {
+  it("leaves both opt-ins unticked until the user chooses them", () => {
     render(<OnboardingFlow view={view({ currentStep: "notifications" })} />);
 
-    expect(screen.getByText(/off unless you turn it on/)).toBeInTheDocument();
+    expect(screen.getByText(/off unless you choose them/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /Email me when genuinely new/ }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: /adjacent careers/ }),
+    ).not.toBeChecked();
+  });
+
+  it("submits the answers alongside the step that asked for them", async () => {
+    // The step used to record only that it happened, so every answer the
+    // profile builder needed arrived empty.
+    const user = userEvent.setup();
+    render(
+      <OnboardingFlow
+        view={view({
+          path: "aspiration",
+          currentStep: "aspirations",
+          answers: {},
+        })}
+      />,
+    );
+
+    await user.type(
+      screen.getByRole("textbox", { name: /kind of work are you aiming for/ }),
+      "Data analyst",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /Skills you already have/ }),
+      "SQL, Excel",
+    );
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: /level you are aiming for/ }),
+      "mid",
+    );
+    await user.click(screen.getByRole("button", { name: "Save and continue" }));
+
+    const [, formData] = actionMocks.advanceOnboardingAction.mock.calls[0];
+    expect(formData.get("step")).toBe("aspirations");
+    expect(formData.get("roleFamilies")).toBe("Data analyst");
+    expect(formData.get("skillConcepts")).toBe("SQL, Excel");
+    expect(formData.get("targetSeniority")).toBe("mid");
+  });
+
+  it("pre-fills a revisited step from the answers already given", () => {
+    render(
+      <OnboardingFlow
+        view={view({
+          path: "aspiration",
+          currentStep: "preferences",
+          answers: {
+            employmentTypes: ["permanent"],
+            ukLocations: ["Manchester", "Leeds"],
+            compensationMinimum: 4_500_000,
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox", { name: "Permanent" })).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Contract" }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("textbox", { name: /Where in the UK/ }),
+    ).toHaveValue("Manchester, Leeds");
+    // Stored in minor units, shown as the pounds the advert would state.
+    expect(
+      screen.getByRole("spinbutton", { name: /Lowest pay you would accept/ }),
+    ).toHaveValue(45000);
+  });
+
+  it("asks the CV path for a target role, which evidence cannot supply", () => {
+    render(<OnboardingFlow view={view({ currentStep: "preferences" })} />);
+
+    expect(
+      screen.getByRole("textbox", { name: /kind of work are you aiming for/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not ask the aspiration path for its role a second time", () => {
+    render(
+      <OnboardingFlow
+        view={view({ path: "aspiration", currentStep: "preferences" })}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("textbox", {
+        name: /kind of work are you aiming for/,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("includes unstated salaries unless the user opts out", () => {
+    // Most UK adverts state no salary; defaulting this off would hide them.
+    render(
+      <OnboardingFlow
+        view={view({ path: "aspiration", currentStep: "preferences" })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("checkbox", { name: /do not state a salary/ }),
+    ).toBeChecked();
+  });
+
+  it("lets the confirmation step decide what the first search is built from", () => {
+    render(
+      <OnboardingFlow
+        view={view({
+          currentStep: "confirm_evidence",
+          evidence: [
+            {
+              id: "3f1f6c30-3b0a-4a37-9a3e-3f0a5c2f9a10",
+              category: "skill",
+              label: "SQL",
+              normalizedConcept: "sql",
+              evidenceExcerpt: null,
+              confirmationState: "proposed",
+              origin: "cv",
+              proficiencySignal: "stated",
+            },
+          ] as OnboardingView["evidence"],
+        })}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Confirm SQL" })).toBeEnabled();
   });
 
   it("offers to finish only once every step is done", () => {

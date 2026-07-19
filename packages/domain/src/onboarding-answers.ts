@@ -37,11 +37,12 @@ export const onboardingAnswersSchema = z
     workplaceTypes: z.array(z.enum(workplaceTypes)).max(4).optional(),
     ir35Statuses: z.array(z.enum(ir35Statuses)).max(4).optional(),
     ukLocations: z.array(z.string().trim().min(1).max(120)).max(10).optional(),
+    /** Minor units, so a £1,000,000 ceiling is not a wall a real salary hits. */
     compensationMinimum: z
       .number()
       .int()
       .min(0)
-      .max(10_000_000)
+      .max(100_000_000)
       .nullable()
       .optional(),
     compensationPeriod: z.enum(compensationPeriods).optional(),

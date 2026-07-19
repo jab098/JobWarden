@@ -177,32 +177,24 @@ export function createSupabaseOnboardingRepository(
       const { generation } = await profileRepository.getSnapshot();
 
       try {
-        // The search profile is written before completion, so a failure here
-        // leaves the user inside onboarding rather than in a gated-open hub
-        // with nothing configured.
+        // One transactional RPC rather than four sequential ones: the search
+        // profile, digest preference, and Explore choice all land, or the hub
+        // stays gated and the user retries from an unchanged state. Completion
+        // runs last inside that transaction, so the gate never opens over a
+        // half-written configuration.
         const draft = buildSearchProfileFromAnswers({
           answers: view.answers,
           confirmedEvidence,
           name: "My first search",
         });
         data(
-          await supabaseClient.rpc("save_search_profile", {
-            target_search_id: null,
+          await supabaseClient.rpc("finish_onboarding", {
             expected_generation: generation,
             draft_value: draft,
+            notifications_enabled: view.answers.notificationsEnabled ?? false,
+            explore_enabled: view.answers.exploreEnabled ?? false,
           }),
         );
-        data(
-          await supabaseClient.rpc("set_career_notification_settings", {
-            target_enabled: view.answers.notificationsEnabled ?? false,
-          }),
-        );
-        data(
-          await supabaseClient.rpc("set_explore_enabled", {
-            target_enabled: view.answers.exploreEnabled ?? false,
-          }),
-        );
-        data(await supabaseClient.rpc("complete_onboarding"));
       } catch {
         throw new Error("Unable to finish onboarding");
       }

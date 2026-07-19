@@ -10,6 +10,7 @@ import {
   createJobFiltersQueryString,
   parseJobFilters,
 } from "@/lib/jobs/filters";
+import { readStepAnswers } from "@/lib/onboarding/answers-form";
 import { getOnboardingRepository } from "@/lib/onboarding/get-repository";
 import { PreviewOnboardingUnavailableError } from "@/lib/onboarding/repository";
 import type { OnboardingActionState } from "@/lib/onboarding/types";
@@ -69,6 +70,17 @@ export async function advanceOnboardingAction(
     return { kind: "invalid", message: "Check this step and try again." };
   }
 
+  // Answers are read against the step that submitted them, so a crafted field
+  // cannot record an answer to a question this step never asked.
+  const answers = readStepAnswers(parsed.data.path, parsed.data.step, {
+    get: (name) => value(formData, name),
+    getAll: (name) =>
+      formData.getAll(name).filter((entry) => typeof entry === "string"),
+  });
+  if (answers === null) {
+    return { kind: "invalid", message: "Check this step and try again." };
+  }
+
   try {
     await (
       await getOnboardingRepository()
@@ -76,6 +88,7 @@ export async function advanceOnboardingAction(
       path: parsed.data.path,
       step: parsed.data.step,
       cvOutcome: parsed.data.cvOutcome ? parsed.data.cvOutcome : null,
+      answers,
     });
     revalidatePath("/onboarding");
     return { kind: "success", message: "Saved." };
