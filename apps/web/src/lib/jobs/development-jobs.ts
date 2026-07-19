@@ -116,7 +116,7 @@ export const developmentJobs = [
     compensationProvenance: "advertised",
     postedAt: "2026-07-12T14:30:00.000Z",
     descriptionText:
-      "A fictional outside-IR35 platform contract with one agreed team day each fortnight in Edinburgh.",
+      "A fictional outside-IR35 platform contract maintaining SQL reporting pipelines, with one agreed team day each fortnight in Edinburgh.",
     applicationUrl: "https://example.test/apply/platform-engineer-contract",
     ukEligibilityEvidence: [
       "The fictional advert explicitly names Edinburgh, Scotland as the hybrid work location.",

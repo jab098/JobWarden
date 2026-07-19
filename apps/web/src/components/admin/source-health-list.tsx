@@ -39,7 +39,7 @@ export function SourceHealthList({
         </p>
       </div>
       {sources.length === 0 ? (
-        <p className="border-l-2 border-[#9aa7b8] pl-4 text-sm text-[#596173]">
+        <p className="text-sm text-[#596173]">
           No source health is available yet.
         </p>
       ) : (

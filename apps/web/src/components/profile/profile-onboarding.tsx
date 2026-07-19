@@ -411,7 +411,7 @@ function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
               />
             </div>
           </div>
-          <div className="border-l-2 border-[#d8d4cb] pl-4">
+          <div className="rounded-md border border-[#e7e3da] p-4">
             <Label htmlFor="add-skill">Add a skill</Label>
             <div className="mt-2 flex max-w-xl gap-2">
               <Input

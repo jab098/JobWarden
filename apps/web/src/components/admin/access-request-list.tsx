@@ -49,7 +49,7 @@ export function AccessRequestList({
         ) : null}
       </div>
       {requests.length === 0 ? (
-        <p className="border-l-2 border-[#9aa7b8] pl-4 text-sm text-[#596173]">
+        <p className="text-sm text-[#596173]">
           No access requests have been recorded.
         </p>
       ) : (

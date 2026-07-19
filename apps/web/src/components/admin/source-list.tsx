@@ -26,7 +26,7 @@ export function SourceList({
         </p>
       </div>
       {!readOnly && saveAction ? (
-        <details className="border-l-2 border-[#2458a6] bg-white px-5 py-4">
+        <details className="rounded-md border border-[#e2ddd3] bg-white px-5 py-4">
           <summary className="cursor-pointer text-sm font-semibold">
             Add a Greenhouse source
           </summary>
@@ -36,7 +36,7 @@ export function SourceList({
         </details>
       ) : null}
       {sources.length === 0 ? (
-        <p className="border-l-2 border-[#9aa7b8] pl-4 text-sm text-[#596173]">
+        <p className="text-sm text-[#596173]">
           No permitted job sources have been configured.
         </p>
       ) : (

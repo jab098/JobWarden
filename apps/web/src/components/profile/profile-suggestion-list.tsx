@@ -86,7 +86,7 @@ export function ProfileSuggestionList({
           {suggestions.map((suggestion) => (
             <li
               key={suggestion.id}
-              className="grid gap-4 border-l-2 border-[#8da8cf] bg-[#f7f9fc] px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+              className="grid gap-4 rounded-md border border-[#e7e3da] bg-white px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
             >
               <div className="min-w-0 [overflow-wrap:anywhere]">
                 <p className="font-medium text-[#263248]">{suggestion.label}</p>

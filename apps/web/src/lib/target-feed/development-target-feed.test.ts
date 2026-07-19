@@ -24,6 +24,21 @@ describe("fictional development target-feed repository", () => {
     }
   });
 
+  it("demonstrates the primary experience: at least 3 scored rows with strictly distinct descending scores while the gate still excludes at least one fixture job", async () => {
+    const repository = createDevelopmentTargetFeedRepository();
+
+    const feed = await repository.getFeed({ includeDismissed: false });
+    const scores = feed.items.map((item) => item.explanation.score);
+
+    expect(scores.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(scores).size).toBe(scores.length);
+    expect(scores).toEqual([...scores].sort((a, b) => b - a));
+
+    const { developmentJobs } = await import("@/lib/jobs/development-jobs");
+    const includedIds = new Set(feed.items.map((item) => item.job.id));
+    expect(developmentJobs.some((job) => !includedIds.has(job.id))).toBe(true);
+  });
+
   it("rejects decisions as read-only in the fictional preview", async () => {
     const repository = createDevelopmentTargetFeedRepository();
 

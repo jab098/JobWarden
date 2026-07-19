@@ -151,10 +151,15 @@ const snapshot = deepFreeze<ProfileSnapshot>({
       currentSeniority: "senior",
       targetSeniority: "lead",
       employmentTypes: ["permanent", "contract"],
-      workingTimes: ["full_time"],
+      workingTimes: ["full_time", "part_time"],
       workplaceTypes: ["hybrid", "remote"],
-      ukLocations: ["London", "Remote within the United Kingdom"],
-      ir35Statuses: ["outside", "not_applicable", "unknown"],
+      ukLocations: [
+        "London",
+        "Manchester",
+        "Edinburgh",
+        "Remote within the United Kingdom",
+      ],
+      ir35Statuses: ["inside", "outside", "not_applicable", "unknown"],
       compensation: {
         minimum: null,
         maximum: null,
