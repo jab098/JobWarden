@@ -4,7 +4,7 @@
 
 **Base:** `main` after the Task 20 publication record (`4c6d93b`)
 
-**Review status:** implementation complete and fully verified locally; independent review still to run.
+**Review status:** independent review run; every finding remediated test-first; confirmation pass requested.
 
 ## Why this task exists
 
@@ -57,7 +57,7 @@ Everything is URL-backed and posts by GET, so the whole surface works without Ja
 
 **No salary sort.** Sorting a £600 day rate against a £70,000 salary by raw amount ranks the salary higher. Making it honest needs an annual-equivalent conversion, which invents working-day assumptions the source data does not state — which the compensation invariant forbids. A `ponytail:` comment records the ceiling and what would have to be decided first.
 
-**A pay floor needs its period.** A floor without a period would compare a day rate to a salary, so half an answer applies nothing. Setting a floor necessarily hides listings that state no salary, because they cannot be shown to meet it; the form says so rather than letting the count quietly drop.
+**A pay floor needs its period.** A floor without a period would compare a day rate to a salary, so half an answer applies nothing. Setting a floor necessarily hides listings that state no salary, because they cannot be shown to meet it; the form says so rather than letting the count quietly drop. A floor of zero and a period of `unknown` are unreachable for the same reason: neither narrows anything while both would still hide unstated salaries.
 
 ## Two defects found and fixed during verification
 
@@ -67,14 +67,32 @@ Everything is URL-backed and posts by GET, so the whole surface works without Ja
 
 Also corrected: the development onboarding preview claimed fourteen extractable concepts over an empty evidence list. The count is now derived from the fictional evidence it actually shows.
 
+## Independent review findings, all remediated
+
+The review found four important defects and a bad test of my own. Each fix has a test verified to fail against the bug first.
+
+**A pay floor entered without a period was stored and then discarded.** The search page refuses a half-answered floor; onboarding accepted one, saved `minimum` against `period: "unknown"`, and the matching gate then dropped it silently. Someone who typed £45,000 and left the period unset got no floor and no explanation. The same rule now applies at both boundaries.
+
+**Clearing a select could not clear it.** The module's own header states the contract — a step must declare every field it controls, because the database merge keeps any absent key. The checkbox and multi-select paths honoured it; the two selects omitted the key when set back to empty, so choosing "No preference" left the previously stored level in place and the page re-rendered showing it. Both vocabularies already carry an explicit unanswered member (`unspecified`, `unknown`), so the key is now always written and the fields map those back to the empty option.
+
+**Browsing the catalogue depended on a personalisation read.** `/jobs` loads decisions so a saved job says so, but `Promise.all` meant a failed decisions query took down the whole search even though the jobs query had succeeded. It now degrades to unsaved save controls and still renders the listings, which is what the degraded-state requirement asks for.
+
+**One preference, two answers.** Excluding unknown pay mapped the URL filter to `advertised`, which also hides every _estimated_ salary — while the matching gate for the same preference keeps them. Provenance is a tri-state the invariant requires be kept visibly distinct, and a one-value filter cannot express "advertised or estimated", so onboarding no longer narrows it at all. The preference still shapes matching through the search profile.
+
+**The location filter was double-escaped, and its test would have passed either way.** `ilike` carries its own value, so it needs SQL LIKE escaping only; applying the quoted-operand layer `or()` needs sent the escape characters through literally, and a location containing `%`, `_`, or a backslash matched nothing. The test asserted the corrupted pattern. It is replaced by five real cases, and `*` is now escaped in both paths because PostgREST rewrites it to a wildcard — without that, `?location=*` matched everything.
+
+Minor findings also fixed: `README.md` and `docs/product/roadmap.md` still described `?view=all` and `/explore`; `salaryPeriod=unknown` and `salaryMin=0` were URL-reachable; the chip and the option disagreed about the 24-hour window; three landmarks shared the accessible name "Search jobs"; a `toEqual` I had weakened to `toMatchObject` is restored; and a single stated location is now carried into the first-run redirect.
+
+Accepted without change: `getDecisions` reads the owner's whole decision history unbounded. It is RLS-scoped and holds one row per decision the user personally made, so a bound would be speculative.
+
 ## Verification evidence
 
-- `pnpm verify` passed: 1,124 workspace tests across 83 files, plus 130 function tests — 1,254 automated tests total. Formatting, lint, all typechecks, Deno graphs, guardrails, and the production build are included.
+- `pnpm verify` passed on the remediated head: 1,133 workspace tests across 83 files, plus 130 function tests — 1,263 automated tests total. Formatting, lint, all typechecks, Deno graphs, guardrails, and the production build are included.
 - `pnpm check:supabase`: 20 migrations, 32 forced-RLS tables.
 - `pnpm check:production`: the development bypass still fails closed in a production build.
 - `pnpm audit --prod --audit-level high`: no known vulnerabilities. No dependency was added.
-- `git diff --check` clean.
-- Browser verification at 1440 px and true 390 px: search with all five new facets combined, chip removal preserving the rest of the search, sort links, `/matches`, `/pathways`, and the onboarding confirmation and preferences steps. No document overflow and no console errors in a fresh tab.
+- `git diff --check` clean; Gitleaks found no leaks over `origin/main..HEAD`.
+- Browser verification at 1440 px and true 390 px: search with all five new facets combined, chip removal preserving the rest of the search, sort links, `/matches`, `/pathways`, and the onboarding confirmation and preferences steps. No document overflow and no console errors in a fresh tab. `?location=50%25` returns zero jobs rather than the whole catalogue, confirming the wildcard fix.
 
 ## Environment limitations
 
