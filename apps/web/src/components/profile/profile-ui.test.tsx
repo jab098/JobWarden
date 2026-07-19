@@ -57,6 +57,7 @@ function deferred<T>() {
 const emptySnapshot: ProfileSnapshot = {
   generation: 0,
   draft: null,
+  evidence: [],
   currentCv: null,
   suggestions: [],
   searches: [],

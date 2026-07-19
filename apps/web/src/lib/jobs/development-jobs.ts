@@ -3,7 +3,7 @@ import "server-only";
 import type { JobsRepository } from "./repository";
 import type { JobDetail, JobFilters, JobListItem } from "./types";
 
-const developmentJobs = [
+export const developmentJobs = [
   {
     id: "0d74a055-d0e6-4f50-a77a-9c8fd8543af3",
     title: "Senior Software Engineer",

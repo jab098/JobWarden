@@ -129,6 +129,35 @@ describe("caller-bound Supabase career profile repository", () => {
     expect(fake.from).not.toHaveBeenCalled();
   });
 
+  it("surfaces evidence at the top level even when no profile row exists", async () => {
+    const evidenceRow = {
+      id: "61000000-0000-4000-8000-000000000001",
+      normalized_concept: "sql",
+      label: "SQL",
+      category: "tool",
+      origin: "cv",
+      confidence: 0.9,
+      evidence_reference: "character:1-3",
+      evidence_excerpt: "Fictional evidence: used SQL daily.",
+      proficiency_signal: "demonstrated",
+      last_used_at: null,
+      confirmation_state: "confirmed",
+    };
+    const fake = client({
+      career_profiles: [],
+      career_evidence_items: [evidenceRow],
+    });
+
+    const snapshot = await createSupabaseProfileRepository(
+      fake.client,
+    ).getSnapshot();
+
+    expect(snapshot.draft).toBeNull();
+    expect(snapshot.evidence).toEqual([
+      expect.objectContaining({ label: "SQL", confirmationState: "confirmed" }),
+    ]);
+  });
+
   it("saves a validated draft through an auth-derived RPC without a user ID", async () => {
     const fake = client();
     const repository = createSupabaseProfileRepository(fake.client);

@@ -355,6 +355,7 @@ export function createSupabaseProfileRepository(
         return {
           generation: snapshot.generation,
           draft,
+          evidence,
           currentCv,
           suggestions: mapSuggestions(snapshot.suggestions),
           searches: mapSearches(snapshot.searches),

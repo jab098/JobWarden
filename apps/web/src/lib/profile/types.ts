@@ -1,4 +1,5 @@
 import type {
+  CareerEvidenceItem,
   CareerProfileDraft,
   NamedSearchProfileDraft,
   ProfileSuggestion,
@@ -24,6 +25,8 @@ export type ProfileUploadCapability = Readonly<{
 export type ProfileSnapshot = Readonly<{
   generation: number;
   draft: CareerProfileDraft | null;
+  /** All evidence items, present even when no profile draft exists yet. */
+  evidence: readonly CareerEvidenceItem[];
   currentCv: CvDocumentView | null;
   suggestions: readonly ProfileSuggestion[];
   searches: readonly SavedSearchProfile[];
