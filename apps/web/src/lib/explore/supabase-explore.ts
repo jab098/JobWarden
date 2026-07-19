@@ -1,6 +1,9 @@
 import "server-only";
 
-import { evaluateExplorePathways } from "@jobwarden/domain";
+import {
+  evaluateExplorePathways,
+  normalizedConceptSchema,
+} from "@jobwarden/domain";
 import { z } from "zod";
 
 import { createSupabaseProfileRepository } from "@/lib/profile/supabase-profile";
@@ -21,17 +24,10 @@ export class PathwayNotSuggestedError extends Error {
   }
 }
 
-const pathwayConceptSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(120)
-  .regex(/^[a-z0-9][a-z0-9 .+#/&()'-]*$/);
-
 const settingsRowSchema = z.object({ enabled: z.boolean() });
 
 const decisionRowSchema = z.object({
-  pathway_concept: pathwayConceptSchema,
+  pathway_concept: normalizedConceptSchema,
   decision: z.enum(["dismissed", "promoted"]),
 });
 
@@ -61,7 +57,7 @@ function data(response: QueryResponse): unknown {
  * every enabled saved search's role families; qualifying pathways must sit
  * outside all of them.
  */
-export function activeTargetRoleFamilies(
+function activeTargetRoleFamilies(
   snapshot: Pick<ProfileSnapshot, "draft" | "searches">,
 ): readonly string[] {
   return [
@@ -135,24 +131,7 @@ export function createSupabaseExploreRepository(
     return rows[0]?.enabled ?? false;
   }
 
-  async function loadSuggestions(): Promise<{
-    snapshot: ProfileSnapshot;
-    result: ExploreResult;
-  }> {
-    const snapshot = await profileRepository.getSnapshot();
-    const enabled = await readEnabled();
-    if (!enabled) {
-      return {
-        snapshot,
-        result: buildExploreResult({
-          enabled: false,
-          snapshot,
-          decisions: new Map(),
-          dataMode: snapshot.dataMode,
-        }),
-      };
-    }
-
+  async function readDecisions(): Promise<Map<string, PathwayDecision>> {
     const decisionRows = z
       .array(decisionRowSchema)
       .parse(
@@ -162,17 +141,40 @@ export function createSupabaseExploreRepository(
             .select("pathway_concept,decision"),
         ),
       );
-    const decisions = new Map<string, PathwayDecision>(
+    return new Map<string, PathwayDecision>(
       decisionRows.map((row) => [row.pathway_concept, row.decision]),
     );
+  }
 
+  const disabledResult: ExploreResult = {
+    enabled: false,
+    items: [],
+    dismissed: [],
+    dataMode: "supabase",
+  };
+
+  /**
+   * The opt-in check runs first so a user who never enabled Explore pays no
+   * snapshot cost; the enabled path fetches the snapshot and decisions in
+   * parallel.
+   */
+  async function loadEnabledSuggestions(): Promise<{
+    snapshot: ProfileSnapshot;
+    result: ExploreResult;
+  } | null> {
+    if (!(await readEnabled())) return null;
+
+    const [snapshot, decisions] = await Promise.all([
+      profileRepository.getSnapshot(),
+      readDecisions(),
+    ]);
     return {
       snapshot,
       result: buildExploreResult({
         enabled: true,
         snapshot,
         decisions,
-        dataMode: snapshot.dataMode,
+        dataMode: "supabase",
       }),
     };
   }
@@ -180,7 +182,7 @@ export function createSupabaseExploreRepository(
   return {
     async getExplore() {
       try {
-        return (await loadSuggestions()).result;
+        return (await loadEnabledSuggestions())?.result ?? disabledResult;
       } catch {
         throw new Error("Unable to load explore pathways");
       }
@@ -200,7 +202,7 @@ export function createSupabaseExploreRepository(
     },
 
     async decide(pathwayConcept, decision) {
-      const targetConcept = pathwayConceptSchema.parse(pathwayConcept);
+      const targetConcept = normalizedConceptSchema.parse(pathwayConcept);
       const targetDecision = z.enum(["dismissed", "clear"]).parse(decision);
       try {
         data(
@@ -215,17 +217,36 @@ export function createSupabaseExploreRepository(
     },
 
     async promote(pathwayConcept) {
-      const targetConcept = pathwayConceptSchema.parse(pathwayConcept);
+      const targetConcept = normalizedConceptSchema.parse(pathwayConcept);
 
-      const { snapshot, result } = await loadSuggestions();
+      const loaded = await loadEnabledSuggestions();
+      if (!loaded) throw new PathwayNotSuggestedError();
+      const { snapshot, result } = loaded;
       const item = [...result.items, ...result.dismissed].find(
         (candidate) =>
           candidate.suggestion.pathway.normalizedConcept === targetConcept,
       );
       if (!item) throw new PathwayNotSuggestedError();
 
-      const draft = buildPromotedSearchDraft(item.suggestion, snapshot.draft);
-      await profileRepository.saveSearch(snapshot.generation, null, draft);
+      // Idempotency: if a saved search already targets this role family
+      // (necessarily disabled, or the pathway would not be suggested),
+      // re-enable it instead of creating a duplicate.
+      const existingSearch = snapshot.searches.find((search) =>
+        search.roleFamilies.some(
+          (family) =>
+            family.normalizedConcept.trim().toLowerCase() === targetConcept,
+        ),
+      );
+      if (existingSearch) {
+        const { id, ...existingDraft } = existingSearch;
+        await profileRepository.saveSearch(snapshot.generation, id, {
+          ...existingDraft,
+          enabled: true,
+        });
+      } else {
+        const draft = buildPromotedSearchDraft(item.suggestion, snapshot.draft);
+        await profileRepository.saveSearch(snapshot.generation, null, draft);
+      }
       try {
         data(
           await supabaseClient.rpc("decide_career_pathway", {

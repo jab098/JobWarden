@@ -250,10 +250,34 @@ describe("evaluateExplorePathways", () => {
     );
     const suggestion = suggestions[0];
     expect(suggestion?.matchedSkills).toEqual([
-      { label: "Alpha", significant: true, evidenceLabels: ["Alpha (CV)"] },
-      { label: "Beta", significant: true, evidenceLabels: ["Beta"] },
-      { label: "Gamma", significant: false, evidenceLabels: ["Gamma"] },
-      { label: "Delta", significant: false, evidenceLabels: ["Delta"] },
+      {
+        normalizedConcept: "alpha",
+        label: "Alpha",
+        significant: true,
+        evidenceLabels: ["Alpha (CV)"],
+        evidenceCategories: ["skill"],
+      },
+      {
+        normalizedConcept: "beta",
+        label: "Beta",
+        significant: true,
+        evidenceLabels: ["Beta"],
+        evidenceCategories: ["tool"],
+      },
+      {
+        normalizedConcept: "gamma",
+        label: "Gamma",
+        significant: false,
+        evidenceLabels: ["Gamma"],
+        evidenceCategories: ["skill"],
+      },
+      {
+        normalizedConcept: "delta",
+        label: "Delta",
+        significant: false,
+        evidenceLabels: ["Delta"],
+        evidenceCategories: ["skill"],
+      },
     ]);
     expect(suggestion?.gaps).toEqual([
       { label: "Epsilon", significant: false },

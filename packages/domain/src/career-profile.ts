@@ -56,9 +56,9 @@ export const profileSuggestionStates = [
   "rejected",
 ] as const;
 
-const normalizedConceptPattern = /^[a-z0-9][a-z0-9 .+#/&()'-]*$/;
+export const normalizedConceptPattern = /^[a-z0-9][a-z0-9 .+#/&()'-]*$/;
 
-const normalizedConceptSchema = z
+export const normalizedConceptSchema = z
   .string()
   .trim()
   .min(1)

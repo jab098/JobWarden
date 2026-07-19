@@ -17,14 +17,20 @@ export interface CareerPathway {
   coreSkills: readonly PathwayCoreSkill[];
 }
 
+export type CreditedEvidenceCategory = "skill" | "tool" | "responsibility";
+
 export interface ExploreSuggestion {
   pathway: Pick<CareerPathway, "normalizedConcept" | "label" | "summary">;
   /** Integer percentage, floor(matchedWeight * 100 / totalWeight). */
   overlapPercent: number;
   matchedSkills: readonly {
+    /** Equals the confirmed evidence concept that earned the credit. */
+    normalizedConcept: string;
     label: string;
     significant: boolean;
     evidenceLabels: readonly string[];
+    /** The confirmed-evidence categories that matched this core skill. */
+    evidenceCategories: readonly CreditedEvidenceCategory[];
   }[];
   gaps: readonly { label: string; significant: boolean }[];
 }
@@ -32,11 +38,17 @@ export interface ExploreSuggestion {
 const OVERLAP_THRESHOLD_PERCENT = 70;
 const SIGNIFICANT_GAP_CEILING = 2;
 
-const creditedCategories: readonly CareerEvidenceItem["category"][] = [
+const creditedCategories: readonly CreditedEvidenceCategory[] = [
   "skill",
   "tool",
   "responsibility",
 ];
+
+function isCreditedCategory(
+  category: CareerEvidenceItem["category"],
+): category is CreditedEvidenceCategory {
+  return (creditedCategories as readonly string[]).includes(category);
+}
 
 function skillEntry(
   normalizedConcept: string,
@@ -228,13 +240,22 @@ export function evaluateExplorePathways(
     activeTargetRoleFamilyConcepts.map(normaliseConcept),
   );
 
-  const evidenceLabelsByConcept = new Map<string, string[]>();
+  const evidenceByConcept = new Map<
+    string,
+    { labels: string[]; categories: CreditedEvidenceCategory[] }
+  >();
   for (const item of evidence) {
     if (item.confirmationState !== "confirmed") continue;
-    if (!creditedCategories.includes(item.category)) continue;
-    const labels = evidenceLabelsByConcept.get(item.normalizedConcept) ?? [];
-    if (!labels.includes(item.label)) labels.push(item.label);
-    evidenceLabelsByConcept.set(item.normalizedConcept, labels);
+    if (!isCreditedCategory(item.category)) continue;
+    const entry = evidenceByConcept.get(item.normalizedConcept) ?? {
+      labels: [],
+      categories: [],
+    };
+    if (!entry.labels.includes(item.label)) entry.labels.push(item.label);
+    if (!entry.categories.includes(item.category)) {
+      entry.categories.push(item.category);
+    }
+    evidenceByConcept.set(item.normalizedConcept, entry);
   }
 
   const suggestions: ExploreSuggestion[] = [];
@@ -251,15 +272,15 @@ export function evaluateExplorePathways(
 
     for (const skill of pathway.coreSkills) {
       totalWeight += skill.weight;
-      const evidenceLabels = evidenceLabelsByConcept.get(
-        skill.normalizedConcept,
-      );
-      if (evidenceLabels) {
+      const matchedEvidence = evidenceByConcept.get(skill.normalizedConcept);
+      if (matchedEvidence) {
         matchedWeight += skill.weight;
         matchedSkills.push({
+          normalizedConcept: skill.normalizedConcept,
           label: skill.label,
           significant: skill.significant,
-          evidenceLabels,
+          evidenceLabels: matchedEvidence.labels,
+          evidenceCategories: matchedEvidence.categories,
         });
       } else {
         if (skill.significant) significantGapCount += 1;

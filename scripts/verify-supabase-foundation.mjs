@@ -42,6 +42,7 @@ const publicTables = [
   "career_explore_settings",
   "career_pathway_decisions",
   "explore_pathway_analytics",
+  "explore_pathways",
 ];
 
 function compact(sql) {
@@ -659,6 +660,26 @@ export function verifyFoundationSql(files) {
     [
       "delete from public.career_explore_settings where owner_id = actor_user_id",
       "career profile deletion must also erase explore settings",
+    ],
+    [
+      "insert into public.explore_pathways (pathway_concept) values",
+      "missing curated explore pathway seed table",
+    ],
+    [
+      "select 1 from public.explore_pathways where pathway_concept = target_pathway_concept",
+      "pathway decision RPC must reject non-curated pathways",
+    ],
+    [
+      "create table public.career_pathway_decisions ( id uuid primary key default gen_random_uuid(), owner_id uuid not null references auth.users (id) on delete cascade, pathway_concept text not null references public.explore_pathways (pathway_concept)",
+      "pathway decisions must reference the curated taxonomy",
+    ],
+    [
+      "create table public.explore_pathway_analytics ( pathway_concept text not null references public.explore_pathways (pathway_concept)",
+      "aggregate pathway analytics must reference the curated taxonomy",
+    ],
+    [
+      "where public.career_pathway_decisions.decision is distinct from excluded.decision",
+      "pathway analytics must count decision transitions only",
     ],
   ];
 

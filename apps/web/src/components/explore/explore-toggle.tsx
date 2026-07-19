@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { setExploreEnabledAction } from "@/app/(protected)/explore/actions";
+import { ActionFeedback } from "@/components/explore/action-feedback";
 import { Button } from "@/components/ui/button";
 import type { ExploreActionState } from "@/lib/explore/types";
 
@@ -25,16 +26,7 @@ export function ExploreToggle({ enabled }: { enabled: boolean }) {
       >
         {enabled ? "Turn off Explore" : "Turn on Explore"}
       </Button>
-      {state.kind !== "idle" && state.kind !== "success" ? (
-        <span role="alert" className="text-xs text-[#8a3328]">
-          {state.message}
-        </span>
-      ) : null}
-      {state.kind === "success" ? (
-        <span role="status" className="text-xs text-[#596173]">
-          {state.message}
-        </span>
-      ) : null}
+      <ActionFeedback state={state} />
     </form>
   );
 }

@@ -1,5 +1,32 @@
 begin;
 
+-- Curated pathway taxonomy reference. Rows must stay in lockstep with
+-- careerPathways in packages/domain/src/explore.ts (guarded by a repository
+-- test); membership here is the database boundary that keeps decisions and
+-- the ownerless analytics free of arbitrary caller-supplied text.
+create table public.explore_pathways (
+  pathway_concept text primary key check (
+    pathway_concept ~ '^[a-z0-9][a-z0-9 .+#/&()''-]*$'
+    and char_length(pathway_concept) <= 120
+  )
+);
+
+alter table public.explore_pathways enable row level security;
+alter table public.explore_pathways force row level security;
+
+revoke all on public.explore_pathways from public, anon, authenticated;
+grant all on public.explore_pathways to service_role;
+
+insert into public.explore_pathways (pathway_concept) values
+  ('product analytics implementation'),
+  ('event data governance'),
+  ('analytics solutions consulting'),
+  ('consent technology implementation'),
+  ('technical customer success for analytics platforms'),
+  ('marketing operations'),
+  ('business intelligence development'),
+  ('conversion rate optimisation');
+
 -- Opt-in Explore state. Explore is disabled until the owner explicitly
 -- enables it; mutations go through the owner-fenced RPC only.
 create table public.career_explore_settings (
@@ -24,10 +51,11 @@ grant all on public.career_explore_settings to service_role;
 create table public.career_pathway_decisions (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users (id) on delete cascade,
-  pathway_concept text not null check (
-    pathway_concept ~ '^[a-z0-9][a-z0-9 .+#/&()''-]*$'
-    and char_length(pathway_concept) <= 120
-  ),
+  pathway_concept text not null
+    references public.explore_pathways (pathway_concept) check (
+      pathway_concept ~ '^[a-z0-9][a-z0-9 .+#/&()''-]*$'
+      and char_length(pathway_concept) <= 120
+    ),
   decision text not null check (decision in ('dismissed', 'promoted')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -50,10 +78,11 @@ grant all on public.career_pathway_decisions to service_role;
 -- identifying text can exist in this schema, and these counters survive
 -- career-profile deletion because they identify nobody.
 create table public.explore_pathway_analytics (
-  pathway_concept text not null check (
-    pathway_concept ~ '^[a-z0-9][a-z0-9 .+#/&()''-]*$'
-    and char_length(pathway_concept) <= 120
-  ),
+  pathway_concept text not null
+    references public.explore_pathways (pathway_concept) check (
+      pathway_concept ~ '^[a-z0-9][a-z0-9 .+#/&()''-]*$'
+      and char_length(pathway_concept) <= 120
+    ),
   event text not null check (event in ('dismissed', 'promoted')),
   event_count bigint not null default 0 check (event_count >= 0),
   primary key (pathway_concept, event)
@@ -134,6 +163,13 @@ begin
   where fence.user_id = actor_user_id
   for update;
 
+  if not exists (
+    select 1 from public.explore_pathways
+    where pathway_concept = target_pathway_concept
+  ) then
+    raise exception using errcode = '22023', message = 'unknown pathway';
+  end if;
+
   if target_decision = 'clear' then
     delete from public.career_pathway_decisions
     where owner_id = actor_user_id and pathway_concept = target_pathway_concept;
@@ -144,13 +180,17 @@ begin
   values (actor_user_id, target_pathway_concept, target_decision)
   on conflict (owner_id, pathway_concept) do update set
     decision = excluded.decision,
-    updated_at = clock_timestamp();
+    updated_at = clock_timestamp()
+  where public.career_pathway_decisions.decision is distinct from excluded.decision;
 
-  -- Append-only aggregate counter; clear never decrements.
-  insert into public.explore_pathway_analytics (pathway_concept, event, event_count)
-  values (target_pathway_concept, target_decision, 1)
-  on conflict (pathway_concept, event) do update set
-    event_count = public.explore_pathway_analytics.event_count + 1;
+  -- Append-only aggregate counter; counts state transitions only, so repeat
+  -- toggles of the same decision never inflate it, and clear never decrements.
+  if found then
+    insert into public.explore_pathway_analytics (pathway_concept, event, event_count)
+    values (target_pathway_concept, target_decision, 1)
+    on conflict (pathway_concept, event) do update set
+      event_count = public.explore_pathway_analytics.event_count + 1;
+  end if;
 
   return target_decision;
 end;

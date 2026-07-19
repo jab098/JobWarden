@@ -1,5 +1,6 @@
 "use server";
 
+import { normalizedConceptSchema } from "@jobwarden/domain";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -11,22 +12,15 @@ import type { ExploreActionState } from "@/lib/explore/types";
 
 import { getExploreMutationContext } from "./action-context";
 
-const pathwayConceptSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(120)
-  .regex(/^[a-z0-9][a-z0-9 .+#/&()'-]*$/);
-
 const enabledSchema = z.object({ enabled: z.enum(["true", "false"]) }).strict();
 const decisionSchema = z
   .object({
-    pathwayConcept: pathwayConceptSchema,
+    pathwayConcept: normalizedConceptSchema,
     decision: z.enum(["dismissed", "clear"]),
   })
   .strict();
 const promoteSchema = z
-  .object({ pathwayConcept: pathwayConceptSchema })
+  .object({ pathwayConcept: normalizedConceptSchema })
   .strict();
 
 function value(formData: FormData, key: string): string {

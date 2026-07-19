@@ -6,6 +6,7 @@ import {
   decidePathwayAction,
   promotePathwayAction,
 } from "@/app/(protected)/explore/actions";
+import { ActionFeedback } from "@/components/explore/action-feedback";
 import { Button } from "@/components/ui/button";
 import type {
   ExploreActionState,
@@ -13,22 +14,6 @@ import type {
 } from "@/lib/explore/types";
 
 const initialState: ExploreActionState = { kind: "idle" };
-
-function ActionFeedback({ state }: { state: ExploreActionState }) {
-  if (state.kind === "idle") return null;
-  if (state.kind === "success") {
-    return (
-      <span role="status" className="text-xs text-[#596173]">
-        {state.message}
-      </span>
-    );
-  }
-  return (
-    <span role="alert" className="text-xs text-[#8a3328]">
-      {state.message}
-    </span>
-  );
-}
 
 export function ExploreItem({ item }: { item: ExploreSuggestionItem }) {
   const { suggestion } = item;
@@ -55,7 +40,7 @@ export function ExploreItem({ item }: { item: ExploreSuggestionItem }) {
                     aria-hidden="true"
                     className="size-1.5 rounded-full bg-[#3f8f5f]"
                   />
-                  Promoted
+                  Promoted earlier
                 </span>
               ) : null}
               {dismissed ? (

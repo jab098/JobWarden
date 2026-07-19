@@ -514,7 +514,28 @@ describe("Supabase foundation static verifier", () => {
         "explore opt-in RPC must have its narrow authenticated grant",
         "career profile deletion must also erase pathway decisions",
         "career profile deletion must also erase explore settings",
+        "missing curated explore pathway seed table",
+        "pathway decision RPC must reject non-curated pathways",
+        "pathway decisions must reference the curated taxonomy",
+        "aggregate pathway analytics must reference the curated taxonomy",
+        "pathway analytics must count decision transitions only",
       ]),
+    );
+  });
+
+  it("keeps the SQL pathway seed in lockstep with the domain taxonomy", async () => {
+    const { careerPathways } =
+      await import("../packages/domain/src/explore.ts");
+    const migrationSql = migration("202607190002_explore_pathways.sql");
+    const seedMatch = migrationSql.match(
+      /insert into public\.explore_pathways \(pathway_concept\) values(.*?);/u,
+    );
+    const seeded = [...(seedMatch?.[1] ?? "").matchAll(/\('([^']+)'\)/gu)].map(
+      (entry) => entry[1],
+    );
+
+    expect(seeded.toSorted()).toEqual(
+      careerPathways.map((pathway) => pathway.normalizedConcept).toSorted(),
     );
   });
 

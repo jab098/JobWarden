@@ -154,7 +154,7 @@ describe("Supabase explore repository", () => {
     expect(result.dismissed[0]?.suggestion.overlapPercent).toBe(71);
   });
 
-  it("short-circuits with no suggestions while explore is disabled", async () => {
+  it("short-circuits without fetching the profile snapshot while explore is disabled", async () => {
     const fake = createFakeClient({ enabledRows: [] });
 
     const result = await createSupabaseExploreRepository(
@@ -164,6 +164,9 @@ describe("Supabase explore repository", () => {
     expect(result.enabled).toBe(false);
     expect(result.items).toEqual([]);
     expect(result.dismissed).toEqual([]);
+    expect(fake.rpc.mock.calls.map(([name]) => name)).not.toContain(
+      "get_career_profile_snapshot",
+    );
   });
 
   it("excludes pathways covered by enabled saved searches", async () => {
@@ -269,17 +272,71 @@ describe("Supabase explore repository", () => {
     const draft = saveCall.draft_value as {
       name: string;
       roleFamilies: readonly { normalizedConcept: string }[];
+      skillConcepts: readonly string[];
+      responsibilityConcepts: readonly string[];
     };
     expect(draft.name).toBe("Product analytics implementation");
     expect(draft.roleFamilies[0]?.normalizedConcept).toBe(
       "product analytics implementation",
     );
+    // Concepts must be evidence normalised concepts split by category so the
+    // save_search_profile RPC's confirmed-evidence validation accepts them.
+    expect(draft.skillConcepts).toEqual([
+      "event instrumentation",
+      "data quality governance",
+      "experimentation",
+    ]);
+    expect(draft.responsibilityConcepts).toEqual(["analytics implementation"]);
 
     const decideCall = fake.rpc.mock.calls[decideIndex]?.[1];
     expect(decideCall).toEqual({
       target_pathway_concept: "product analytics implementation",
       target_decision: "promoted",
     });
+  });
+
+  it("re-enables an existing search for the pathway instead of duplicating it", async () => {
+    const existingSearch = {
+      id: "63000000-0000-4000-8000-000000000042",
+      name: "Product analytics implementation",
+      enabled: false,
+      role_families: [
+        {
+          normalizedConcept: "product analytics implementation",
+          label: "Product analytics implementation",
+        },
+      ],
+      include_terms: [],
+      exclude_terms: [],
+      industries: [],
+      domains: [],
+      skill_concepts: [],
+      responsibility_concepts: [],
+      current_seniority: "senior",
+      target_seniority: "unspecified",
+      employment_types: [],
+      working_times: [],
+      workplace_types: [],
+      uk_locations: [],
+      ir35_statuses: [],
+      compensation_minimum: null,
+      compensation_maximum: null,
+      compensation_period: "unknown",
+      allow_unknown_compensation: true,
+      recency_days: 30,
+      notifications_enabled: false,
+    };
+    const fake = createFakeClient({ searches: [existingSearch] });
+
+    await createSupabaseExploreRepository(fake.client).promote(
+      "product analytics implementation",
+    );
+
+    const saveCall = fake.rpc.mock.calls.find(
+      ([name]) => name === "save_search_profile",
+    )?.[1] as unknown as Record<string, unknown>;
+    expect(saveCall.target_search_id).toBe(existingSearch.id);
+    expect((saveCall.draft_value as { enabled: boolean }).enabled).toBe(true);
   });
 
   it("refuses to promote a pathway that is not currently suggested", async () => {

@@ -2,8 +2,14 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(24);
+select plan(29);
 
+select has_table('public', 'explore_pathways', 'the curated pathway taxonomy is persisted');
+select is(
+  (select count(*)::integer from public.explore_pathways),
+  8,
+  'the curated pathway seed matches the eight-domain taxonomy'
+);
 select has_table('public', 'career_explore_settings', 'explore opt-in state is persisted');
 select has_table('public', 'career_pathway_decisions', 'pathway decisions are persisted');
 select has_table('public', 'explore_pathway_analytics', 'aggregate pathway analytics are persisted');
@@ -17,13 +23,25 @@ select is(
       and pg_class.relname in (
         'career_explore_settings',
         'career_pathway_decisions',
-        'explore_pathway_analytics'
+        'explore_pathway_analytics',
+        'explore_pathways'
       )
       and pg_class.relrowsecurity
       and pg_class.relforcerowsecurity
   ),
-  3,
+  4,
   'all explore tables enable and force RLS'
+);
+
+select fk_ok(
+  'public', 'career_pathway_decisions', 'pathway_concept',
+  'public', 'explore_pathways', 'pathway_concept',
+  'pathway decisions reference only curated pathways'
+);
+select fk_ok(
+  'public', 'explore_pathway_analytics', 'pathway_concept',
+  'public', 'explore_pathways', 'pathway_concept',
+  'aggregate analytics reference only curated pathways'
 );
 
 select policies_are(
@@ -122,6 +140,13 @@ select throws_ok(
   '23514',
   null,
   'analytics reject free text outside the normalised-concept grammar'
+);
+select throws_ok(
+  $$ insert into public.explore_pathway_analytics (pathway_concept, event, event_count)
+     values ('grammar valid but not curated', 'dismissed', 1) $$,
+  '23503',
+  null,
+  'analytics reject grammar-valid concepts outside the curated taxonomy'
 );
 select throws_ok(
   $$ insert into public.explore_pathway_analytics (pathway_concept, event, event_count)

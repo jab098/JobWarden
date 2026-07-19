@@ -21,14 +21,18 @@ function suggestion(
     overlapPercent: 71,
     matchedSkills: [
       {
+        normalizedConcept: "event instrumentation",
         label: "Event instrumentation",
         significant: true,
         evidenceLabels: ["Event instrumentation"],
+        evidenceCategories: ["skill"],
       },
       {
+        normalizedConcept: "analytics implementation",
         label: "Analytics implementation",
         significant: true,
         evidenceLabels: ["Analytics implementation"],
+        evidenceCategories: ["responsibility"],
       },
     ],
     gaps: [{ label: "SQL", significant: false }],
@@ -62,10 +66,10 @@ describe("buildPromotedSearchDraft", () => {
         label: "Product analytics implementation",
       },
     ]);
-    expect(draft.skillConcepts).toEqual([
-      "Event instrumentation",
-      "Analytics implementation",
-    ]);
+    // Concepts must equal confirmed evidence normalised concepts, partitioned
+    // by the evidence category the save_search_profile RPC validates against.
+    expect(draft.skillConcepts).toEqual(["event instrumentation"]);
+    expect(draft.responsibilityConcepts).toEqual(["analytics implementation"]);
     expect(draft.currentSeniority).toBe("senior");
     expect(draft.targetSeniority).toBe("lead");
     expect(draft.compensation.allowUnknown).toBe(true);
@@ -83,9 +87,11 @@ describe("buildPromotedSearchDraft", () => {
 
   it("deduplicates and caps matched skill concepts", () => {
     const matched = Array.from({ length: 60 }, (_, index) => ({
+      normalizedConcept: `skill ${index}`,
       label: `Skill ${index}`,
       significant: false,
       evidenceLabels: [`Skill ${index}`],
+      evidenceCategories: ["skill" as const],
     }));
     const draft = buildPromotedSearchDraft(
       suggestion({

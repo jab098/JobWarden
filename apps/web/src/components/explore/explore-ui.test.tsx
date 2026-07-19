@@ -36,14 +36,18 @@ function item(
       overlapPercent: 71,
       matchedSkills: [
         {
+          normalizedConcept: "event instrumentation",
           label: "Event instrumentation",
           significant: true,
           evidenceLabels: ["Event instrumentation"],
+          evidenceCategories: ["skill"],
         },
         {
+          normalizedConcept: "analytics implementation",
           label: "Analytics implementation",
           significant: true,
           evidenceLabels: ["Analytics implementation (CV)"],
+          evidenceCategories: ["responsibility"],
         },
       ],
       gaps: [

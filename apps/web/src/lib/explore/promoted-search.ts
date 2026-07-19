@@ -9,16 +9,32 @@ const skillConceptCap = 50;
 /**
  * Deterministically prefills a named search profile from an Explore
  * suggestion. Only the pathway role family and the user's own matched
- * evidence labels carry over; every allow-list stays permissive so the user
- * reviews and narrows the promoted search themselves.
+ * confirmed-evidence concepts carry over; every allow-list stays permissive
+ * so the user reviews and narrows the promoted search themselves.
+ *
+ * The save_search_profile RPC only accepts concepts that exactly equal
+ * confirmed owner evidence normalised concepts, validated per category
+ * (skill/tool vs responsibility), so the matched concepts are partitioned by
+ * the evidence categories that earned the credit.
  */
 export function buildPromotedSearchDraft(
   suggestion: ExploreSuggestion,
   careerDraft: CareerProfileDraft | null,
 ): NamedSearchProfileDraft {
-  const skillConcepts = [
-    ...new Set(suggestion.matchedSkills.map((skill) => skill.label)),
-  ].slice(0, skillConceptCap);
+  const skillConcepts: string[] = [];
+  const responsibilityConcepts: string[] = [];
+  for (const matched of suggestion.matchedSkills) {
+    const viaSkillOrTool = matched.evidenceCategories.some(
+      (category) => category === "skill" || category === "tool",
+    );
+    const target = viaSkillOrTool ? skillConcepts : responsibilityConcepts;
+    if (
+      !target.includes(matched.normalizedConcept) &&
+      target.length < skillConceptCap
+    ) {
+      target.push(matched.normalizedConcept);
+    }
+  }
 
   return {
     name: suggestion.pathway.label.slice(0, 80),
@@ -34,7 +50,7 @@ export function buildPromotedSearchDraft(
     industries: [],
     domains: [],
     skillConcepts,
-    responsibilityConcepts: [],
+    responsibilityConcepts,
     currentSeniority: careerDraft?.currentSeniority ?? "unspecified",
     targetSeniority: careerDraft?.targetSeniority ?? "unspecified",
     employmentTypes: [],
