@@ -31,11 +31,11 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Handoff
 
-- Current integration branch: `main`; Task 16 was delivered by PR #18 at merge commit `46dacb4`
-- Last independently reviewed task implementation commit: `0b9fabd` (Task 16; delivered by merge `46dacb4`)
+- Current integration branch: `main`; Task 18 was delivered by PR #19 at merge commit `51f8eaf`
+- Last independently reviewed task implementation commit: Task 18 (delivered by merge `51f8eaf`)
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
 - Active feature branch: none
-- Active task: Task 18 is implemented and reviewed; Task 19 is next. Tasks 1–17 are merged; the owner approved four further tasks on 2026-07-19. Tasks 18–20 need no platform setup; Task 21 requires setup runbook steps 1–4
+- Active task: Task 19 (Guided setup and first-run population). Tasks 1–17 are merged; the owner approved four further tasks on 2026-07-19. Tasks 18–20 need no platform setup; Task 21 requires setup runbook steps 1–4
 
 ## Task progress
 
