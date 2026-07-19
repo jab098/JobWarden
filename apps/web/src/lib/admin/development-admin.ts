@@ -6,9 +6,13 @@ import type {
   IngestionRunView,
   JobSourceView,
   SourceHealthView,
+  AuditLogEntry,
+  OperationalHealth,
 } from "./types";
 
 export type DevelopmentAdminSnapshot = {
+  auditLog: readonly AuditLogEntry[];
+  health: OperationalHealth;
   accessRequestsEnabled: boolean;
   accessRequests: AccessRequestView[];
   sources: JobSourceView[];
@@ -26,6 +30,40 @@ function deepFreeze<T>(value: T): Readonly<T> {
 }
 
 const snapshot = deepFreeze<DevelopmentAdminSnapshot>({
+  auditLog: [
+    {
+      id: "b0000000-0000-4000-8000-000000000001",
+      actorUserId: "30000000-0000-4000-8000-000000000001",
+      action: "access.approved",
+      resourceType: "access_request",
+      resourceId: "30000000-0000-4000-8000-000000000002",
+      metadata: { reason: "Fictional approval for preview" },
+      createdAt: "2026-07-19T09:12:00.000Z",
+    },
+    {
+      id: "b0000000-0000-4000-8000-000000000002",
+      actorUserId: "30000000-0000-4000-8000-000000000001",
+      action: "source.updated",
+      resourceType: "job_source",
+      resourceId: "40000000-0000-4000-8000-000000000001",
+      metadata: { provider: "greenhouse" },
+      createdAt: "2026-07-19T08:40:00.000Z",
+    },
+  ],
+  health: {
+    deliveries: {
+      sentToday: 12,
+      sentThisMonth: 240,
+      dailyLimit: 80,
+      monthlyLimit: 2500,
+      dailyHeadroom: 68,
+      monthlyHeadroom: 2260,
+      failed: 1,
+      suppressedNoMatches: 31,
+      suppressedByCap: 0,
+    },
+    ai: { dailyAllowance: 0, usedToday: 0 },
+  },
   accessRequestsEnabled: true,
   accessRequests: [
     {

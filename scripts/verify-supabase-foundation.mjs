@@ -21,6 +21,7 @@ export const requiredMigrationFiles = [
   "202607190006_data_export.sql",
   "202607190007_onboarding_state.sql",
   "202607190008_onboarding_answers.sql",
+  "202607190009_admin_observability.sql",
 ];
 
 const publicTables = [
@@ -803,6 +804,18 @@ export function verifyFoundationSql(files) {
     [
       "delete from public.career_cv_variants where owner_id = actor_user_id",
       "career profile deletion must also erase tailored CV variants",
+    ],
+    [
+      "create or replace function public.list_audit_log(",
+      "the audit log must be readable by an administrator",
+    ],
+    [
+      "if not public.is_admin() then raise exception using errcode = '42501', message = 'administrator access required'",
+      "operational reads must require administrator access",
+    ],
+    [
+      "delivery.status in ('pending', 'sent') and delivery.created_at >= daily_start",
+      "administrator headroom must count in-flight rows exactly as the send path does",
     ],
     [
       "set answers = public.career_onboarding_state.answers || excluded.answers",

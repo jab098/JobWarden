@@ -99,3 +99,28 @@ export type AdminFormAction = (
   previousState: AdminActionState,
   formData: FormData,
 ) => Promise<AdminActionState>;
+
+export type AuditLogEntry = {
+  id: string;
+  actorUserId: string | null;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type OperationalHealth = {
+  deliveries: {
+    sentToday: number;
+    sentThisMonth: number;
+    dailyLimit: number;
+    monthlyLimit: number;
+    dailyHeadroom: number;
+    monthlyHeadroom: number;
+    failed: number;
+    suppressedNoMatches: number;
+    suppressedByCap: number;
+  };
+  ai: { dailyAllowance: number; usedToday: number };
+};

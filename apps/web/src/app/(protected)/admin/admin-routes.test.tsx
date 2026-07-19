@@ -65,6 +65,21 @@ function repository(): AdminRepository {
     saveSource: vi
       .fn()
       .mockResolvedValue({ sourceId: snapshot.sources[0].sourceId }),
+    listAuditLog: vi.fn(async () => []),
+    getOperationalHealth: vi.fn(async () => ({
+      deliveries: {
+        sentToday: 12,
+        sentThisMonth: 240,
+        dailyLimit: 80,
+        monthlyLimit: 2500,
+        dailyHeadroom: 68,
+        monthlyHeadroom: 2260,
+        failed: 1,
+        suppressedNoMatches: 31,
+        suppressedByCap: 0,
+      },
+      ai: { dailyAllowance: 0, usedToday: 0 },
+    })),
     requestSourceIngestion: vi.fn().mockResolvedValue({
       requestId: "550e8400-e29b-41d4-a716-446655440000",
       correlationId: "660e8400-e29b-41d4-a716-446655440000",

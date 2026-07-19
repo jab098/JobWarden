@@ -8,6 +8,8 @@ import { IngestionRunList } from "@/components/admin/ingestion-run-list";
 import { SourceHealthList } from "@/components/admin/source-health-list";
 import { SourceList } from "@/components/admin/source-list";
 import { Button } from "@/components/ui/button";
+import { AuditLogTable } from "@/components/admin/audit-log-table";
+import { OperationalHealthPanel } from "@/components/admin/operational-health";
 import { getDevelopmentAdminSnapshot } from "@/lib/admin/development-admin";
 import { resolveDevelopmentAccessMode } from "@/lib/development/access-mode";
 
@@ -96,6 +98,16 @@ export default async function DevelopmentAdminPreview() {
           <IngestionRequestList requests={snapshot.ingestionRequests} />
           <SourceHealthList sources={snapshot.sourceHealth} />
           <IngestionRunList runs={snapshot.runs} />
+
+          <h2 className="mt-12 text-2xl font-semibold tracking-[-0.03em]">
+            Health
+          </h2>
+          <OperationalHealthPanel health={snapshot.health} />
+
+          <h2 className="mt-12 text-2xl font-semibold tracking-[-0.03em]">
+            Audit
+          </h2>
+          <AuditLogTable entries={snapshot.auditLog} />
         </div>
       </main>
     </AdminShell>
