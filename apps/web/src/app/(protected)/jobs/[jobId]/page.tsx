@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
+import Link from "next/link";
+
 import { TrackApplicationButton } from "@/components/applications/track-application-button";
 import { JobDetailView } from "@/components/jobs/job-detail-view";
 import { getApplicationsRepository } from "@/lib/applications/get-repository";
@@ -32,8 +34,14 @@ export default async function JobDetailPage({
   );
   return (
     <AppShell dataMode={dataMode}>
-      <div className="mx-auto max-w-[92rem] border-b border-[#dedbd2] bg-white px-5 py-3 sm:px-8">
+      <div className="mx-auto flex max-w-[92rem] flex-wrap items-center gap-x-5 gap-y-2 border-b border-[#dedbd2] bg-white px-5 py-3 sm:px-8">
         <TrackApplicationButton jobId={job.id} tracked={tracked} />
+        <Link
+          href={`/tailor/${job.id}`}
+          className="text-sm underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+        >
+          Tailor my CV for this role
+        </Link>
       </div>
       <JobDetailView dataMode={dataMode} job={job} />
     </AppShell>

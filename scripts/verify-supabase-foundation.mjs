@@ -17,6 +17,7 @@ export const requiredMigrationFiles = [
   "202607190002_explore_pathways.sql",
   "202607190003_application_tracker.sql",
   "202607190004_scheduled_notifications.sql",
+  "202607190005_cv_tailoring.sql",
 ];
 
 const publicTables = [
@@ -50,6 +51,7 @@ const publicTables = [
   "career_notification_settings",
   "career_notification_announcements",
   "career_notification_deliveries",
+  "career_cv_variants",
 ];
 
 // Reviewed exceptions to the "definer functions are closed to anon" rule.
@@ -794,6 +796,26 @@ export function verifyFoundationSql(files) {
       "delete from public.career_notification_settings where owner_id = actor_user_id",
       "career profile deletion must also erase notification settings",
     ],
+    [
+      "delete from public.career_cv_variants where owner_id = actor_user_id",
+      "career profile deletion must also erase tailored CV variants",
+    ],
+    [
+      "(status = 'draft' and expires_at is not null) or (status = 'saved' and expires_at is null)",
+      "unsaved CV variants must carry an expiry and saved variants must not",
+    ],
+    [
+      "clock_timestamp() + interval '24 hours'",
+      "unsaved CV variants must expire after 24 hours",
+    ],
+    [
+      "'jobwarden-cv-variant-expiry', '23 * * * *', 'select public.expire_cv_variants()'",
+      "missing hourly tailored variant expiry schedule",
+    ],
+    [
+      "and document.file_kind = 'docx' and document.is_current",
+      "layout-preserving output must require the owner's current DOCX source",
+    ],
   ];
 
   for (const [fragment, message] of requiredFragments) {
@@ -1081,6 +1103,7 @@ export function verifyFoundationSql(files) {
     );
   }
   for (const table of [
+    "career_cv_variants",
     "career_notification_settings",
     "career_notification_announcements",
     "career_notification_deliveries",
@@ -1252,7 +1275,7 @@ export function verifyFoundationSql(files) {
   }
 
   const forbiddenMutationPolicy =
-    /create\s+policy[\s\S]*?on\s+public\.(jobs|user_roles|audit_log|access_requests|career_job_decisions|career_pathway_decisions|career_explore_settings|explore_pathway_analytics|career_applications|career_application_events|career_notification_settings|career_notification_announcements|career_notification_deliveries)\s+for\s+(insert|update|delete|all)\b/gi;
+    /create\s+policy[\s\S]*?on\s+public\.(jobs|user_roles|audit_log|access_requests|career_job_decisions|career_pathway_decisions|career_explore_settings|explore_pathway_analytics|career_applications|career_application_events|career_notification_settings|career_notification_announcements|career_notification_deliveries|career_cv_variants)\s+for\s+(insert|update|delete|all)\b/gi;
   for (const match of sql.matchAll(forbiddenMutationPolicy)) {
     failures.push(
       `browser mutation policy forbidden on public.${match[1].toLowerCase()}`,
