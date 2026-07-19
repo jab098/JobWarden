@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 
 import { trackApplicationAction } from "@/app/(protected)/applications/actions";
@@ -13,11 +14,32 @@ const initialState: ApplicationsActionState = { kind: "idle" };
  * Records that the user applied on the employer's own site. JobWarden never
  * submits an application itself.
  */
-export function TrackApplicationButton({ jobId }: { jobId: string }) {
+export function TrackApplicationButton({
+  jobId,
+  tracked,
+}: {
+  jobId: string;
+  tracked: boolean;
+}) {
   const [state, formAction, pending] = useActionState(
     trackApplicationAction,
     initialState,
   );
+
+  if (tracked && state.kind === "idle") {
+    return (
+      <p className="text-sm text-[#40495a]">
+        You are tracking an application for this job.{" "}
+        <Link
+          href="/applications"
+          className="rounded-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+        >
+          Manage it under Applications
+        </Link>
+        .
+      </p>
+    );
+  }
 
   return (
     <form action={formAction} className="flex flex-wrap items-center gap-3">

@@ -12,9 +12,11 @@ export const applicationStages = [
 export type ApplicationStage = (typeof applicationStages)[number];
 
 /**
- * Explicit forward transition map. Acceptance requires an observed offer,
- * terminal stages never reopen, and archiving is always available as the
- * closing move. Mirrored verbatim by the transition_career_application RPC.
+ * Explicit transition map. Acceptance requires an observed offer, archiving
+ * is always available as the closing move, and the only reverse edge is the
+ * explicit audited re-open (archived → applied) so a mis-click never forces
+ * the user to delete their history. Mirrored verbatim by the
+ * transition_career_application RPC.
  */
 export const applicationTransitions: Readonly<
   Record<ApplicationStage, readonly ApplicationStage[]>
@@ -33,7 +35,7 @@ export const applicationTransitions: Readonly<
   accepted: ["archived"],
   rejected: ["archived"],
   withdrawn: ["archived"],
-  archived: [],
+  archived: ["applied"],
 };
 
 export function canTransition(
@@ -44,6 +46,19 @@ export function canTransition(
 }
 
 export type NextActionState = "overdue" | "due_today" | "upcoming" | "none";
+
+/**
+ * JobWarden is UK-only, so "today" for due-date and quiet-day arithmetic is
+ * the calendar date in Europe/London, not the server's UTC date.
+ */
+export function londonIsoDate(now: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
 
 /** ISO dates compare lexicographically, so this stays timezone-free. */
 export function classifyNextAction(
@@ -111,7 +126,7 @@ export function buildApplicationInsights(
   applications: readonly ApplicationSnapshotInput[],
   now: Date,
 ): ApplicationInsights {
-  const today = now.toISOString().slice(0, 10);
+  const today = londonIsoDate(now);
 
   const stageCounts = Object.fromEntries(
     applicationStages.map((stage) => [stage, 0]),

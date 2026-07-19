@@ -133,7 +133,7 @@ describe("application server actions", () => {
     });
     expect(repository.remove).toHaveBeenCalledWith(applicationId);
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/applications");
-    expect(mocks.revalidatePath).toHaveBeenCalledWith("/jobs");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/jobs/[jobId]", "page");
   });
 
   it("maps preview refusals to an honest unavailable state", async () => {

@@ -14,7 +14,8 @@ export type ApplicationPlan = {
 
 export type ApplicationItem = {
   id: string;
-  job: JobListItem;
+  /** Null when the tracked listing is no longer visible (for example closed). */
+  job: JobListItem | null;
   stage: ApplicationStage;
   nextAction: string | null;
   nextActionDueOn: string | null;

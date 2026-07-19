@@ -59,10 +59,15 @@ const nextActionCopy: Record<
   upcoming: { label: "Upcoming", dot: "bg-[#3f8f5f]", text: "text-[#235b3b]" },
 };
 
+// UTC in and UTC out, so an ISO date never shifts by a day for any viewer
+// and server/client renders always agree.
+const dueDateFormat = new Intl.DateTimeFormat("en-GB", {
+  dateStyle: "medium",
+  timeZone: "UTC",
+});
+
 function formatDueDate(dueOn: string): string {
-  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(
-    new Date(`${dueOn}T00:00:00Z`),
-  );
+  return dueDateFormat.format(new Date(`${dueOn}T00:00:00Z`));
 }
 
 export function ApplicationItem({
@@ -92,7 +97,7 @@ export function ApplicationItem({
     item.nextActionState === "none"
       ? null
       : nextActionCopy[item.nextActionState];
-  const compensation = formatCompensation(item.job);
+  const compensation = item.job ? formatCompensation(item.job) : null;
 
   return (
     <li className="border-b border-[#e7e3da]">
@@ -120,24 +125,33 @@ export function ApplicationItem({
               ) : null}
             </div>
             <h3 className="mt-1.5 text-lg font-semibold tracking-[-0.02em] text-[#172033]">
-              {item.job.title}
+              {item.job ? item.job.title : "Listing no longer available"}
             </h3>
-            <p className="mt-0.5 text-sm font-medium text-[#4e5768]">
-              {item.job.employer}
-            </p>
-            {!compact ? (
+            {item.job ? (
+              <p className="mt-0.5 text-sm font-medium text-[#4e5768]">
+                {item.job.employer}
+              </p>
+            ) : (
+              <p className="mt-0.5 text-sm text-[#596173]">
+                The advert has closed or been withdrawn; your tracked
+                application and its history are unaffected.
+              </p>
+            )}
+            {!compact && item.job ? (
               <p className="mt-1 text-sm text-[#596173]">
                 {item.job.location}
                 {compensation ? ` · ${compensation}` : ""}
               </p>
             ) : null}
           </div>
-          <Link
-            href={`/jobs/${item.job.id}`}
-            className="rounded-sm text-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
-          >
-            View job
-          </Link>
+          {item.job ? (
+            <Link
+              href={`/jobs/${item.job.id}`}
+              className="rounded-sm text-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+            >
+              View job
+            </Link>
+          ) : null}
         </div>
 
         {item.nextAction ? (

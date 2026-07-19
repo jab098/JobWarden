@@ -65,6 +65,13 @@ revoke all on public.career_application_events from public, anon, authenticated;
 grant select on public.career_application_events to authenticated;
 grant all on public.career_application_events to service_role;
 
+-- The RLS owner filter and the application cascade both need index support;
+-- Postgres does not index foreign keys automatically.
+create index career_application_events_owner_idx
+  on public.career_application_events (owner_id, occurred_at);
+create index career_application_events_application_idx
+  on public.career_application_events (application_id);
+
 create or replace function public.track_career_application(
   target_job_id uuid
 )
@@ -177,7 +184,8 @@ begin
       ('offer', 'archived'),
       ('accepted', 'archived'),
       ('rejected', 'archived'),
-      ('withdrawn', 'archived')
+      ('withdrawn', 'archived'),
+      ('archived', 'applied')
     )
   ) then
     raise exception using errcode = '22023', message = 'invalid application transition';

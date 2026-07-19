@@ -123,6 +123,50 @@ describe("applications experience", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
+  it("keeps a closed listing's application visible and honest", () => {
+    render(
+      <ApplicationsViewPage
+        result={result({ items: [item({ job: null })] })}
+        view="list"
+      />,
+    );
+
+    expect(screen.getByText("Listing no longer available")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /your tracked application and its history are unaffected/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "View job" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Move to")).toBeInTheDocument();
+  });
+
+  it("offers the audited re-open as the only move out of archived", () => {
+    render(
+      <ApplicationsViewPage
+        result={result({
+          items: [
+            item({
+              stage: "archived",
+              nextAction: null,
+              nextActionDueOn: null,
+              nextActionState: "none",
+            }),
+          ],
+        })}
+        view="list"
+      />,
+    );
+
+    const moveSelect = screen.getByLabelText("Move to");
+    const options = [...moveSelect.querySelectorAll("option")].map(
+      (option) => option.textContent,
+    );
+    expect(options).toEqual(["Applied"]);
+  });
+
   it("shows an honest empty state that never implies auto-apply", () => {
     render(<ApplicationsViewPage result={result({ items: [] })} view="list" />);
 
@@ -165,10 +209,12 @@ describe("applications experience", () => {
   it("shows honest outcome insights including the quiet bucket", () => {
     render(<ApplicationsViewPage result={result()} view="list" />);
 
-    expect(screen.getByText("No update for 14+ days")).toBeInTheDocument();
+    expect(
+      screen.getByText("No stage change for 14+ days"),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /an application with no update is never shown as rejected/i,
+        /an application with no stage change is never shown as rejected/i,
       ),
     ).toBeInTheDocument();
   });

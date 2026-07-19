@@ -60,7 +60,8 @@ function mapError(error: unknown): ApplicationsActionState {
 
 function revalidateApplicationSurfaces(): void {
   revalidatePath("/applications");
-  revalidatePath("/jobs");
+  // Job detail pages show whether the job is already tracked.
+  revalidatePath("/jobs/[jobId]", "page");
 }
 
 export async function trackApplicationAction(

@@ -6,19 +6,26 @@ vi.mock("server-only", () => ({}));
 import type { JobsRepository } from "@/lib/jobs/repository";
 import type { JobDetail, JobsPageResult } from "@/lib/jobs/types";
 
-const { getJobsRepository, getTargetFeedRepository, notFound } = vi.hoisted(
-  () => ({
-    getJobsRepository: vi.fn(),
-    getTargetFeedRepository: vi.fn(),
-    notFound: vi.fn(() => {
-      throw new Error("NEXT_NOT_FOUND");
-    }),
+const {
+  getJobsRepository,
+  getTargetFeedRepository,
+  getApplicationsRepository,
+  notFound,
+} = vi.hoisted(() => ({
+  getJobsRepository: vi.fn(),
+  getTargetFeedRepository: vi.fn(),
+  getApplicationsRepository: vi.fn(),
+  notFound: vi.fn(() => {
+    throw new Error("NEXT_NOT_FOUND");
   }),
-);
+}));
 
 vi.mock("@/lib/jobs/get-repository", () => ({ getJobsRepository }));
 vi.mock("@/lib/target-feed/get-repository", () => ({
   getTargetFeedRepository,
+}));
+vi.mock("@/lib/applications/get-repository", () => ({
+  getApplicationsRepository,
 }));
 vi.mock("next/navigation", () => ({ notFound }));
 
@@ -138,15 +145,25 @@ describe("jobs routes", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders a detail from the repository", async () => {
+  it("renders a detail from the repository with tracked-application state", async () => {
     const jobsRepository = repository();
     getJobsRepository.mockResolvedValue(jobsRepository);
+    getApplicationsRepository.mockResolvedValue({
+      getApplications: vi.fn().mockResolvedValue({
+        items: [{ id: "91000000-0000-4000-8000-000000000001", job }],
+        insights: null,
+        dataMode: "fixtures",
+      }),
+    });
 
     render(await JobDetailPage({ params: Promise.resolve({ jobId: job.id }) }));
 
     expect(jobsRepository.findById).toHaveBeenCalledWith(job.id);
     expect(
       screen.getByRole("heading", { level: 1, name: job.title }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/you are tracking an application for this job/i),
     ).toBeInTheDocument();
   });
 

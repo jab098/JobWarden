@@ -67,14 +67,14 @@ export function InsightsPanel({ insights }: { insights: ApplicationInsights }) {
             />
             <Figure label="Still open" value={insights.outcomes.open} />
             <Figure
-              label="No update for 14+ days"
+              label="No stage change for 14+ days"
               value={insights.outcomes.quietFourteenPlusDays}
             />
           </div>
           <p className="mt-2 max-w-md text-xs leading-5 text-[#596173]">
-            Silence is reported as silence: an application with no update is
-            never shown as rejected, and JobWarden never contacts recruiters or
-            infers their activity.
+            Silence is reported as silence: an application with no stage change
+            is never shown as rejected, and JobWarden never contacts recruiters
+            or infers their activity.
           </p>
         </div>
       </div>

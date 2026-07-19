@@ -115,7 +115,7 @@ describe("Supabase applications repository", () => {
     expect(result.items).toHaveLength(1);
     const item = result.items[0];
     expect(item?.stage).toBe("screening");
-    expect(item?.job.location).toBe("Remote within the United Kingdom");
+    expect(item?.job?.location).toBe("Remote within the United Kingdom");
     expect(item?.lastTransitionAt).toBe("2026-07-18T09:00:00.000Z");
     expect(result.insights.totalTracked).toBe(1);
     expect(result.insights.funnel).toEqual([
@@ -125,6 +125,21 @@ describe("Supabase applications repository", () => {
       { stage: "offer", reached: 0 },
       { stage: "accepted", reached: 0 },
     ]);
+  });
+
+  it("keeps rendering an application whose job is no longer visible", async () => {
+    const fake = createFakeClient({
+      applications: [applicationRow({ jobs: null })],
+    });
+
+    const result = await createSupabaseApplicationsRepository(
+      fake.client,
+    ).getApplications();
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.job).toBeNull();
+    expect(result.items[0]?.stage).toBe("screening");
+    expect(result.insights.totalTracked).toBe(1);
   });
 
   it("tracks a job through the owner-fenced RPC", async () => {

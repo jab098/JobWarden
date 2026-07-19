@@ -4,6 +4,7 @@ import {
   applicationStages,
   buildApplicationInsights,
   classifyNextAction,
+  londonIsoDate,
   type ApplicationSnapshotInput,
   type ApplicationStage,
 } from "@jobwarden/domain";
@@ -50,7 +51,9 @@ const applicationRowSchema = z.object({
   next_action_due_on: z.iso.date().nullable(),
   notes: z.string().min(1).max(2_000).nullable(),
   updated_at: z.iso.datetime({ offset: true }),
-  jobs: jobRowSchema,
+  // Left-joined embed: RLS hides the job row once the listing stops being
+  // active, but the user's tracked application must keep rendering.
+  jobs: jobRowSchema.nullable(),
 });
 
 const eventRowSchema = z.object({
@@ -124,7 +127,7 @@ function toJob(row: z.infer<typeof jobRowSchema>): JobListItem {
 
 export type ApplicationRecordInput = {
   id: string;
-  job: JobListItem;
+  job: JobListItem | null;
   stage: ApplicationStage;
   nextAction: string | null;
   nextActionDueOn: string | null;
@@ -143,7 +146,7 @@ export function buildApplicationsResult(input: {
   now: Date;
   dataMode: "supabase" | "fixtures";
 }): ApplicationsResult {
-  const today = input.now.toISOString().slice(0, 10);
+  const today = londonIsoDate(input.now);
 
   const snapshots: ApplicationSnapshotInput[] = [];
   const items: ApplicationItem[] = [];
@@ -228,7 +231,7 @@ export function createSupabaseApplicationsRepository(
         return buildApplicationsResult({
           records: applicationRows.map((row) => ({
             id: row.id,
-            job: toJob(row.jobs),
+            job: row.jobs ? toJob(row.jobs) : null,
             stage: row.stage,
             nextAction: row.next_action,
             nextActionDueOn: row.next_action_due_on,

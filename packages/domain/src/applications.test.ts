@@ -6,6 +6,7 @@ import {
   buildApplicationInsights,
   canTransition,
   classifyNextAction,
+  londonIsoDate,
   type ApplicationSnapshotInput,
   type ApplicationStage,
 } from "./applications.ts";
@@ -71,7 +72,7 @@ describe("application stages and transitions", () => {
     expect(applicationTransitions.accepted).toEqual(["archived"]);
     expect(applicationTransitions.rejected).toEqual(["archived"]);
     expect(applicationTransitions.withdrawn).toEqual(["archived"]);
-    expect(applicationTransitions.archived).toEqual([]);
+    expect(applicationTransitions.archived).toEqual(["applied"]);
   });
 
   it("refuses undeclared transitions", () => {
@@ -80,12 +81,26 @@ describe("application stages and transitions", () => {
     // Acceptance requires an observed offer first.
     expect(canTransition("applied", "accepted")).toBe(false);
     expect(canTransition("interviewing", "accepted")).toBe(false);
-    // Terminal stages never reopen.
-    expect(canTransition("archived", "applied")).toBe(false);
+    // The only reverse edge is the explicit audited re-open.
+    expect(canTransition("archived", "applied")).toBe(true);
+    expect(canTransition("archived", "screening")).toBe(false);
     expect(canTransition("accepted", "offer")).toBe(false);
     expect(canTransition("rejected", "interviewing")).toBe(false);
     // No self-transitions.
     expect(canTransition("screening", "screening")).toBe(false);
+  });
+});
+
+describe("londonIsoDate", () => {
+  it("uses the Europe/London calendar date, not UTC", () => {
+    // 23:30 UTC during BST is already the next day in London.
+    expect(londonIsoDate(new Date("2026-07-19T23:30:00.000Z"))).toBe(
+      "2026-07-20",
+    );
+    // During GMT the dates coincide.
+    expect(londonIsoDate(new Date("2026-01-19T23:30:00.000Z"))).toBe(
+      "2026-01-19",
+    );
   });
 });
 
