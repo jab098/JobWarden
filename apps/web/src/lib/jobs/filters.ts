@@ -1,3 +1,4 @@
+import { radiusOptions } from "@jobwarden/domain";
 import { z } from "zod";
 
 import {
@@ -15,6 +16,14 @@ import {
 export const jobFilterSchema = z.object({
   q: z.string().trim().max(100).catch(""),
   location: z.string().trim().max(100).catch(""),
+  radius: z.coerce
+    .number()
+    .int()
+    .refine((value): value is (typeof radiusOptions)[number] =>
+      (radiusOptions as readonly number[]).includes(value),
+    )
+    .nullable()
+    .catch(null),
   employment: z.enum([...employmentTypes, "all"]).catch("all"),
   workingTime: z.enum([...workingTimes, "all"]).catch("all"),
   workplace: z.enum([...workplaceTypes, "all"]).catch("all"),
@@ -43,6 +52,7 @@ export function parseJobFilters(input: JobFilterInput): JobFilters {
   const filters = jobFilterSchema.parse({
     q: text(input.q),
     location: text(input.location),
+    radius: text(input.radius)?.trim() ? text(input.radius) : null,
     employment: text(input.employment),
     workingTime: text(input.workingTime),
     workplace: text(input.workplace),
@@ -60,9 +70,14 @@ export function parseJobFilters(input: JobFilterInput): JobFilters {
   // A pay floor is only meaningful against a stated period, and a floor of zero
   // narrows nothing while still hiding every listing with no stated salary.
   // Half an answer applies nothing rather than misleading the result count.
-  return !filters.salaryMin || filters.salaryPeriod === "all"
-    ? { ...filters, salaryMin: null, salaryPeriod: "all" }
-    : filters;
+  const paired =
+    !filters.salaryMin || filters.salaryPeriod === "all"
+      ? { ...filters, salaryMin: null, salaryPeriod: "all" as const }
+      : filters;
+
+  // A radius around nothing is not a filter. Dropping it keeps the applied-filter
+  // chips honest rather than showing "within 10 miles" of no stated place.
+  return paired.location ? paired : { ...paired, radius: null };
 }
 
 export function createJobFiltersQueryString(filters: JobFilters): string {
@@ -70,6 +85,9 @@ export function createJobFiltersQueryString(filters: JobFilters): string {
 
   if (filters.q) query.set("q", filters.q);
   if (filters.location) query.set("location", filters.location);
+  if (filters.location && filters.radius !== null) {
+    query.set("radius", String(filters.radius));
+  }
   if (filters.employment !== "all") {
     query.set("employment", filters.employment);
   }
@@ -119,8 +137,15 @@ const removals: readonly {
   },
   {
     key: "location",
-    label: (filters) => (filters.location ? `In ${filters.location}` : null),
-    clear: () => ({ location: "" }),
+    label: (filters) =>
+      filters.location
+        ? filters.radius === null
+          ? `In ${filters.location}`
+          : `Within ${filters.radius} miles of ${filters.location}`
+        : null,
+    // The radius goes with it: a radius around nothing narrows nothing, and
+    // leaving it set would resurrect itself the next time a place was typed.
+    clear: () => ({ location: "", radius: null }),
   },
   {
     key: "employment",
