@@ -7,6 +7,7 @@ import {
   londonIsoDate,
   type ApplicationSnapshotInput,
   type ApplicationStage,
+  type DashboardApplicationInput,
 } from "@jobwarden/domain";
 import { z } from "zod";
 
@@ -196,6 +197,77 @@ export function buildApplicationsResult(input: {
   };
 }
 
+/**
+ * The one read of applications and their audit trail. The dashboard shares it
+ * so its funnel can never disagree with the tracker's.
+ */
+export async function readApplicationRecords(
+  client: object,
+): Promise<ApplicationRecordInput[]> {
+  const supabaseClient = client as ApplicationsClient;
+  const [applicationsResponse, eventsResponse] = await Promise.all([
+    supabaseClient.from("career_applications").select(applicationColumns),
+    supabaseClient
+      .from("career_application_events")
+      .select("application_id,to_stage,occurred_at"),
+  ]);
+  const applicationRows = z
+    .array(applicationRowSchema)
+    .parse(data(applicationsResponse));
+  const eventRows = z.array(eventRowSchema).parse(data(eventsResponse));
+
+  const eventsByApplication = new Map<
+    string,
+    { toStage: ApplicationStage; occurredAt: string }[]
+  >();
+  for (const event of eventRows) {
+    const events = eventsByApplication.get(event.application_id) ?? [];
+    events.push({ toStage: event.to_stage, occurredAt: event.occurred_at });
+    eventsByApplication.set(event.application_id, events);
+  }
+
+  return applicationRows.map((row) => ({
+    id: row.id,
+    job: row.jobs ? toJob(row.jobs) : null,
+    stage: row.stage,
+    nextAction: row.next_action,
+    nextActionDueOn: row.next_action_due_on,
+    notes: row.notes,
+    updatedAt: row.updated_at,
+    events: eventsByApplication.get(row.id) ?? [],
+  }));
+}
+
+/**
+ * Projects records for the dashboard using the same audited derivation the
+ * tracker uses. An application's creation time is its earliest audited event,
+ * which the tracking RPC always writes, so no extra column is needed.
+ */
+export function toDashboardApplications(
+  records: readonly ApplicationRecordInput[],
+): DashboardApplicationInput[] {
+  return records.map((record) => {
+    const occurredAt = record.events
+      .map((event) => event.occurredAt)
+      .toSorted((left, right) => left.localeCompare(right));
+
+    return {
+      id: record.id,
+      stage: record.stage,
+      nextAction: record.nextAction,
+      nextActionDueOn: record.nextActionDueOn,
+      createdAt: occurredAt[0] ?? record.updatedAt,
+      lastTransitionAt: occurredAt.at(-1) ?? record.updatedAt,
+      reachedStages: [
+        ...new Set([
+          ...record.events.map((event) => event.toStage),
+          record.stage,
+        ]),
+      ],
+    };
+  });
+}
+
 export function createSupabaseApplicationsRepository(
   client: object,
 ): ApplicationsRepository {
@@ -204,41 +276,8 @@ export function createSupabaseApplicationsRepository(
   return {
     async getApplications() {
       try {
-        const [applicationsResponse, eventsResponse] = await Promise.all([
-          supabaseClient.from("career_applications").select(applicationColumns),
-          supabaseClient
-            .from("career_application_events")
-            .select("application_id,to_stage,occurred_at"),
-        ]);
-        const applicationRows = z
-          .array(applicationRowSchema)
-          .parse(data(applicationsResponse));
-        const eventRows = z.array(eventRowSchema).parse(data(eventsResponse));
-
-        const eventsByApplication = new Map<
-          string,
-          { toStage: ApplicationStage; occurredAt: string }[]
-        >();
-        for (const event of eventRows) {
-          const events = eventsByApplication.get(event.application_id) ?? [];
-          events.push({
-            toStage: event.to_stage,
-            occurredAt: event.occurred_at,
-          });
-          eventsByApplication.set(event.application_id, events);
-        }
-
         return buildApplicationsResult({
-          records: applicationRows.map((row) => ({
-            id: row.id,
-            job: row.jobs ? toJob(row.jobs) : null,
-            stage: row.stage,
-            nextAction: row.next_action,
-            nextActionDueOn: row.next_action_due_on,
-            notes: row.notes,
-            updatedAt: row.updated_at,
-            events: eventsByApplication.get(row.id) ?? [],
-          })),
+          records: await readApplicationRecords(client),
           now: new Date(),
           dataMode: "supabase",
         });

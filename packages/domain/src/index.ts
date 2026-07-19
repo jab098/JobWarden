@@ -3,6 +3,7 @@ export * from "./admin.ts";
 export * from "./applications.ts";
 export * from "./career-profile.ts";
 export * from "./classification.ts";
+export * from "./dashboard.ts";
 export * from "./compensation.ts";
 export * from "./explore.ts";
 export * from "./job.ts";

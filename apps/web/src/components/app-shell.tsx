@@ -9,7 +9,7 @@ export function AppShell({
 }: Readonly<{
   children: React.ReactNode;
   dataMode: "supabase" | "fixtures";
-  activePath?: "jobs" | "explore" | "applications" | "profile";
+  activePath?: "home" | "jobs" | "explore" | "applications" | "profile";
 }>) {
   return (
     <div className="min-h-screen bg-[#f4f1ea] text-[#172033]">
@@ -31,9 +31,16 @@ export function AppShell({
         </div>
         <nav aria-label="Primary" className="p-3">
           <Link
+            href="/home"
+            aria-current={activePath === "home" ? "page" : undefined}
+            className={`block rounded-md px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "home" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173] hover:bg-white/70"}`}
+          >
+            Home
+          </Link>
+          <Link
             href="/jobs"
             aria-current={activePath === "jobs" ? "page" : undefined}
-            className={`block rounded-md px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "jobs" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173] hover:bg-white/70"}`}
+            className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "jobs" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173] hover:bg-white/70"}`}
           >
             Jobs
           </Link>
