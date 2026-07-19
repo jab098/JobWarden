@@ -444,4 +444,66 @@ describe("Supabase foundation static verifier", () => {
       ]),
     );
   });
+
+  it("requires an owner-fenced, mutex-guarded job decisions table and RPC", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "public table career_job_decisions must enable and force RLS",
+        "missing career job decisions table",
+        "career job decisions must enforce one decision per owner and job",
+        "career job decisions must use bounded decision values",
+        "missing owner-fenced job decision RPC",
+        "job decision RPC must validate decision value",
+        "job decision RPC must have its narrow authenticated grant",
+        "career profile deletion must also erase job decisions",
+      ]),
+    );
+  });
+
+  it("requires the job decision RPC to hold the generation mutex before validating the job", () => {
+    const files = migrations();
+    const targetFeedFile = "202607190001_target_feed.sql";
+    files.set(
+      targetFeedFile,
+      (files.get(targetFeedFile) ?? "").replace(/for update/gu, "for share"),
+    );
+
+    expect(verifyFoundationSql(files)).toContain(
+      "job decisions must lock the generation mutex before validating the job",
+    );
+  });
+
+  it("forbids direct writes to career_job_decisions", () => {
+    const files = migrations();
+    const targetFeedFile = "202607190001_target_feed.sql";
+    files.set(
+      targetFeedFile,
+      `${files.get(targetFeedFile) ?? ""}
+        create policy "unsafe job decision write"
+        on public.career_job_decisions for insert to authenticated
+        with check (owner_id = auth.uid());`,
+    );
+
+    expect(verifyFoundationSql(files)).toContain(
+      "browser mutation policy forbidden on public.career_job_decisions",
+    );
+  });
+
+  it("forbids a direct authenticated mutation grant on career_job_decisions", () => {
+    const files = migrations();
+    const targetFeedFile = "202607190001_target_feed.sql";
+    files.set(
+      targetFeedFile,
+      `${files.get(targetFeedFile) ?? ""}
+        grant insert, update on public.career_job_decisions to authenticated;`,
+    );
+
+    expect(verifyFoundationSql(files)).toContain(
+      "authenticated callers must decide career jobs through the owner-fenced RPC",
+    );
+  });
 });
