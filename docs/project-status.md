@@ -15,7 +15,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - [Approved personalised search design](superpowers/specs/2026-07-18-personalised-job-search-design.md)
 - [Task 12 implementation plan](superpowers/plans/2026-07-19-task-12-explore-pathways.md)
 - [Task 12 completion review](reviews/task-12-explore-pathways.md)
-- [Canonical Tasks 7–16 roadmap](product/roadmap.md)
+- [Canonical Tasks 7–17 roadmap](product/roadmap.md)
 - [Free-tier services and cost boundaries](architecture/free-tier-services.md)
 - [Current architecture record](superpowers/specs/2026-07-17-jobwarden-foundation-design.md#architecture); dedicated architecture decision records are scheduled for Task 16 under `architecture/decisions/`
 
@@ -47,6 +47,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 14. Scheduled updates and notifications                                | pending  |                                                               |
 | 15. Evidence-bound CV tailoring                                        | pending  |                                                               |
 | 16. Privacy, production access, deployment, and full-path verification | pending  |                                                               |
+| 17. Home activity dashboard                                            | pending  | Owner-approved 2026-07-19; earliest start after Task 13       |
 
 ## Last verification commands
 
@@ -97,6 +98,8 @@ Task 12 implements the opt-in Explore feed on `codex/task-12-explore-pathways`. 
 ## Approved programme update
 
 On 2026-07-18 the owner approved the personalised-search design and canonical Tasks 7–16 roadmap. The programme adds reviewed CV-derived career profiles, named searches, the Target Feed, deterministic explainable scoring, opt-in high-overlap Explore pathways, compensation provenance, application tracking, bounded weekday digests, and conservative DOCX tailoring. Free-tier ceilings, privacy boundaries, and authentication-before-real-data are permanent constraints. All unimplemented Task 7–10 sections in the old foundation plan are superseded by the focused active plan and canonical roadmap; completed Tasks 1–6 remain unchanged.
+
+On 2026-07-19 the owner added Task 17 (Home activity dashboard): a deterministic, owner-only statistics home page (application funnel and trends, follow-ups due, decision counts, new-match trends, explore activity, profile health) derived entirely from existing owner-only data with no new analytics collection. Earliest start is after Task 13; see the roadmap's Task 17 section for the scoped statistics and acceptance criteria.
 
 ## Delivery rule
 

@@ -25,13 +25,14 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 7    | Administrator operations                                                   | reviewed | None for fixture development                                                         |
 | 8    | Shared ingestion runtime                                                   | reviewed | Supabase project for live deployment; local implementation does not wait             |
 | 9    | UK coverage and compensation                                               | reviewed | Reed credential only after terms, pgTAP, and controlled live validation              |
-| 10   | Career profile, onboarding, and CV extraction                              | active   | Remediation complete locally; final review/PR merge and real-CV gates remain pending |
-| 11   | Target Feed and explainable fit scores                                     | pending  | No paid AI dependency                                                                |
-| 12   | Explore and career pathways                                                | pending  | Cloudflare Workers AI optional; deterministic taxonomy is the fallback               |
+| 10   | Career profile, onboarding, and CV extraction                              | reviewed | Delivered by PR #11 (`06b5a9c`); real-CV gates remain pending                        |
+| 11   | Target Feed and explainable fit scores                                     | reviewed | Delivered by PR #12 (`c86a14d`)                                                      |
+| 12   | Explore and career pathways                                                | reviewed | Delivered by PR #13 (`124216f`); deterministic taxonomy, no AI dependency            |
 | 13   | Application tracker and follow-ups                                         | pending  | None for fixture development                                                         |
 | 14   | Scheduled updates and notifications                                        | pending  | Resend account, verified sending domain, and DNS records                             |
 | 15   | Evidence-bound CV tailoring                                                | pending  | Cloudflare Workers AI and private Storage; DOCX source required for preserved layout |
 | 16   | Privacy, production authentication, deployment, and full-path verification | pending  | Supabase OAuth, production domain, Cloudflare deployment, Sentry EU if enabled       |
+| 17   | Home activity dashboard                                                    | pending  | None; deterministic owner-only statistics over existing data                         |
 
 ## Task 7 — Administrator operations
 
@@ -165,6 +166,31 @@ Acceptance:
 - optional analytics is still disabled until affirmative consent and a separate review;
 - production build, Cloudflare preview, browser paths, pgTAP, secret scan, dependency audit, and recovery exercises pass; and
 - the owner receives exact setup instructions only for the services required at this gate.
+
+## Task 17 — Home activity dashboard
+
+Owner decision, 2026-07-19: give the signed-in user a home statistics page that summarises their own activity over time — the kind of at-a-glance dashboard ad platforms give publishers, applied to a job search. Everything is deterministic, owner-only, and derived from data JobWarden already stores; nothing is invented, estimated, or sourced from third parties.
+
+Earliest start is after Task 13, because the most valuable statistics come from the application tracker. If Task 14 has shipped, digest/notification statistics join the dashboard; otherwise they are added in a follow-up slice. If Task 17 lands after Task 16, it follows the full production standards like any other slice; if it lands before, Task 16's full-path verification must cover it.
+
+Statistics a real user of this product wants (scope for the plan, trimmed to what the schema can answer truthfully):
+
+- **Applications:** total tracked; applications started this week versus the previous week; count per stage (applied, screening, interviewing, offer, accepted, rejected, withdrawn, archived); observed funnel conversion between stages; time-in-stage; share of applications with no observed outcome, labelled honestly as "no response observed", never "rejected".
+- **Follow-ups:** next actions due today, this week, and overdue.
+- **Decisions:** saved / considering / dismissed counts and their trend over a selected window.
+- **Target Feed:** new matches per day over the window, current match count, and the enabled search profile producing the most matches.
+- **Explore:** suggestions currently qualifying, dismissed, and promoted-to-search counts.
+- **Profile health:** confirmed evidence items, enabled search profiles, CV present or not — as a nudge toward better matching, not a score.
+- **After Task 14:** digests sent, suppressed-as-duplicate, and no-match slots.
+
+Acceptance:
+
+- every figure derives from the owner's own rows in existing owner-only tables (applications, application events, job decisions, pathway decisions, search profiles, evidence) through RLS-safe reads or owner-fenced RPCs; no cross-user data, no CV text, and no new analytics collection;
+- comparison windows ("last 7 days vs previous 7 days") are computed deterministically and label empty or short histories honestly instead of fabricating a baseline;
+- unknown/ghosted outcomes are shown as distinct observed states, never converted into implied rejections or invented recruiter activity;
+- the dashboard is a read-only surface: it links to `/jobs`, `/applications`, `/explore`, and `/profile` for action, and adds no new mutation paths;
+- the page is keyboard and mobile accessible, follows `docs/design/ui-direction.md` (quiet neutral surfaces, state dots, no decorative colour callouts), and renders sparkline-style trends without a charting dependency unless one is separately approved; and
+- the fictional development preview serves frozen fixture statistics and refuses mutations, exactly like every other surface.
 
 ## Continuous source expansion
 
