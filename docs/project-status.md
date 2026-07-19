@@ -34,7 +34,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - Last independently reviewed task implementation commit: `0b9fabd` (Task 16; delivered by merge `46dacb4`)
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
 - Active feature branch: none
-- Active task: none. All seventeen tasks are built, reviewed, and merged. What remains is owner platform setup, specified end to end in [the production setup runbook](setup/production-setup.md)
+- Active task: Task 18 (Onboarding gate and state machine). Tasks 1–17 are merged; the owner approved four further tasks on 2026-07-19. Tasks 18–20 need no platform setup; Task 21 requires setup runbook steps 1–4
 
 ## Task progress
 
@@ -57,6 +57,10 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 15. Evidence-bound CV tailoring                                        | reviewed | Delivered by PR #16; merge commit `ed75c9d` verified locally    |
 | 16. Privacy, production access, deployment, and full-path verification | reviewed | Delivered by PR #18; merge commit `46dacb4`; live setup pending |
 | 17. Home activity dashboard                                            | reviewed | Delivered by PR #17; merge commit `2246b49` verified locally    |
+| 18. Onboarding gate and state machine                                  | pending  | Owner-approved 2026-07-19                                       |
+| 19. Guided setup and first-run population                              | pending  | Owner-approved 2026-07-19                                       |
+| 20. Administrator audit log and operational health                     | pending  | Owner-approved 2026-07-19                                       |
+| 21. Authentication activation                                          | pending  | Owner-approved 2026-07-19; needs owner platform setup           |
 
 ## Last verification commands
 
@@ -117,6 +121,8 @@ Task 16 completes the buildable half of production readiness on `codex/task-16-p
 ## Approved programme update
 
 On 2026-07-18 the owner approved the personalised-search design and canonical Tasks 7–16 roadmap. The programme adds reviewed CV-derived career profiles, named searches, the Target Feed, deterministic explainable scoring, opt-in high-overlap Explore pathways, compensation provenance, application tracking, bounded weekday digests, and conservative DOCX tailoring. Free-tier ceilings, privacy boundaries, and authentication-before-real-data are permanent constraints. All unimplemented Task 7–10 sections in the old foundation plan are superseded by the focused active plan and canonical roadmap; completed Tasks 1–6 remain unchanged.
+
+On 2026-07-19 the owner approved four further tasks. Task 18 gates the hub behind a mandatory, resumable onboarding flow with a fail-closed state machine and explicit fallbacks for thin, failed, absent, and PDF-only CVs; a CV is the encouraged default but the user must make an explicit choice, because hard-requiring one would lock out the student and career-changer cases the fallbacks exist to serve. Task 19 builds the guided experience on top, pre-filling every question from CV evidence and populating the feed, Explore, and digest settings on completion, with the chosen hard preferences carried into `/jobs` as visible, removable URL filters. Task 20 gives the administrator an interface for the audit log and the delivery and AI usage ledgers, all three of which exist in the database with no surface. Task 21 activates authentication against real Supabase and Google accounts. The owner confirmed the hub is gated in full, while `/admin` stays reachable so a product gate can never lock the owner out of operations.
 
 On 2026-07-19 the owner added Task 17 (Home activity dashboard): a deterministic, owner-only statistics home page (application funnel and trends, follow-ups due, decision counts, new-match trends, explore activity, profile health) derived entirely from existing owner-only data with no new analytics collection. Earliest start is after Task 13; see the roadmap's Task 17 section for the scoped statistics and acceptance criteria.
 

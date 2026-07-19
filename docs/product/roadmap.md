@@ -33,6 +33,10 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 15   | Evidence-bound CV tailoring                                                | reviewed | Delivered by PR #16 (`ed75c9d`); no AI dependency was needed                          |
 | 16   | Privacy, production authentication, deployment, and full-path verification | reviewed | Delivered by PR #18 (`46dacb4`); live activation follows the setup runbook            |
 | 17   | Home activity dashboard                                                    | reviewed | Delivered by PR #17 (`2246b49`); no schema change was required                        |
+| 18   | Onboarding gate and state machine                                          | pending  | None; runs against the fictional preview like every prior task                        |
+| 19   | Guided setup and first-run population                                      | pending  | None for the build; real CV upload stays closed until setup step 5                    |
+| 20   | Administrator audit log and operational health                             | pending  | None; both datasets already exist with no interface                                   |
+| 21   | Authentication activation                                                  | pending  | Supabase project and Google OAuth — setup runbook steps 1–4                           |
 
 ## Task 7 — Administrator operations
 
@@ -191,6 +195,66 @@ Acceptance:
 - the dashboard is a read-only surface: it links to `/jobs`, `/applications`, `/explore`, and `/profile` for action, and adds no new mutation paths;
 - the page is keyboard and mobile accessible, follows `docs/design/ui-direction.md` (quiet neutral surfaces, state dots, no decorative colour callouts), and renders sparkline-style trends without a charting dependency unless one is separately approved; and
 - the fictional development preview serves frozen fixture statistics and refuses mutations, exactly like every other surface.
+
+## Task 18 — Onboarding gate and state machine
+
+Owner decision, 2026-07-19: a new approved user must complete onboarding before the product hub is usable. Today an approved user lands on an empty Target Feed with no explanation, because nothing has ever required them to build a profile.
+
+This task is the plumbing only: resumable per-owner onboarding state, the gate itself, and the branch logic including every fallback. The guided experience is Task 19.
+
+The gate lives in `resolveProtectedAccess`, which already returns typed redirects. The hub is gated; `/admin` is deliberately **not**, because an administrator surface must never be lockable by a product gate — if onboarding broke, the owner would lose the ability to administer. `/privacy`, `/terms`, `/access/pending`, `/unsubscribe`, the sign-in route, and sign-out stay reachable throughout.
+
+A CV is the strongly encouraged default but is **not** hard-required: the user must make an explicit choice, because hard-requiring one would lock out the student and career-changer cases this task exists to serve.
+
+Acceptance:
+
+- no protected hub surface is reachable before onboarding completes, and the gate fails closed — an unreadable or unknown state counts as not onboarded;
+- `/admin` remains reachable to an administrator regardless of onboarding state, and this exemption is tested;
+- onboarding state is durable and resumable: signing out, changing browser, or abandoning mid-flow resumes at the same step;
+- the branch classifier is a pure deterministic function covering rich CV, thin CV, failed parse, no CV, and PDF-only outcomes, each independently tested;
+- a user who chooses "no CV yet" reaches a working aspiration-led path rather than a dead end; and
+- the fictional development preview exercises every branch and refuses mutations.
+
+## Task 19 — Guided setup and first-run population
+
+The onboarding experience itself, and making the product come alive the moment it ends.
+
+Questions are **pre-filled from CV evidence** rather than blank, because Task 10's extraction already produces confirmed skills, tools, responsibilities, role history, and seniority. The user confirms and corrects rather than typing from nothing. Where evidence is absent — the student and career-changer paths — the same steps ask about aspirations instead: target role families, skills to develop, and the direction they want to move in.
+
+On completion, onboarding writes an enabled named search profile, an Explore opt-in decision, and a digest preference, then lands the user on `/jobs` with their hard preferences carried as URL-backed filters.
+
+Acceptance:
+
+- every question is pre-filled from confirmed evidence wherever evidence exists, and the user approves every field before it becomes active;
+- a user with no CV completes through aspirations and receives a working Explore-led setup;
+- the first feed after onboarding is non-empty, or states precisely why it is empty and what to change;
+- every preference applied to that first feed is **visible and removable in one click**, using the existing URL-backed filters rather than a second filtering mechanism;
+- every choice made during onboarding is editable afterwards from `/profile`; nothing is write-once; and
+- no CV text reaches logs, analytics, errors, URLs, or emails at any point in the flow.
+
+## Task 20 — Administrator audit log and operational health
+
+The `audit_log` table has been populated since Task 1 and the AI usage ledger since Task 10; neither has ever had an interface. Notification delivery health is currently visible only to the individual owner, not to the administrator responsible for the free-tier ceiling.
+
+Acceptance:
+
+- the audit log is read-only, paginated, and bounded, and exposes no CV text or user content;
+- delivery health shows application-wide sent, suppressed, and failed counts with remaining daily and monthly headroom, read from the same rows the runtime writes;
+- AI usage shows consumption against the configured ceiling, including when that ceiling is zero; and
+- every figure is derived, never estimated, and the surface adds no new mutation path.
+
+## Task 21 — Authentication activation
+
+Execute setup runbook steps 1–4 against a real Supabase project and Google OAuth client, close whatever gaps a live session exposes, and verify the pending-until-approved path end to end. The Task 5 code has been reviewed but has never met a real session.
+
+This task cannot complete without owner platform setup.
+
+Acceptance:
+
+- a new identity reaches `/access/pending` and stays there until an administrator approves it, proven with two real accounts;
+- session refresh, sign-out, and callback handling work against real Supabase Auth;
+- the development bypass is absent from every deployed environment, re-proven after activation; and
+- the full-path browser verification covers every surface including `/home` and onboarding, as Task 16 requires.
 
 ## Continuous source expansion
 
