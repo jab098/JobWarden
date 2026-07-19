@@ -14,6 +14,7 @@ export const requiredMigrationFiles = [
   "202607180006_career_profile_workflow.sql",
   "202607180007_career_profile_review_and_retention.sql",
   "202607190001_target_feed.sql",
+  "202607190002_explore_pathways.sql",
 ];
 
 const publicTables = [
@@ -38,6 +39,9 @@ const publicTables = [
   "cv_extraction_runs",
   "career_ai_daily_usage",
   "career_job_decisions",
+  "career_explore_settings",
+  "career_pathway_decisions",
+  "explore_pathway_analytics",
 ];
 
 function compact(sql) {
@@ -612,6 +616,50 @@ export function verifyFoundationSql(files) {
       "grant select on public.career_job_decisions to authenticated",
       "career job decisions must have a narrow authenticated select grant",
     ],
+    [
+      "create table public.career_explore_settings",
+      "missing explore settings table",
+    ],
+    [
+      "create table public.career_pathway_decisions",
+      "missing pathway decisions table",
+    ],
+    [
+      "create table public.explore_pathway_analytics",
+      "missing aggregate pathway analytics table",
+    ],
+    [
+      "constraint career_pathway_decisions_owner_concept_unique unique (owner_id, pathway_concept)",
+      "pathway decisions must enforce one decision per owner and pathway",
+    ],
+    [
+      "create or replace function public.set_explore_enabled( target_enabled boolean )",
+      "missing explore opt-in RPC",
+    ],
+    [
+      "create or replace function public.decide_career_pathway( target_pathway_concept text, target_decision text )",
+      "missing owner-fenced pathway decision RPC",
+    ],
+    [
+      "target_decision not in ('dismissed', 'promoted', 'clear')",
+      "pathway decision RPC must validate decision value",
+    ],
+    [
+      "grant execute on function public.decide_career_pathway(text, text) to authenticated",
+      "pathway decision RPC must have its narrow authenticated grant",
+    ],
+    [
+      "grant execute on function public.set_explore_enabled(boolean) to authenticated",
+      "explore opt-in RPC must have its narrow authenticated grant",
+    ],
+    [
+      "delete from public.career_pathway_decisions where owner_id = actor_user_id",
+      "career profile deletion must also erase pathway decisions",
+    ],
+    [
+      "delete from public.career_explore_settings where owner_id = actor_user_id",
+      "career profile deletion must also erase explore settings",
+    ],
   ];
 
   for (const [fragment, message] of requiredFragments) {
@@ -906,6 +954,39 @@ export function verifyFoundationSql(files) {
       "authenticated callers must decide career jobs through the owner-fenced RPC",
     );
   }
+  if (
+    hasAuthenticatedMutationGrant("career_pathway_decisions") ||
+    hasAuthenticatedMutationPolicy("career_pathway_decisions")
+  ) {
+    failures.push(
+      "authenticated callers must decide pathways through the owner-fenced RPC",
+    );
+  }
+  if (
+    hasAuthenticatedMutationGrant("career_explore_settings") ||
+    hasAuthenticatedMutationPolicy("career_explore_settings")
+  ) {
+    failures.push(
+      "authenticated callers must toggle explore through the owner-fenced RPC",
+    );
+  }
+
+  const analyticsTable =
+    sql.match(
+      /create\s+table\s+public\.explore_pathway_analytics[\s\S]*?;/i,
+    )?.[0] ?? "";
+  if (analyticsTable) {
+    if (/\b(owner_id|user_id|owner|actor)\b/i.test(analyticsTable)) {
+      failures.push(
+        "aggregate pathway analytics must not carry an owner or user column",
+      );
+    }
+    if (!/pathway_concept\s*~\s*'\^\[a-z0-9\]/i.test(analyticsTable)) {
+      failures.push(
+        "aggregate pathway analytics must constrain concepts to the normalised grammar",
+      );
+    }
+  }
 
   const storageUpdatePolicies =
     sql.match(
@@ -994,7 +1075,7 @@ export function verifyFoundationSql(files) {
   }
 
   const forbiddenMutationPolicy =
-    /create\s+policy[\s\S]*?on\s+public\.(jobs|user_roles|audit_log|access_requests|career_job_decisions)\s+for\s+(insert|update|delete|all)\b/gi;
+    /create\s+policy[\s\S]*?on\s+public\.(jobs|user_roles|audit_log|access_requests|career_job_decisions|career_pathway_decisions|career_explore_settings|explore_pathway_analytics)\s+for\s+(insert|update|delete|all)\b/gi;
   for (const match of sql.matchAll(forbiddenMutationPolicy)) {
     failures.push(
       `browser mutation policy forbidden on public.${match[1].toLowerCase()}`,
