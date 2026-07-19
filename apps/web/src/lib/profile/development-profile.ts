@@ -18,6 +18,9 @@ const evidenceIds = [
   "61000000-0000-4000-8000-000000000001",
   "61000000-0000-4000-8000-000000000002",
   "61000000-0000-4000-8000-000000000003",
+  "61000000-0000-4000-8000-000000000004",
+  "61000000-0000-4000-8000-000000000005",
+  "61000000-0000-4000-8000-000000000006",
 ] as const;
 
 const fictionalEvidence = [
@@ -62,6 +65,48 @@ const fictionalEvidence = [
     proficiencySignal: "demonstrated",
     lastUsedAt: null,
     confirmationState: "proposed",
+  },
+  {
+    id: evidenceIds[3],
+    normalizedConcept: "event instrumentation",
+    label: "Event instrumentation",
+    category: "skill",
+    origin: "cv",
+    confidence: 0.94,
+    evidenceReference: "character:214-243",
+    evidenceExcerpt:
+      "Fictional evidence: designed event instrumentation for product journeys.",
+    proficiencySignal: "advanced",
+    lastUsedAt: "2026-06-30",
+    confirmationState: "confirmed",
+  },
+  {
+    id: evidenceIds[4],
+    normalizedConcept: "data quality governance",
+    label: "Data quality and governance",
+    category: "skill",
+    origin: "cv",
+    confidence: 0.92,
+    evidenceReference: "character:260-291",
+    evidenceExcerpt:
+      "Fictional evidence: ran data quality and governance reviews for tracking plans.",
+    proficiencySignal: "working",
+    lastUsedAt: "2026-05-31",
+    confirmationState: "confirmed",
+  },
+  {
+    id: evidenceIds[5],
+    normalizedConcept: "experimentation",
+    label: "Experimentation",
+    category: "skill",
+    origin: "cv",
+    confidence: 0.9,
+    evidenceReference: "character:305-324",
+    evidenceExcerpt:
+      "Fictional evidence: supported experimentation programmes end to end.",
+    proficiencySignal: "working",
+    lastUsedAt: "2026-04-30",
+    confirmationState: "confirmed",
   },
 ] satisfies CareerEvidenceItem[];
 
