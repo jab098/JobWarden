@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 
 import { setExploreEnabledAction } from "@/app/(protected)/explore/actions";
-import { ActionFeedback } from "@/components/explore/action-feedback";
+import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Button } from "@/components/ui/button";
 import type { ExploreActionState } from "@/lib/explore/types";
 

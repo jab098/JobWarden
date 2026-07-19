@@ -523,6 +523,68 @@ describe("Supabase foundation static verifier", () => {
     );
   });
 
+  it("requires the audited application tracker schema and RPCs", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "public table career_applications must enable and force RLS",
+        "public table career_application_events must enable and force RLS",
+        "missing career applications table",
+        "missing append-only application events table",
+        "applications must enforce one tracked application per owner and job",
+        "missing owner-fenced application tracking RPC",
+        "missing owner-fenced application transition RPC",
+        "application transitions must be validated against the explicit map",
+        "application transitions must append an audit event",
+        "missing owner-fenced application plan RPC",
+        "missing owner-fenced application deletion RPC",
+        "career profile deletion must also erase applications",
+        "career profile deletion must also erase application events",
+      ]),
+    );
+  });
+
+  it("forbids direct authenticated mutation of application state", () => {
+    const files = migrations();
+    const trackerFile = "202607190003_application_tracker.sql";
+    files.set(
+      trackerFile,
+      `${files.get(trackerFile) ?? ""}
+        grant insert, update on public.career_applications to authenticated;
+        create policy "unsafe event write"
+        on public.career_application_events for insert to authenticated
+        with check (owner_id = auth.uid());`,
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "authenticated callers must change applications through the owner-fenced RPCs",
+        "browser mutation policy forbidden on public.career_application_events",
+      ]),
+    );
+  });
+
+  it("keeps the SQL application transition map in lockstep with the domain", async () => {
+    const { applicationTransitions } =
+      await import("../packages/domain/src/applications.ts");
+    const migrationSql = migration("202607190003_application_tracker.sql");
+    const pairsMatch = migrationSql.match(
+      /\(current_stage, target_stage\) in \((.*?\))\s*\)\s*then/u,
+    );
+    const sqlPairs = [
+      ...(pairsMatch?.[1] ?? "").matchAll(/\('([a-z]+)', '([a-z]+)'\)/gu),
+    ].map((entry) => `${entry[1]}->${entry[2]}`);
+
+    const domainPairs = Object.entries(applicationTransitions).flatMap(
+      ([from, targets]) => targets.map((to: string) => `${from}->${to}`),
+    );
+
+    expect(sqlPairs.toSorted()).toEqual(domainPairs.toSorted());
+  });
+
   it("keeps the SQL pathway seed in lockstep with the domain taxonomy", async () => {
     const { careerPathways } =
       await import("../packages/domain/src/explore.ts");

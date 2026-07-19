@@ -9,7 +9,7 @@ export function AppShell({
 }: Readonly<{
   children: React.ReactNode;
   dataMode: "supabase" | "fixtures";
-  activePath?: "jobs" | "explore" | "profile";
+  activePath?: "jobs" | "explore" | "applications" | "profile";
 }>) {
   return (
     <div className="min-h-screen bg-[#f4f1ea] text-[#172033]">
@@ -43,6 +43,13 @@ export function AppShell({
             className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "explore" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173] hover:bg-white/70"}`}
           >
             Explore
+          </Link>
+          <Link
+            href="/applications"
+            aria-current={activePath === "applications" ? "page" : undefined}
+            className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "applications" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173] hover:bg-white/70"}`}
+          >
+            Applications
           </Link>
           <Link
             href="/profile"

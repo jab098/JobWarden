@@ -1,6 +1,11 @@
-import type { ExploreActionState } from "@/lib/explore/types";
+export type FeedbackState =
+  | { kind: "idle" }
+  | {
+      kind: "success" | "invalid" | "forbidden" | "unavailable";
+      message: string;
+    };
 
-export function ActionFeedback({ state }: { state: ExploreActionState }) {
+export function ActionFeedback({ state }: { state: FeedbackState }) {
   if (state.kind === "idle") return null;
   if (state.kind === "success") {
     return (
