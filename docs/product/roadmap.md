@@ -30,9 +30,9 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 12   | Explore and career pathways                                                | reviewed | Delivered by PR #13 (`124216f`); deterministic taxonomy, no AI dependency             |
 | 13   | Application tracker and follow-ups                                         | reviewed | Delivered by PR #14 (`9e66b32`)                                                       |
 | 14   | Scheduled updates and notifications                                        | reviewed | Delivered by PR #15 (`41ab43f`); Resend account, domain, and DNS remain an owner gate |
-| 15   | Evidence-bound CV tailoring                                                | pending  | Cloudflare Workers AI and private Storage; DOCX source required for preserved layout  |
-| 16   | Privacy, production authentication, deployment, and full-path verification | pending  | Supabase OAuth, production domain, Cloudflare deployment, Sentry EU if enabled        |
-| 17   | Home activity dashboard                                                    | pending  | None; deterministic owner-only statistics over existing data                          |
+| 15   | Evidence-bound CV tailoring                                                | reviewed | Delivered by PR #16 (`ed75c9d`); no AI dependency was needed                          |
+| 16   | Privacy, production authentication, deployment, and full-path verification | reviewed | Delivered by PR #18 (`46dacb4`); live activation follows the setup runbook            |
+| 17   | Home activity dashboard                                                    | reviewed | Delivered by PR #17 (`2246b49`); no schema change was required                        |
 
 ## Task 7 — Administrator operations
 
