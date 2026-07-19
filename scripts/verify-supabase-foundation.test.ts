@@ -655,6 +655,62 @@ describe("Supabase foundation static verifier", () => {
     );
   });
 
+  it("still closes every other definer function to anon", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+    files.set(
+      requiredMigrationFiles[1],
+      `
+        create function public.another_unsubscribe() returns boolean
+        language sql security definer set search_path = ''
+        as $$ select true $$;
+        grant execute on function public.another_unsubscribe() to anon;
+      `,
+    );
+
+    expect(verifyFoundationSql(files)).toContain(
+      "security-definer function public.another_unsubscribe must revoke public and anon execution",
+    );
+  });
+
+  it("requires the anon-executable unsubscribe function to revoke public", () => {
+    const files = migrations();
+    const notificationFile = "202607190004_scheduled_notifications.sql";
+    files.set(
+      notificationFile,
+      (files.get(notificationFile) ?? "").replace(
+        "revoke all on function public.unsubscribe_career_notifications(uuid) from public;",
+        "",
+      ),
+    );
+
+    expect(verifyFoundationSql(files)).toContain(
+      "deliberately anon-executable function public.unsubscribe_career_notifications must still revoke public execution",
+    );
+  });
+
+  it("forbids a direct authenticated mutation grant on the notification tables", () => {
+    const files = migrations();
+    const notificationFile = "202607190004_scheduled_notifications.sql";
+    files.set(
+      notificationFile,
+      `${files.get(notificationFile) ?? ""}
+        grant insert, update on public.career_notification_settings to authenticated;
+        create policy "unsafe delivery write"
+        on public.career_notification_deliveries for insert to authenticated
+        with check (owner_id = auth.uid());`,
+    );
+
+    expect(verifyFoundationSql(files)).toEqual(
+      expect.arrayContaining([
+        "authenticated callers must change career_notification_settings through the owner-fenced RPC",
+        "authenticated callers must change career_notification_deliveries through the owner-fenced RPC",
+        "browser mutation policy forbidden on public.career_notification_deliveries",
+      ]),
+    );
+  });
+
   it("forbids a direct authenticated mutation grant on career_job_decisions", () => {
     const files = migrations();
     const targetFeedFile = "202607190001_target_feed.sql";

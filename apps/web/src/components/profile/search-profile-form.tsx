@@ -25,6 +25,7 @@ function fieldsForSearch(
     terms:
       search?.includeTerms.join(", ") ?? profile?.keywords.join(", ") ?? "",
     locations: search?.ukLocations.join(", ") ?? "",
+    notify: search?.notificationsEnabled ?? false,
     searchesIdentity,
     optimisticSearchId: null as string | null,
   };
@@ -78,7 +79,7 @@ export function SearchProfileForm({
     );
     setFields(currentFields);
   }
-  const { selectedSearchId, name, terms, locations } = currentFields;
+  const { selectedSearchId, name, terms, locations, notify } = currentFields;
   const [state, action, pending] = useActionState(
     async (previousState: ProfileActionState, formData: FormData) => {
       const result = await saveSearchProfileAction(previousState, formData);
@@ -146,7 +147,7 @@ export function SearchProfileForm({
       allowUnknown: true,
     },
     recencyDays: existing?.recencyDays ?? (14 as const),
-    notificationsEnabled: false,
+    notificationsEnabled: notify,
   };
   const search = existing
     ? {
@@ -155,6 +156,7 @@ export function SearchProfileForm({
         name,
         includeTerms: list(terms),
         ukLocations: list(locations),
+        notificationsEnabled: notify,
       }
     : newSearch;
 
@@ -183,8 +185,8 @@ export function SearchProfileForm({
               Named search
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#596173]">
-              Turn your confirmed direction into a saved UK search.
-              Notifications remain off until Task 14.
+              Turn your confirmed direction into a saved UK search, and choose
+              whether its new matches reach you by email.
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -232,6 +234,30 @@ export function SearchProfileForm({
                 placeholder="implementation, measurement strategy"
                 disabled={readOnly || pending || blocked}
               />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="flex items-start gap-3 text-sm text-[#263248]">
+                <input
+                  type="checkbox"
+                  checked={notify}
+                  onChange={(event) =>
+                    setFields((current) => ({
+                      ...current,
+                      notify: event.target.checked,
+                    }))
+                  }
+                  disabled={readOnly || pending || blocked}
+                  className="mt-0.5 size-4 accent-[#2458a6]"
+                />
+                <span>
+                  Email me this search&rsquo;s new matches
+                  <span className="mt-1 block text-[#596173]">
+                    At most one digest per weekday slot, only when there is
+                    something new. Digest emails must also be on in the
+                    scheduled updates section below.
+                  </span>
+                </span>
+              </label>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -286,7 +312,10 @@ export function SearchProfileForm({
                       </span>
                       <span className="mt-1 block text-xs font-normal text-[#697181]">
                         {item.roleFamilies.length} role families ·{" "}
-                        {item.ukLocations.length} locations · notifications off
+                        {item.ukLocations.length} locations ·{" "}
+                        {item.notificationsEnabled
+                          ? "notifications on"
+                          : "notifications off"}
                       </span>
                     </span>
                   </Button>

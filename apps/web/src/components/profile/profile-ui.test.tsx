@@ -561,6 +561,62 @@ describe("career profile onboarding", () => {
     expect(screen.queryByText("private details")).not.toBeInTheDocument();
   });
 
+  it("carries the per-search notification choice into the saved draft", async () => {
+    const user = userEvent.setup();
+    render(
+      <ProfileOnboarding
+        snapshot={{
+          ...fictionalSnapshot,
+          dataMode: "supabase",
+          uploadCapability: emptySnapshot.uploadCapability,
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "New search" }));
+    const control = screen.getByRole("checkbox", {
+      name: /Email me this search’s new matches/,
+    });
+    expect(control).not.toBeChecked();
+
+    await user.click(control);
+    await user.click(screen.getByRole("button", { name: "Save named search" }));
+
+    await waitFor(() =>
+      expect(actionMocks.saveSearchProfileAction).toHaveBeenCalled(),
+    );
+    const submitted = actionMocks.saveSearchProfileAction.mock
+      .calls[0]?.[1] as FormData;
+    expect(
+      JSON.parse(String(submitted.get("search"))).notificationsEnabled,
+    ).toBe(true);
+  });
+
+  it("reports each saved search's real notification state", () => {
+    const [first] = fictionalSnapshot.searches;
+    render(
+      <ProfileOnboarding
+        snapshot={{
+          ...fictionalSnapshot,
+          dataMode: "supabase",
+          uploadCapability: emptySnapshot.uploadCapability,
+          searches: [
+            { ...first!, id: first!.id, notificationsEnabled: true },
+            {
+              ...first!,
+              id: "63000000-0000-4000-8000-000000000077",
+              name: "Quiet search",
+              notificationsEnabled: false,
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/notifications on/)).toBeInTheDocument();
+    expect(screen.getByText(/notifications off/)).toBeInTheDocument();
+  });
+
   it("adds Career profile to desktop and mobile navigation", () => {
     render(
       <AppShell dataMode="fixtures">

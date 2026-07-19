@@ -8,6 +8,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { isTrustedMutationOrigin } from "@/lib/admin/origin";
+import { PreviewNotificationsUnavailableError } from "@/lib/notifications/development-notifications";
+import { getNotificationsRepository } from "@/lib/notifications/get-repository";
+import type { NotificationsActionState } from "@/lib/notifications/types";
 import { getProfileRepository } from "@/lib/profile/get-repository";
 import { ProfileRepositoryError } from "@/lib/profile/repository";
 import type { ProfileActionState } from "@/lib/profile/types";
@@ -179,5 +182,54 @@ export async function deleteProfileDataAction(): Promise<ProfileActionState> {
     return { kind: "success", message: "Career profile data deleted." };
   } catch (error) {
     return mapError(error);
+  }
+}
+
+const channelSchema = z.object({ enabled: z.enum(["on", "off"]) }).strict();
+
+export async function setNotificationChannelAction(
+  _previousState: NotificationsActionState,
+  formData: FormData,
+): Promise<NotificationsActionState> {
+  if (!(await trusted())) {
+    return {
+      kind: "forbidden",
+      message: "This notification change could not be verified.",
+    };
+  }
+
+  const parsed = channelSchema.safeParse({
+    enabled: value(formData, "enabled"),
+  });
+  if (!parsed.success) {
+    return {
+      kind: "invalid",
+      message: "Check the notification setting and try again.",
+    };
+  }
+
+  try {
+    await (
+      await getNotificationsRepository()
+    ).setChannelEnabled(parsed.data.enabled === "on");
+    revalidatePath("/profile");
+    return {
+      kind: "success",
+      message:
+        parsed.data.enabled === "on"
+          ? "Digest emails are on."
+          : "Digest emails are off.",
+    };
+  } catch (error) {
+    if (error instanceof PreviewNotificationsUnavailableError) {
+      return {
+        kind: "unavailable",
+        message: "Notification changes are unavailable in this preview.",
+      };
+    }
+    return {
+      kind: "unavailable",
+      message: "This notification change could not be saved. Try again.",
+    };
   }
 }

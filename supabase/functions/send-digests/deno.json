@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@jobwarden/domain": "../../../packages/domain/src/index.ts",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.110.6",
+    "zod": "npm:zod@4.4.3"
+  }
+}

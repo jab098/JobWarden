@@ -5,11 +5,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({
   getProfileRepository: vi.fn(),
+  getNotificationsRepository: vi.fn(),
   getProfileMutationContext: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 vi.mock("@/lib/profile/get-repository", () => ({
   getProfileRepository: mocks.getProfileRepository,
+}));
+vi.mock("@/lib/notifications/get-repository", () => ({
+  getNotificationsRepository: mocks.getNotificationsRepository,
 }));
 vi.mock("./action-context", () => ({
   getProfileMutationContext: mocks.getProfileMutationContext,
@@ -21,7 +25,9 @@ import {
   decideSuggestionAction,
   saveProfileDraftAction,
   saveSearchProfileAction,
+  setNotificationChannelAction,
 } from "./actions";
+import { PreviewNotificationsUnavailableError } from "@/lib/notifications/development-notifications";
 
 const trustedContext = {
   requestOrigin: "https://jobwarden.example",
@@ -192,5 +198,81 @@ describe("career profile server actions", () => {
       ),
     ).resolves.toMatchObject({ kind: "invalid" });
     expect(saveSearch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("notification channel server action", () => {
+  const setChannelEnabled = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getProfileMutationContext.mockResolvedValue(trustedContext);
+    setChannelEnabled.mockResolvedValue(undefined);
+    mocks.getNotificationsRepository.mockResolvedValue({ setChannelEnabled });
+  });
+
+  it("rejects an untrusted mutation origin before repository access", async () => {
+    mocks.getProfileMutationContext.mockResolvedValue({
+      ...trustedContext,
+      requestOrigin: "https://attacker.test",
+    });
+
+    await expect(
+      setNotificationChannelAction({ kind: "idle" }, form({ enabled: "on" })),
+    ).resolves.toMatchObject({ kind: "forbidden" });
+    expect(mocks.getNotificationsRepository).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["on", true],
+    ["off", false],
+  ])(
+    "maps %s onto the owner-fenced repository call",
+    async (input, expected) => {
+      await expect(
+        setNotificationChannelAction(
+          { kind: "idle" },
+          form({ enabled: input }),
+        ),
+      ).resolves.toMatchObject({ kind: "success" });
+      expect(setChannelEnabled).toHaveBeenCalledWith(expected);
+    },
+  );
+
+  it("rejects a value outside the two legal states", async () => {
+    await expect(
+      setNotificationChannelAction(
+        { kind: "idle" },
+        form({ enabled: "maybe" }),
+      ),
+    ).resolves.toMatchObject({ kind: "invalid" });
+    expect(setChannelEnabled).not.toHaveBeenCalled();
+  });
+
+  it("reports the preview refusal honestly", async () => {
+    setChannelEnabled.mockRejectedValue(
+      new PreviewNotificationsUnavailableError(),
+    );
+
+    await expect(
+      setNotificationChannelAction({ kind: "idle" }, form({ enabled: "on" })),
+    ).resolves.toMatchObject({
+      kind: "unavailable",
+      message: "Notification changes are unavailable in this preview.",
+    });
+  });
+
+  it("does not leak an underlying database failure", async () => {
+    setChannelEnabled.mockRejectedValue(
+      new Error("connection to 10.0.0.5 refused"),
+    );
+
+    const result = await setNotificationChannelAction(
+      { kind: "idle" },
+      form({ enabled: "on" }),
+    );
+
+    expect(result.kind).toBe("unavailable");
+    expect(JSON.stringify(result)).not.toContain("10.0.0.5");
   });
 });

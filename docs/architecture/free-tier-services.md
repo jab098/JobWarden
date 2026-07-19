@@ -40,7 +40,9 @@ Task 10's career extraction path keeps optional AI disabled with `CAREER_PROFILE
 - **Upstash Redis:** unnecessary until measured workload demonstrates a cache, rate-limit, or queue problem that Postgres and platform primitives cannot responsibly handle.
 - **Clerk/Auth0:** unnecessary because the reviewed architecture already uses Supabase Auth and RLS. Authentication remains deferred locally, not redesigned.
 
-Resend is an approved future exception, not a current dependency. The executable repository guardrail continues to reject it until Task 14 replaces the global ban with a server-only import allowlist limited to the notification adapter and proves daily/monthly ceilings, deduplication, and no client-bundle import.
+Resend is now an active, tightly bounded exception. Task 14 replaced the global ban with an exact-path allowlist in the executable guardrail: only the adapter in `supabase/functions/send-digests/`, its test, and that function's deployment entry point may reference it, and the guard now reads the whole `supabase/functions` tree as well as `apps` and `packages`. Delivery uses the documented Resend HTTP API rather than the npm SDK, so no dependency was added to the workspace at all.
+
+Ceilings are application-wide and counted from `career_notification_deliveries`, which is both the user-visible delivery status and the auditable counter — there is no second ledger that could disagree with it. In-flight `pending` rows count towards both ceilings, so a send cannot race past the allowance. Defaults are 80 per day and 2,500 per month, deliberately below the documented free allowances; a reached ceiling records a `suppressed_daily_cap` or `suppressed_monthly_cap` row and sends nothing, with no paid fallback. Setting `NOTIFICATION_DAILY_LIMIT=0` is the documented immediate pause. Without `RESEND_API_KEY` the runtime is inert.
 
 ## Cost-control pattern
 
@@ -71,7 +73,7 @@ No platform setup is required for Task 7's fictional local implementation. When 
 - Task 8: Supabase project URL, server secret, and Vault/Cron setup using the exact [shared ingestion operations guide](../operations/ingestion.md). A publishable key is not used by the custom bearer-protected scheduler path.
 - Task 9: Reed API registration and server-only `REED_API_KEY` setup using the exact [Reed ingestion runbook](../operations/reed-ingestion.md). Do not send the key in chat. Create the source disabled, validate it against a staging database, and enable it only after the documented terms/retention decision and real pgTAP checks are complete.
 - Task 10: the private bucket/policies, extraction function, retention schedule, and authenticated deletion path must pass the Docker-backed and linked-environment checks in [Career Profile Data Operations](../operations/career-profile-data.md) before any real CV test. Cloudflare Workers AI is optional and stays disabled by default; it is not a prerequisite for deterministic extraction.
-- Task 14: Resend account, API key, verified sender, and DNS records.
+- Task 14: Resend account, API key, verified sending subdomain, and SPF/DKIM/DMARC records using the exact [scheduled digest operations guide](../operations/notifications.md). The implementation is complete and inert until those are in place.
 - Task 16: Google OAuth/Supabase callbacks, administrator bootstrap UUID, Cloudflare deployment/domain, and optional Sentry EU project.
 
 Secrets are supplied through local/deployment environment configuration and are never pasted into repository documentation, issues, pull requests, or client-visible variables.
