@@ -16,6 +16,8 @@ import type {
   IngestionRunView,
   JobSourceView,
   SourceHealthView,
+  AuditLogEntry,
+  OperationalHealth,
 } from "./types";
 
 export type MutationContext = MutationOriginInput;
@@ -48,6 +50,11 @@ export interface AdminRepository {
   setAccessRequestsEnabled(enabled: boolean): Promise<void>;
   saveSource(input: SaveJobSourceInput): Promise<{ sourceId: string }>;
   requestSourceIngestion(sourceId: string): Promise<IngestionRequestResult>;
+  listAuditLog(input: {
+    limit: number;
+    before: string | null;
+  }): Promise<AuditLogEntry[]>;
+  getOperationalHealth(): Promise<OperationalHealth>;
 }
 
 const forbiddenState: AdminActionState = {

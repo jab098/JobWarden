@@ -6,6 +6,8 @@ const links = [
   { href: "/admin/access", label: "Access" },
   { href: "/admin/sources", label: "Sources" },
   { href: "/admin/ingestion", label: "Ingestion" },
+  { href: "/admin/health", label: "Health" },
+  { href: "/admin/audit", label: "Audit" },
 ] as const;
 
 function AdminNavigation({

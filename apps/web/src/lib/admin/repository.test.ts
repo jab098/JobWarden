@@ -36,6 +36,21 @@ function createRepository(): AdminRepository {
     decideAccess: vi.fn(async () => undefined),
     setAccessRequestsEnabled: vi.fn(async () => undefined),
     saveSource: vi.fn(async () => ({ sourceId })),
+    listAuditLog: vi.fn(async () => []),
+    getOperationalHealth: vi.fn(async () => ({
+      deliveries: {
+        sentToday: 12,
+        sentThisMonth: 240,
+        dailyLimit: 80,
+        monthlyLimit: 2500,
+        dailyHeadroom: 68,
+        monthlyHeadroom: 2260,
+        failed: 1,
+        suppressedNoMatches: 31,
+        suppressedByCap: 0,
+      },
+      ai: { dailyAllowance: 0, usedToday: 0 },
+    })),
     requestSourceIngestion: vi.fn(async () => ({
       requestId: "8b62cdf3-dc0f-4127-888d-083d5dad0a9f",
       correlationId: "f3229a26-c019-42cd-a4ef-a3a7010e974e",

@@ -278,6 +278,45 @@ function mapAccessRows(
     );
 }
 
+/**
+ * Mirrors the notification runtime's own defaults so the headroom shown here is
+ * the headroom the send path will actually apply. If the owner overrides these
+ * in the Edge Function's environment, update both.
+ */
+const notificationLimits = { daily: 80, monthly: 2_500 } as const;
+
+const auditLogSchema = z
+  .array(
+    z.object({
+      id: z.string().uuid(),
+      actor_user_id: z.string().uuid().nullable(),
+      action: z.string().min(1).max(100),
+      resource_type: z.string().min(1).max(100),
+      resource_id: z.string().max(200).nullable(),
+      metadata: z.record(z.string(), z.unknown()),
+      created_at: z.string().min(1),
+    }),
+  )
+  .max(200);
+
+const operationalHealthSchema = z.object({
+  deliveries: z.object({
+    sentToday: z.number().int().nonnegative(),
+    sentThisMonth: z.number().int().nonnegative(),
+    dailyLimit: z.number().int().nonnegative(),
+    monthlyLimit: z.number().int().nonnegative(),
+    dailyHeadroom: z.number().int().nonnegative(),
+    monthlyHeadroom: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+    suppressedNoMatches: z.number().int().nonnegative(),
+    suppressedByCap: z.number().int().nonnegative(),
+  }),
+  ai: z.object({
+    dailyAllowance: z.number().int().nonnegative(),
+    usedToday: z.number().int().nonnegative(),
+  }),
+});
+
 export function createSupabaseAdminRepository(
   client: object,
   now: () => Date = () => new Date(),
@@ -499,6 +538,42 @@ export function createSupabaseAdminRepository(
           state: row.request_state,
           eligibleAfter: row.eligible_after,
         } satisfies IngestionRequestResult;
+      } catch {
+        throw unavailable();
+      }
+    },
+
+    async listAuditLog({ limit, before }) {
+      const response = await supabase.rpc("list_audit_log", {
+        max_entries: limit,
+        before_created_at: before,
+      });
+      if (response.error) throw mapDatabaseError(response.error);
+
+      try {
+        return auditLogSchema.parse(response.data ?? []).map((row) => ({
+          id: row.id,
+          actorUserId: row.actor_user_id,
+          action: row.action,
+          resourceType: row.resource_type,
+          resourceId: row.resource_id,
+          metadata: row.metadata,
+          createdAt: row.created_at,
+        }));
+      } catch {
+        throw unavailable();
+      }
+    },
+
+    async getOperationalHealth() {
+      const response = await supabase.rpc("admin_operational_health", {
+        daily_limit: notificationLimits.daily,
+        monthly_limit: notificationLimits.monthly,
+      });
+      if (response.error) throw mapDatabaseError(response.error);
+
+      try {
+        return operationalHealthSchema.parse(response.data);
       } catch {
         throw unavailable();
       }
