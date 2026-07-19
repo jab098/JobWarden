@@ -4,6 +4,15 @@ JobWarden is a private-beta, UK-only job-search command centre. The approved fou
 
 The durable recovery map is [project status](docs/project-status.md), Tasks 7–16 are defined in the [canonical product roadmap](docs/product/roadmap.md), and provider/cost decisions are maintained in [free-tier services](docs/architecture/free-tier-services.md). Future agents should read those files before choosing work.
 
+## Product surfaces
+
+- `/jobs` — the primary explainable Target Feed (deterministic 45/20/15/10/10 scoring against enabled search profiles) with the broad UK list behind `?view=all` (Tasks 6 and 11).
+- `/explore` — the opt-in adjacent-career pathways feed; deterministic ≥70% weighted overlap against confirmed evidence, at most two significant gaps, dismiss/promote/disable controls (Task 12).
+- `/profile` — career profile, evidence review, and named search profiles (Task 10).
+- `/admin` — administrator operations (production requires server-derived administrator access); `/development/admin-preview` is the separate fictional read-only preview (Task 7).
+
+All product data is fictional in local development: with `NODE_ENV=development` and `JOBWARDEN_DEV_ACCESS_BYPASS=true`, every repository serves frozen fictional fixtures and refuses mutations. The bypass fails closed outside development and never grants administrator access. Matching is deterministic and evidence-bound end to end — no AI produces or adjusts scores or suggestions.
+
 ## Local development
 
 Use Node 24.18.0 and pnpm 11.7.0:
