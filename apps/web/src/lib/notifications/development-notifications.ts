@@ -4,7 +4,7 @@ import type {
   NotificationsRepository,
   UnsubscribeRepository,
 } from "./repository";
-import type { NotificationSettingsResult } from "./types";
+import type { NotificationChannelState } from "./types";
 
 export class PreviewNotificationsUnavailableError extends Error {
   constructor() {
@@ -18,11 +18,8 @@ export class PreviewNotificationsUnavailableError extends Error {
  * and a failed send, so every delivery state is designed and reviewable without
  * a live provider.
  */
-const fictionalSettings: NotificationSettingsResult = Object.freeze({
+const fictionalSettings: NotificationChannelState = Object.freeze({
   channelEnabled: true,
-  notifyingProfileNames: Object.freeze([
-    "Analytics implementation",
-  ]) as readonly string[],
   recentDeliveries: Object.freeze([
     Object.freeze({
       id: "a0000000-0000-4000-8000-000000000001",
@@ -52,7 +49,7 @@ const fictionalSettings: NotificationSettingsResult = Object.freeze({
       matchCount: 5,
       createdAt: "2026-07-16T17:10:00.000Z",
     }),
-  ]) as readonly NotificationSettingsResult["recentDeliveries"][number][],
+  ]) as readonly NotificationChannelState["recentDeliveries"][number][],
   dataMode: "fixtures" as const,
 });
 

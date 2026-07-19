@@ -1,9 +1,9 @@
 import "server-only";
 
-import type { NotificationSettingsResult } from "./types";
+import type { NotificationChannelState } from "./types";
 
 export interface NotificationsRepository {
-  getSettings(): Promise<NotificationSettingsResult>;
+  getSettings(): Promise<NotificationChannelState>;
   setChannelEnabled(enabled: boolean): Promise<void>;
 }
 

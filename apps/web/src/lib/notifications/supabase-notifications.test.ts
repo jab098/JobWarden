@@ -9,42 +9,6 @@ import {
   createSupabaseUnsubscribeRepository,
 } from "./supabase-notifications";
 
-const snapshot = {
-  generation: 1,
-  draft: null,
-  evidence: [],
-  currentCv: null,
-  suggestions: [],
-  searches: [
-    {
-      id: "20000000-0000-4000-8000-000000000001",
-      name: "Analytics implementation",
-      enabled: true,
-      notificationsEnabled: true,
-    },
-    {
-      id: "20000000-0000-4000-8000-000000000002",
-      name: "Quiet search",
-      enabled: true,
-      notificationsEnabled: false,
-    },
-    {
-      id: "20000000-0000-4000-8000-000000000003",
-      name: "Disabled search",
-      enabled: false,
-      notificationsEnabled: true,
-    },
-  ],
-  uploadCapability: { enabled: false, reason: "fictional_preview" },
-  dataMode: "supabase" as const,
-};
-
-vi.mock("@/lib/profile/supabase-profile", () => ({
-  createSupabaseProfileRepository: () => ({
-    getSnapshot: async () => snapshot,
-  }),
-}));
-
 const deliveryRow = {
   id: "a0000000-0000-4000-8000-000000000001",
   slot_key: "2026-07-20T09",
@@ -85,7 +49,23 @@ function client(options: {
 }
 
 describe("getSettings", () => {
-  it("returns the channel state, notifying profiles, and recent slots", async () => {
+  it("reads only its own tables, never the career snapshot", async () => {
+    // The profile page already holds the snapshot; re-reading it here would
+    // cost a second round trip on every render.
+    const stub = client({});
+
+    await createSupabaseNotificationsRepository(stub).getSettings();
+
+    const tables = stub.from.mock.calls.map(([table]) => table);
+    expect(new Set(tables)).toEqual(
+      new Set([
+        "career_notification_settings",
+        "career_notification_deliveries",
+      ]),
+    );
+  });
+
+  it("returns the channel state and recent slots", async () => {
     const stub = client({});
 
     const result =
@@ -93,7 +73,6 @@ describe("getSettings", () => {
 
     expect(result).toEqual({
       channelEnabled: true,
-      notifyingProfileNames: ["Analytics implementation"],
       recentDeliveries: [
         {
           id: "a0000000-0000-4000-8000-000000000001",

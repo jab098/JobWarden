@@ -308,7 +308,6 @@ export function createNotificationHandler(
     }
 
     const candidateIds = candidates.map((candidate) => candidate.id);
-    const controller = new AbortController();
 
     for (const recipient of recipients) {
       if (
@@ -336,7 +335,11 @@ export function createNotificationHandler(
           candidateIds,
           slotKey,
           invocationCorrelationId,
-          signal: controller.signal,
+          // A send started near the deadline is cut off rather than allowed to
+          // run past the invocation budget.
+          signal: AbortSignal.timeout(
+            Math.max(1, invocationDeadlineAt - dependencies.now().getTime()),
+          ),
         });
         if (result === "sent") aggregate.sentCount += 1;
         else if (result === "suppressed") aggregate.suppressedCount += 1;

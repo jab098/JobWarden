@@ -771,6 +771,18 @@ export function verifyFoundationSql(files) {
       "the notification runtime must receive career evidence without its excerpt",
     ],
     [
+      "order by candidate.created_at, candidate.id limit 25",
+      "the digest read must bound searches per owner so one owner cannot fail the batch",
+    ],
+    [
+      "order by candidate.created_at, candidate.id limit 250",
+      "the digest read must bound evidence per owner so one owner cannot fail the batch",
+    ],
+    [
+      "jsonb_array_length(target_announcements) > 5000",
+      "the announcement bound must admit the runtime's own worst case",
+    ],
+    [
       "delete from public.career_notification_deliveries where owner_id = actor_user_id",
       "career profile deletion must also erase notification deliveries",
     ],

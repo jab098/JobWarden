@@ -2,13 +2,11 @@ import "server-only";
 
 import { z } from "zod";
 
-import { createSupabaseProfileRepository } from "@/lib/profile/supabase-profile";
-
 import type {
   NotificationsRepository,
   UnsubscribeRepository,
 } from "./repository";
-import type { NotificationDelivery, NotificationSettingsResult } from "./types";
+import type { NotificationChannelState, NotificationDelivery } from "./types";
 
 const RECENT_DELIVERY_LIMIT = 10;
 
@@ -76,24 +74,21 @@ export function createSupabaseNotificationsRepository(
   client: object,
 ): NotificationsRepository {
   const supabaseClient = client as NotificationsClient;
-  const profileRepository = createSupabaseProfileRepository(client);
 
   return {
-    async getSettings(): Promise<NotificationSettingsResult> {
+    async getSettings(): Promise<NotificationChannelState> {
       try {
-        const [settingsResponse, deliveriesResponse, snapshot] =
-          await Promise.all([
-            supabaseClient
-              .from("career_notification_settings")
-              .select("channel_enabled")
-              .maybeSingle(),
-            supabaseClient
-              .from("career_notification_deliveries")
-              .select("id,slot_key,status,match_count,created_at")
-              .order("created_at", { ascending: false })
-              .limit(RECENT_DELIVERY_LIMIT),
-            profileRepository.getSnapshot(),
-          ]);
+        const [settingsResponse, deliveriesResponse] = await Promise.all([
+          supabaseClient
+            .from("career_notification_settings")
+            .select("channel_enabled")
+            .maybeSingle(),
+          supabaseClient
+            .from("career_notification_deliveries")
+            .select("id,slot_key,status,match_count,created_at")
+            .order("created_at", { ascending: false })
+            .limit(RECENT_DELIVERY_LIMIT),
+        ]);
 
         const settings = settingsRowSchema
           .nullable()
@@ -106,11 +101,8 @@ export function createSupabaseNotificationsRepository(
         return {
           // No row yet means the owner has never opted in.
           channelEnabled: settings?.channel_enabled ?? false,
-          notifyingProfileNames: snapshot.searches
-            .filter((search) => search.enabled && search.notificationsEnabled)
-            .map((search) => search.name),
           recentDeliveries: deliveries.map(toDelivery),
-          dataMode: snapshot.dataMode,
+          dataMode: "supabase",
         };
       } catch {
         throw new Error("Unable to load notification settings");

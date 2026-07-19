@@ -212,7 +212,9 @@ const snapshot = deepFreeze<ProfileSnapshot>({
         allowUnknown: true,
       },
       recencyDays: 14,
-      notificationsEnabled: false,
+      // Opted in so the preview exercises the digest-sending state as well as
+      // the frozen delivery history beside it.
+      notificationsEnabled: true,
     },
   ],
 });

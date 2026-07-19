@@ -7,7 +7,7 @@ import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Button } from "@/components/ui/button";
 import type {
   NotificationDeliveryStatus,
-  NotificationSettingsResult,
+  NotificationSettingsView,
   NotificationsActionState,
 } from "@/lib/notifications/types";
 
@@ -59,7 +59,7 @@ function formatSlot(slotKey: string): string {
 export function NotificationSettings({
   result,
 }: {
-  result: NotificationSettingsResult;
+  result: NotificationSettingsView;
 }) {
   const [state, action, pending] = useActionState(
     setNotificationChannelAction,

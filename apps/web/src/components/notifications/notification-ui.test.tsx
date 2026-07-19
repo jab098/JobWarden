@@ -19,15 +19,20 @@ vi.mock("@/app/unsubscribe/actions", () => ({
 import { UnsubscribeForm } from "@/app/unsubscribe/unsubscribe-form";
 import { NotificationSettings } from "@/components/notifications/notification-settings";
 import { createDevelopmentNotificationsRepository } from "@/lib/notifications/development-notifications";
-import type { NotificationSettingsResult } from "@/lib/notifications/types";
+import type { NotificationSettingsView } from "@/lib/notifications/types";
 
 const fictional =
   await createDevelopmentNotificationsRepository().getSettings();
 
 function settings(
-  overrides: Partial<NotificationSettingsResult> = {},
-): NotificationSettingsResult {
-  return { ...fictional, dataMode: "supabase", ...overrides };
+  overrides: Partial<NotificationSettingsView> = {},
+): NotificationSettingsView {
+  return {
+    ...fictional,
+    dataMode: "supabase",
+    notifyingProfileNames: ["Analytics implementation"],
+    ...overrides,
+  };
 }
 
 beforeEach(() => {

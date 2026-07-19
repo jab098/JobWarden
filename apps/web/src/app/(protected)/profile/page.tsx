@@ -13,13 +13,18 @@ export default async function ProfilePage() {
     (await getProfileRepository()).getSnapshot(),
     (await getNotificationsRepository()).getSettings(),
   ]);
+  const notifyingProfileNames = snapshot.searches
+    .filter((search) => search.enabled && search.notificationsEnabled)
+    .map((search) => search.name);
   const snapshotIdentity = snapshot.draft
     ? `profile:${snapshot.currentCv?.id ?? "without-cv"}`
     : "profile:empty";
   return (
     <AppShell dataMode={snapshot.dataMode} activePath="profile">
       <ProfileOnboarding key={snapshotIdentity} snapshot={snapshot} />
-      <NotificationSettings result={notifications} />
+      <NotificationSettings
+        result={{ ...notifications, notifyingProfileNames }}
+      />
     </AppShell>
   );
 }

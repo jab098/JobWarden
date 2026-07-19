@@ -195,12 +195,22 @@ begin
     settings.owner_id,
     account.email::text,
     settings.unsubscribe_token,
+    -- Both projections are bounded here rather than only in the runtime's
+    -- schema. An owner with more rows than the runtime accepts must degrade to
+    -- their oldest searches, not fail validation and take every other owner's
+    -- digest down with them. The limits match MAX_SEARCHES_PER_OWNER and
+    -- MAX_EVIDENCE_PER_OWNER in the function's contracts.
     coalesce((
       select jsonb_agg(to_jsonb(search) order by search.created_at, search.id)
-      from public.search_profiles as search
-      where search.user_id = settings.owner_id
-        and search.enabled
-        and search.notifications_enabled
+      from (
+        select *
+        from public.search_profiles as candidate
+        where candidate.user_id = settings.owner_id
+          and candidate.enabled
+          and candidate.notifications_enabled
+        order by candidate.created_at, candidate.id
+        limit 25
+      ) as search
     ), '[]'::jsonb),
     coalesce((
       select jsonb_agg(
@@ -218,9 +228,14 @@ begin
         )
         order by item.created_at, item.id
       )
-      from public.career_evidence_items as item
-      where item.user_id = settings.owner_id
-        and item.confirmation_state = 'confirmed'
+      from (
+        select *
+        from public.career_evidence_items as candidate
+        where candidate.user_id = settings.owner_id
+          and candidate.confirmation_state = 'confirmed'
+        order by candidate.created_at, candidate.id
+        limit 250
+      ) as item
     ), '[]'::jsonb)
   from public.career_notification_settings as settings
   join auth.users as account on account.id = settings.owner_id
@@ -448,9 +463,13 @@ begin
   if target_status not in ('sent', 'failed') then
     raise exception using errcode = '22023', message = 'invalid delivery status';
   end if;
+  -- 5000 is the runtime's own worst case: MAX_CANDIDATE_JOBS (200) pairs with
+  -- MAX_SEARCHES_PER_OWNER (25) on an owner's first digest. A lower bound here
+  -- would reject a legitimate payload after the email had already been sent,
+  -- leaving the matches unannounced and re-sent at the next slot.
   if target_announcements is null
     or jsonb_typeof(target_announcements) <> 'array'
-    or jsonb_array_length(target_announcements) > 2000 then
+    or jsonb_array_length(target_announcements) > 5000 then
     raise exception using errcode = '22023', message = 'invalid announcements';
   end if;
 

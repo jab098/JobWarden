@@ -284,6 +284,29 @@ describe("selectNewMatches", () => {
     ]);
   });
 
+  it("produces one announcement per matching job and profile pair", () => {
+    // The ledger is pair-scoped, so the announcement count is the product of
+    // candidates and notifying searches, not the job count. Anything that
+    // bounds the announcement payload must be sized against this product.
+    const result = selectNewMatches({
+      candidates: [
+        baseJob({ id: "10000000-0000-4000-8000-00000000000a" }),
+        baseJob({ id: "10000000-0000-4000-8000-00000000000b" }),
+      ],
+      searches: [
+        search("20000000-0000-4000-8000-000000000001"),
+        search("20000000-0000-4000-8000-000000000002", { name: "Second" }),
+        search("20000000-0000-4000-8000-000000000003", { name: "Third" }),
+      ],
+      confirmedEvidence: evidence(),
+      announced: new Set(),
+      now,
+    });
+
+    expect(result.jobs).toHaveLength(2);
+    expect(result.announcements).toHaveLength(6);
+  });
+
   it("keeps the highest scoring profile for a job listed once", () => {
     const result = selectNewMatches({
       candidates: [baseJob()],

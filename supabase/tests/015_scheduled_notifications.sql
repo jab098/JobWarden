@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(31);
+select plan(34);
 
 select has_table('public', 'career_notification_settings', 'notification settings are persisted');
 select has_table('public', 'career_notification_announcements', 'announced matches are persisted');
@@ -168,6 +168,29 @@ select throws_ok(
   'P0002',
   null,
   'slot completion rejects a delivery that was never claimed'
+);
+
+-- The bound must sit above the runtime's own worst case (200 candidate jobs
+-- times 25 notifying searches), or a legitimate first digest would be sent and
+-- then fail to record, re-announcing the same matches at the next slot.
+select throws_ok(
+  $$ select public.finish_notification_digest(
+       '00000000-0000-4000-8000-000000000001', 'sent', null, null,
+       (select jsonb_agg(jsonb_build_object(
+          'search_profile_id', '00000000-0000-4000-8000-000000000002'::uuid,
+          'job_id', '00000000-0000-4000-8000-000000000003'::uuid))
+        from generate_series(1, 5001))) $$,
+  '22023',
+  null,
+  'slot completion rejects an announcement payload beyond the runtime bound'
+);
+select lives_ok(
+  $$ select 1 from jsonb_array_elements(
+       (select jsonb_agg(jsonb_build_object(
+          'search_profile_id', '00000000-0000-4000-8000-000000000002'::uuid,
+          'job_id', '00000000-0000-4000-8000-000000000003'::uuid))
+        from generate_series(1, 5000))) limit 1 $$,
+  'the runtime worst case of 5000 announcements stays inside the bound'
 );
 
 select is(

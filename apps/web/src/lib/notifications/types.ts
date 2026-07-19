@@ -15,12 +15,19 @@ export type NotificationDelivery = {
   createdAt: string;
 };
 
-export type NotificationSettingsResult = {
+export type NotificationChannelState = {
   channelEnabled: boolean;
-  /** Names of the enabled search profiles that currently opt in to digests. */
-  notifyingProfileNames: readonly string[];
   recentDeliveries: readonly NotificationDelivery[];
   dataMode: "supabase" | "fixtures";
+};
+
+/**
+ * What the settings section renders. The notifying profile names come from the
+ * career snapshot the page has already loaded, so reading them costs no second
+ * round trip.
+ */
+export type NotificationSettingsView = NotificationChannelState & {
+  notifyingProfileNames: readonly string[];
 };
 
 export type NotificationsActionState =
