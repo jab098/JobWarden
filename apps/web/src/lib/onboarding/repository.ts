@@ -2,7 +2,6 @@ import "server-only";
 
 import type {
   CvOutcome,
-  FirstRunFilters,
   OnboardingAnswers,
   OnboardingPath,
   OnboardingStep,
@@ -27,8 +26,7 @@ export interface OnboardingRepository {
   }): Promise<void>;
   /**
    * Writes the search profile, Explore choice, and digest preference the
-   * answers describe, then marks onboarding complete. Returns the filters to
-   * pre-apply on the first feed.
+   * answers describe, then marks onboarding complete.
    */
-  finish(): Promise<{ filters: FirstRunFilters }>;
+  finish(): Promise<void>;
 }

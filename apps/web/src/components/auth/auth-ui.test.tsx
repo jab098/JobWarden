@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { AccessStateView } from "./access-state-view";
@@ -34,7 +34,7 @@ describe("public private-beta entry", () => {
 
     expect(
       screen.getByRole("link", { name: /open jobs workspace/i }),
-    ).toHaveAttribute("href", "/matches");
+    ).toHaveAttribute("href", "/home");
     expect(screen.getByText(/development data/i)).toBeInTheDocument();
     expect(
       screen.getByText("Explicitly fictional fixtures are enabled locally."),
@@ -43,6 +43,27 @@ describe("public private-beta entry", () => {
       screen.queryByRole("link", { name: /request access/i }),
     ).not.toBeInTheDocument();
   });
+});
+describe("public legal footer", () => {
+  it.each([
+    ["landing", () => render(<PublicHome />)],
+    ["sign-in", () => render(<SignInView action={() => {}} />)],
+  ])(
+    "reaches the privacy policy and terms from the %s page",
+    (_page, mount) => {
+      // A beta that reads CVs must not make its privacy policy a direct-URL
+      // secret, even while the surface stays deliberately quiet.
+      mount();
+
+      const legal = screen.getByRole("navigation", { name: "Legal" });
+      expect(
+        within(legal).getByRole("link", { name: "Privacy" }),
+      ).toHaveAttribute("href", "/privacy");
+      expect(
+        within(legal).getByRole("link", { name: "Terms" }),
+      ).toHaveAttribute("href", "/terms");
+    },
+  );
 });
 
 describe("sign-in state", () => {

@@ -14,7 +14,7 @@ export function WorkspaceHoldingView({
     <main className="min-h-screen bg-[#f4f1ea] px-5 py-6 text-[#172033] sm:px-8 lg:px-12">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-6xl flex-col">
         <header className="flex items-center justify-between border-b border-[#d8d2c7] pb-5">
-          <Link href="/matches" className="text-sm font-semibold">
+          <Link href="/home" className="text-sm font-semibold">
             JobWarden
           </Link>
           <form action={signOutAction}>

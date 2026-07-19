@@ -332,7 +332,7 @@ describe("OnboardingFlow", () => {
     render(<OnboardingFlow view={view({ currentStep: null })} />);
 
     expect(
-      screen.getByRole("button", { name: "Finish and see UK jobs" }),
+      screen.getByRole("button", { name: "Finish and open my hub" }),
     ).toBeEnabled();
   });
 
@@ -343,17 +343,21 @@ describe("OnboardingFlow", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: "Finish and see UK jobs" }),
+      screen.getByRole("button", { name: "Finish and open my hub" }),
     ).toBeDisabled();
     expect(screen.getByRole("alert")).toHaveTextContent(
       /something to match you on/,
     );
   });
 
-  it("promises the applied filters are visible and liftable", () => {
+  it("says where the chosen preferences actually live afterwards", () => {
+    // They shape matching through the saved search profile, and are edited
+    // from the career profile — not carried as URL filters on a landing page.
     render(<OnboardingFlow view={view({ currentStep: null })} />);
 
-    expect(screen.getByText(/one click from being lifted/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/editable from your career profile/),
+    ).toBeInTheDocument();
   });
 
   it("says every choice stays editable afterwards", () => {

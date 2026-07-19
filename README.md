@@ -6,6 +6,7 @@ The durable recovery map is [project status](docs/project-status.md), Tasks 7–
 
 ## Product surfaces
 
+- `/home` — the activity hub, and where every signed-in, set-up path lands (Tasks 17 and 23).
 - `/matches` — the explainable Target Feed (deterministic 45/20/15/10/10 scoring against enabled search profiles) (Tasks 6, 11, and 22).
 - `/jobs` — Search jobs: every indexed UK listing, with keyword, location, date-posted, salary-floor, and category filters, sort, and removable filter chips. Job detail lives at `/jobs/[jobId]` (Tasks 6 and 22).
 - `/pathways` — the opt-in adjacent-career pathways feed; deterministic ≥70% weighted overlap against confirmed evidence, at most two significant gaps, dismiss/promote/disable controls (Tasks 12 and 22).

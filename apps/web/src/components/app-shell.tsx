@@ -5,7 +5,7 @@ import { MobileNavigation } from "@/components/mobile-navigation";
 export function AppShell({
   children,
   dataMode,
-  activePath = "matches",
+  activePath = "home",
 }: Readonly<{
   children: React.ReactNode;
   dataMode: "supabase" | "fixtures";
@@ -15,7 +15,7 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-[#f4f1ea] text-[#172033]">
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[#d8d4cb] bg-[#f4f1ea]/95 px-5 backdrop-blur lg:hidden">
-        <Link href="/matches" className="font-semibold tracking-[-0.02em]">
+        <Link href="/home" className="font-semibold tracking-[-0.02em]">
           JobWarden
         </Link>
         <MobileNavigation dataMode={dataMode} activePath={activePath} />
@@ -23,7 +23,7 @@ export function AppShell({
       <aside className="fixed inset-y-0 left-0 hidden w-52 flex-col border-r border-[#d8d4cb] bg-[#f4f1ea] lg:flex">
         <div className="border-b border-[#d8d4cb] px-6 py-6">
           <Link
-            href="/matches"
+            href="/home"
             className="text-lg font-semibold tracking-[-0.025em]"
           >
             JobWarden

@@ -61,44 +61,6 @@ export function parseOnboardingAnswers(input: unknown): OnboardingAnswers {
   return result.success ? result.data : {};
 }
 
-export interface FirstRunFilters {
-  /** Empty when the user named several, for the same reason as the rest. */
-  location: string;
-  employment: (typeof employmentTypes)[number] | "all";
-  workingTime: (typeof workingTimes)[number] | "all";
-  workplace: (typeof workplaceTypes)[number] | "all";
-  ir35: (typeof ir35Statuses)[number] | "all";
-  compensation: "advertised" | "estimated" | "unknown" | "all";
-}
-
-/**
- * The hard preferences that can be expressed as feed filters. Only a *single*
- * selection becomes a filter: the feed's filters are one-value-per-facet, and
- * silently collapsing three chosen employment types into one would apply a
- * preference the user never expressed. Multi-selections still shape matching
- * through the search profile; they simply are not pre-applied to the URL.
- */
-export function buildFirstRunFilters(
-  answers: OnboardingAnswers,
-): FirstRunFilters {
-  const only = <T extends string>(values: readonly T[] | undefined) =>
-    values?.length === 1 ? values[0]! : undefined;
-
-  return {
-    location: only(answers.ukLocations) ?? "",
-    employment: only(answers.employmentTypes) ?? "all",
-    workingTime: only(answers.workingTimes) ?? "all",
-    workplace: only(answers.workplaceTypes) ?? "all",
-    ir35: only(answers.ir35Statuses) ?? "all",
-    // Never narrowed. The filter holds one provenance, so excluding unknown pay
-    // would have to mean "advertised only" — which also hides every estimated
-    // salary the matching gate keeps. Two surfaces would then answer the same
-    // preference differently, and estimated pay must stay visibly distinct from
-    // both advertised and unknown.
-    compensation: "all",
-  };
-}
-
 /**
  * Turns onboarding answers into the first named search. Confirmed CV evidence
  * supplies the skills where it exists; the aspiration path supplies them from

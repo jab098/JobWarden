@@ -1,6 +1,7 @@
 import { ArrowRight, Check, Search } from "lucide-react";
 import Link from "next/link";
 
+import { PublicFooter } from "@/components/legal/public-footer";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +48,7 @@ export function PublicHome({ dataMode }: PublicHomeProps) {
             </p>
             <div className="mt-9 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
               <Link
-                href={isDevelopment ? "/matches" : "/auth/sign-in"}
+                href={isDevelopment ? "/home" : "/auth/sign-in"}
                 className={cn(
                   buttonVariants({ size: "lg" }),
                   "h-11 rounded-md bg-[#2458a6] px-5 text-white hover:bg-[#1d477f] focus-visible:ring-[#2458a6]/40",
@@ -101,6 +102,8 @@ export function PublicHome({ dataMode }: PublicHomeProps) {
             ))}
           </aside>
         </div>
+
+        <PublicFooter />
       </div>
     </main>
   );

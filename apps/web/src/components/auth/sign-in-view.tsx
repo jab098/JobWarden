@@ -1,6 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
+import { PublicFooter } from "@/components/legal/public-footer";
 import { Button } from "@/components/ui/button";
 
 type SignInViewProps = {
@@ -68,6 +69,10 @@ export function SignInView({ action, error }: SignInViewProps) {
             Access is granted manually. JobWarden does not use a purchase or
             automatic approval flow.
           </p>
+
+          <div className="mt-14">
+            <PublicFooter />
+          </div>
         </div>
       </section>
     </main>

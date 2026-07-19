@@ -39,7 +39,7 @@ describe("Google OAuth initiation", () => {
     expect(client.auth.signInWithOAuth).toHaveBeenCalledWith({
       provider: "google",
       options: {
-        redirectTo: "https://jobwarden.example/auth/callback?next=%2Fmatches",
+        redirectTo: "https://jobwarden.example/auth/callback?next=%2Fhome",
       },
     });
   });
@@ -84,7 +84,7 @@ describe("OAuth callback completion", () => {
         "//attacker.example",
         "https://jobwarden.example",
       ),
-    ).resolves.toEqual({ kind: "redirect", destination: "/matches" });
+    ).resolves.toEqual({ kind: "redirect", destination: "/home" });
   });
 
   it("returns the same generic error for missing and failed codes", async () => {

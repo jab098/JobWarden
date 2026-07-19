@@ -31,13 +31,13 @@ describe("OAuth callback redirects", () => {
     "/jobs%C2%85hidden",
     "/jobs%E0%A4%A",
   ])("falls back for the unsafe target %s", (path) => {
-    expect(getSafeRedirectPath(path, siteOrigin)).toBe("/matches");
+    expect(getSafeRedirectPath(path, siteOrigin)).toBe("/home");
   });
 
   it("resolves against the configured origin and enforces the same origin", () => {
     expect(
       getSafeRedirectPath("https://attacker.example/jobs", siteOrigin),
-    ).toBe("/matches");
+    ).toBe("/home");
     expect(getSafeRedirectPath("/admin?tab=access#pending", siteOrigin)).toBe(
       "/admin?tab=access#pending",
     );
