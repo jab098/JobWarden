@@ -1,0 +1,40 @@
+"use client";
+
+import { useActionState } from "react";
+
+import { setExploreEnabledAction } from "@/app/(protected)/explore/actions";
+import { Button } from "@/components/ui/button";
+import type { ExploreActionState } from "@/lib/explore/types";
+
+const initialState: ExploreActionState = { kind: "idle" };
+
+export function ExploreToggle({ enabled }: { enabled: boolean }) {
+  const [state, formAction, pending] = useActionState(
+    setExploreEnabledAction,
+    initialState,
+  );
+
+  return (
+    <form action={formAction} className="flex flex-wrap items-center gap-3">
+      <input type="hidden" name="enabled" value={enabled ? "false" : "true"} />
+      <Button
+        type="submit"
+        size="sm"
+        variant={enabled ? "outline" : "default"}
+        disabled={pending}
+      >
+        {enabled ? "Turn off Explore" : "Turn on Explore"}
+      </Button>
+      {state.kind !== "idle" && state.kind !== "success" ? (
+        <span role="alert" className="text-xs text-[#8a3328]">
+          {state.message}
+        </span>
+      ) : null}
+      {state.kind === "success" ? (
+        <span role="status" className="text-xs text-[#596173]">
+          {state.message}
+        </span>
+      ) : null}
+    </form>
+  );
+}
