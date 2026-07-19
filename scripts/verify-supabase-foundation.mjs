@@ -15,6 +15,7 @@ export const requiredMigrationFiles = [
   "202607180007_career_profile_review_and_retention.sql",
   "202607190001_target_feed.sql",
   "202607190002_explore_pathways.sql",
+  "202607190003_application_tracker.sql",
 ];
 
 const publicTables = [
@@ -43,6 +44,8 @@ const publicTables = [
   "career_pathway_decisions",
   "explore_pathway_analytics",
   "explore_pathways",
+  "career_applications",
+  "career_application_events",
 ];
 
 function compact(sql) {
@@ -681,6 +684,50 @@ export function verifyFoundationSql(files) {
       "where public.career_pathway_decisions.decision is distinct from excluded.decision",
       "pathway analytics must count decision transitions only",
     ],
+    [
+      "create table public.career_applications",
+      "missing career applications table",
+    ],
+    [
+      "create table public.career_application_events",
+      "missing append-only application events table",
+    ],
+    [
+      "constraint career_applications_owner_job_unique unique (owner_id, job_id)",
+      "applications must enforce one tracked application per owner and job",
+    ],
+    [
+      "create or replace function public.track_career_application( target_job_id uuid )",
+      "missing owner-fenced application tracking RPC",
+    ],
+    [
+      "create or replace function public.transition_career_application( target_application_id uuid, target_stage text )",
+      "missing owner-fenced application transition RPC",
+    ],
+    [
+      "(current_stage, target_stage) in (",
+      "application transitions must be validated against the explicit map",
+    ],
+    [
+      "insert into public.career_application_events ( application_id, owner_id, from_stage, to_stage )",
+      "application transitions must append an audit event",
+    ],
+    [
+      "create or replace function public.update_career_application_plan( target_application_id uuid, target_next_action text, target_due_on date, target_notes text )",
+      "missing owner-fenced application plan RPC",
+    ],
+    [
+      "create or replace function public.delete_career_application( target_application_id uuid )",
+      "missing owner-fenced application deletion RPC",
+    ],
+    [
+      "delete from public.career_applications where owner_id = actor_user_id",
+      "career profile deletion must also erase applications",
+    ],
+    [
+      "delete from public.career_application_events where owner_id = actor_user_id",
+      "career profile deletion must also erase application events",
+    ],
   ];
 
   for (const [fragment, message] of requiredFragments) {
@@ -991,6 +1038,16 @@ export function verifyFoundationSql(files) {
       "authenticated callers must toggle explore through the owner-fenced RPC",
     );
   }
+  if (
+    hasAuthenticatedMutationGrant("career_applications") ||
+    hasAuthenticatedMutationPolicy("career_applications") ||
+    hasAuthenticatedMutationGrant("career_application_events") ||
+    hasAuthenticatedMutationPolicy("career_application_events")
+  ) {
+    failures.push(
+      "authenticated callers must change applications through the owner-fenced RPCs",
+    );
+  }
 
   const analyticsTable =
     sql.match(
@@ -1096,7 +1153,7 @@ export function verifyFoundationSql(files) {
   }
 
   const forbiddenMutationPolicy =
-    /create\s+policy[\s\S]*?on\s+public\.(jobs|user_roles|audit_log|access_requests|career_job_decisions|career_pathway_decisions|career_explore_settings|explore_pathway_analytics)\s+for\s+(insert|update|delete|all)\b/gi;
+    /create\s+policy[\s\S]*?on\s+public\.(jobs|user_roles|audit_log|access_requests|career_job_decisions|career_pathway_decisions|career_explore_settings|explore_pathway_analytics|career_applications|career_application_events)\s+for\s+(insert|update|delete|all)\b/gi;
   for (const match of sql.matchAll(forbiddenMutationPolicy)) {
     failures.push(
       `browser mutation policy forbidden on public.${match[1].toLowerCase()}`,
