@@ -42,32 +42,32 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Task progress
 
-| Task                                                                   | Status   | Notes                                                           |
-| ---------------------------------------------------------------------- | -------- | --------------------------------------------------------------- |
-| 1. Monorepo, persistent standards, and invariant guardrails            | reviewed | Commits `5563920` and `dc021a6`; independent review clean       |
-| 2. UK job domain and access state machine                              | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean   |
-| 3. Greenhouse adapter and normalisation pipeline                       | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean    |
-| 4. Supabase schema, RLS, mutations, and database tests                 | reviewed | Review clean; real Supabase reset/pgTAP pending Docker          |
-| 5. Supabase authentication and route gates                             | reviewed | Code retained; live OAuth and operational setup deferred        |
-| 6. Responsive app shell and UK jobs feed                               | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally     |
-| 7. Administrator operations                                            | reviewed | Delivered by PR #8; final code review clean at `4a1efdd`        |
-| 8. Shared ingestion runtime                                            | reviewed | Delivered by PR #9; final code review clean at `8556997`        |
-| 9. UK coverage and compensation                                        | reviewed | Delivered by PR #10; merge commit `44a3580` verified locally    |
-| 10. Career profile, onboarding, and CV extraction                      | reviewed | Delivered by PR #11; merge commit `06b5a9c` verified locally    |
-| 11. Target Feed and explainable fit scores                             | reviewed | Delivered by PR #12; merge commit `c86a14d` verified locally    |
-| 12. Explore and career pathways                                        | reviewed | Delivered by PR #13; merge commit `124216f` verified locally    |
-| 13. Application tracker and follow-ups                                 | reviewed | Delivered by PR #14; merge commit `9e66b32` verified locally    |
-| 14. Scheduled updates and notifications                                | reviewed | Delivered by PR #15; merge commit `41ab43f` verified locally    |
-| 15. Evidence-bound CV tailoring                                        | reviewed | Delivered by PR #16; merge commit `ed75c9d` verified locally    |
-| 16. Privacy, production access, deployment, and full-path verification | reviewed | Delivered by PR #18; merge commit `46dacb4`; live setup pending |
-| 17. Home activity dashboard                                            | reviewed | Delivered by PR #17; merge commit `2246b49` verified locally    |
-| 18. Onboarding gate and state machine                                  | reviewed | Independent review clean; gate fails closed in every direction  |
-| 19. Guided setup and first-run population                              | reviewed | Independent review clean; writes the profile before unlocking   |
-| 20. Administrator audit log and operational health                     | reviewed | Independent review clean; no new data is collected              |
-| 21. Authentication activation                                          | pending  | Owner-approved 2026-07-19; needs owner platform setup           |
-| 22. Search Jobs, route naming, and onboarding follow-ups               | reviewed | Delivered by PR #22; independent review APPROVED at `0fa46de`   |
-| 23. Single landing destination and public legal footer                 | reviewed | Delivered by PR #23; independent review APPROVED at `25314de`   |
-| 24. CV upload client                                                   | reviewed | Closes the gap between Task 10's server RPCs and the browser    |
+| Task                                                                   | Status    | Notes                                                           |
+| ---------------------------------------------------------------------- | --------- | --------------------------------------------------------------- |
+| 1. Monorepo, persistent standards, and invariant guardrails            | reviewed  | Commits `5563920` and `dc021a6`; independent review clean       |
+| 2. UK job domain and access state machine                              | reviewed  | Commits `4b3a221` through `b808ce6`; independent review clean   |
+| 3. Greenhouse adapter and normalisation pipeline                       | reviewed  | Commits `3ed0eb6` through `b570fab`; final full review clean    |
+| 4. Supabase schema, RLS, mutations, and database tests                 | reviewed  | Review clean; real Supabase reset/pgTAP pending Docker          |
+| 5. Supabase authentication and route gates                             | reviewed  | Code retained; live OAuth and operational setup deferred        |
+| 6. Responsive app shell and UK jobs feed                               | reviewed  | Delivered by PR #5; merge commit `7878d47` verified locally     |
+| 7. Administrator operations                                            | reviewed  | Delivered by PR #8; final code review clean at `4a1efdd`        |
+| 8. Shared ingestion runtime                                            | reviewed  | Delivered by PR #9; final code review clean at `8556997`        |
+| 9. UK coverage and compensation                                        | reviewed  | Delivered by PR #10; merge commit `44a3580` verified locally    |
+| 10. Career profile, onboarding, and CV extraction                      | reviewed  | Delivered by PR #11; merge commit `06b5a9c` verified locally    |
+| 11. Target Feed and explainable fit scores                             | reviewed  | Delivered by PR #12; merge commit `c86a14d` verified locally    |
+| 12. Explore and career pathways                                        | reviewed  | Delivered by PR #13; merge commit `124216f` verified locally    |
+| 13. Application tracker and follow-ups                                 | reviewed  | Delivered by PR #14; merge commit `9e66b32` verified locally    |
+| 14. Scheduled updates and notifications                                | reviewed  | Delivered by PR #15; merge commit `41ab43f` verified locally    |
+| 15. Evidence-bound CV tailoring                                        | reviewed  | Delivered by PR #16; merge commit `ed75c9d` verified locally    |
+| 16. Privacy, production access, deployment, and full-path verification | reviewed  | Delivered by PR #18; merge commit `46dacb4`; live setup pending |
+| 17. Home activity dashboard                                            | reviewed  | Delivered by PR #17; merge commit `2246b49` verified locally    |
+| 18. Onboarding gate and state machine                                  | reviewed  | Independent review clean; gate fails closed in every direction  |
+| 19. Guided setup and first-run population                              | reviewed  | Independent review clean; writes the profile before unlocking   |
+| 20. Administrator audit log and operational health                     | reviewed  | Independent review clean; no new data is collected              |
+| 21. Authentication activation                                          | pending   | Owner-approved 2026-07-19; needs owner platform setup           |
+| 22. Search Jobs, route naming, and onboarding follow-ups               | reviewed  | Delivered by PR #22; independent review APPROVED at `0fa46de`   |
+| 23. Single landing destination and public legal footer                 | reviewed  | Delivered by PR #23; independent review APPROVED at `25314de`   |
+| 24. CV upload client                                                   | in review | Closes the gap between Task 10's server RPCs and the browser    |
 
 ## Last verification commands
 

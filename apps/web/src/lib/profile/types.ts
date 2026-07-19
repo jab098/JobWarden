@@ -19,18 +19,19 @@ export type SavedSearchProfile = NamedSearchProfileDraft & { id: string };
 
 /**
  * Whether the CV upload control is live, and if not, why. The reason drives the
- * explanation the user reads, so the three cases stay distinct: a fictional
- * preview, an administrator who has not opened uploads, and a build with no
- * session to upload under.
+ * explanation the user reads.
+ *
+ * There is deliberately no "no session" reason. A sessionless caller never
+ * reaches capability derivation at all: `get_career_profile_snapshot` raises
+ * 42501 when `auth.uid()` is null, which becomes a thrown repository error, so
+ * no snapshot — and therefore no capability — is ever produced down that path.
+ * A branch for it would be a state the code cannot reach.
  */
 export type ProfileUploadCapability =
   | Readonly<{ enabled: true }>
   | Readonly<{
       enabled: false;
-      reason:
-        | "fictional_preview"
-        | "uploads_disabled"
-        | "live_auth_and_storage_verification_required";
+      reason: "fictional_preview" | "uploads_disabled";
     }>;
 
 export type ProfileSnapshot = Readonly<{

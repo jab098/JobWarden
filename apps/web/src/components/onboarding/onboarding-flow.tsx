@@ -139,7 +139,7 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
             <CvUploadCard
               capability={view.uploadCapability}
               generation={view.generation}
-              currentCv={null}
+              hasCurrentCv={view.cv.present}
             />
           </div>
           <p className="max-w-prose text-sm leading-6 text-[#596173]">

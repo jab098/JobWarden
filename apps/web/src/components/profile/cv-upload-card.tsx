@@ -11,10 +11,7 @@ import {
   type CvUploadOutcome,
   type CvUploadRejection,
 } from "@/lib/profile/cv-upload";
-import type {
-  CvDocumentView,
-  ProfileUploadCapability,
-} from "@/lib/profile/types";
+import type { ProfileUploadCapability } from "@/lib/profile/types";
 
 const closedCopy: Record<
   Extract<ProfileUploadCapability, { enabled: false }>["reason"],
@@ -24,8 +21,6 @@ const closedCopy: Record<
     "This preview runs on fictional data, so uploading is switched off here.",
   uploads_disabled:
     "CV uploads are not open yet. An administrator opens them for the whole application.",
-  live_auth_and_storage_verification_required:
-    "CV uploads open once sign-in is live in this build.",
 };
 
 const rejectionCopy: Record<CvUploadRejection, string> = {
@@ -55,8 +50,8 @@ function messageFor(outcome: CvUploadOutcome): string {
     : resultCopy[outcome.kind];
 }
 
-function heading(currentCv: CvDocumentView | null): string {
-  return currentCv ? "Replace your CV" : "Add your CV";
+function heading(hasCurrentCv: boolean): string {
+  return hasCurrentCv ? "Replace your CV" : "Add your CV";
 }
 
 /**
@@ -68,17 +63,17 @@ function heading(currentCv: CvDocumentView | null): string {
 export function CvUploadCard({
   capability,
   generation,
-  currentCv,
+  hasCurrentCv,
 }: {
   capability: ProfileUploadCapability;
   generation: number;
-  currentCv: CvDocumentView | null;
+  hasCurrentCv: boolean;
 }) {
   if (!capability.enabled) {
     return (
       <div className="rounded-md border border-[#ece9e2] p-4">
         <h3 className="text-sm font-semibold text-[#263248]">
-          {heading(currentCv)}
+          {heading(hasCurrentCv)}
         </h3>
         <p className="mt-1 max-w-prose text-sm leading-6 text-[#596173]">
           {closedCopy[capability.reason]}
@@ -86,15 +81,15 @@ export function CvUploadCard({
       </div>
     );
   }
-  return <CvUploadForm generation={generation} currentCv={currentCv} />;
+  return <CvUploadForm generation={generation} hasCurrentCv={hasCurrentCv} />;
 }
 
 function CvUploadForm({
   generation,
-  currentCv,
+  hasCurrentCv,
 }: {
   generation: number;
-  currentCv: CvDocumentView | null;
+  hasCurrentCv: boolean;
 }) {
   const router = useRouter();
   const inputId = useId();
@@ -144,10 +139,10 @@ function CvUploadForm({
       className="rounded-md border border-[#ece9e2] p-4"
     >
       <h3 className="text-sm font-semibold text-[#263248]">
-        {heading(currentCv)}
+        {heading(hasCurrentCv)}
       </h3>
       <p className="mt-1 max-w-prose text-sm leading-6 text-[#596173]">
-        {currentCv
+        {hasCurrentCv
           ? "Uploading a new CV replaces the current one. Evidence you have already confirmed stays confirmed."
           : "DOCX or PDF, up to 5 MB. It stays private to you and is never shared with employers."}
       </p>

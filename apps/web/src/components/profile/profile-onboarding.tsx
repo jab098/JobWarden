@@ -510,7 +510,7 @@ function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
               <CvUploadCard
                 capability={snapshot.uploadCapability}
                 generation={snapshot.generation}
-                currentCv={snapshot.currentCv}
+                hasCurrentCv={snapshot.currentCv !== null}
               />
             </div>
           </div>

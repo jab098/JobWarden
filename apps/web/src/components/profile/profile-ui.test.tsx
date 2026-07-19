@@ -61,10 +61,7 @@ const emptySnapshot: ProfileSnapshot = {
   currentCv: null,
   suggestions: [],
   searches: [],
-  uploadCapability: {
-    enabled: false,
-    reason: "live_auth_and_storage_verification_required",
-  },
+  uploadCapability: { enabled: false, reason: "uploads_disabled" },
   dataMode: "supabase",
 };
 
@@ -137,10 +134,7 @@ describe("career profile onboarding", () => {
     const editableSnapshot: ProfileSnapshot = {
       ...fictionalSnapshot,
       dataMode: "supabase",
-      uploadCapability: {
-        enabled: false,
-        reason: "live_auth_and_storage_verification_required",
-      },
+      uploadCapability: { enabled: false, reason: "uploads_disabled" },
     };
     const { container } = render(
       <ProfileOnboarding snapshot={editableSnapshot} />,

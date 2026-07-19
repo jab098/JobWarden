@@ -40,7 +40,7 @@ describe("CV upload card", () => {
       <CvUploadCard
         capability={{ enabled: false, reason: "uploads_disabled" }}
         generation={4}
-        currentCv={null}
+        hasCurrentCv={false}
       />,
     );
 
@@ -58,7 +58,7 @@ describe("CV upload card", () => {
       <CvUploadCard
         capability={{ enabled: true }}
         generation={4}
-        currentCv={null}
+        hasCurrentCv={false}
       />,
     );
 
@@ -73,7 +73,7 @@ describe("CV upload card", () => {
       <CvUploadCard
         capability={{ enabled: true }}
         generation={4}
-        currentCv={null}
+        hasCurrentCv={false}
       />,
     );
 
@@ -102,7 +102,7 @@ describe("CV upload card", () => {
       <CvUploadCard
         capability={{ enabled: true }}
         generation={4}
-        currentCv={null}
+        hasCurrentCv={false}
       />,
     );
 
@@ -124,7 +124,7 @@ describe("CV upload card", () => {
       <CvUploadCard
         capability={{ enabled: true }}
         generation={4}
-        currentCv={null}
+        hasCurrentCv={false}
       />,
     );
 
@@ -146,7 +146,7 @@ describe("CV upload card", () => {
       <CvUploadCard
         capability={{ enabled: true }}
         generation={4}
-        currentCv={null}
+        hasCurrentCv={false}
       />,
     );
 
@@ -165,13 +165,7 @@ describe("CV upload card", () => {
       <CvUploadCard
         capability={{ enabled: true }}
         generation={4}
-        currentCv={{
-          id: "d",
-          fileName: "existing.docx",
-          kind: "docx",
-          lifecycleStatus: "ready",
-          uploadedAt: "2026-07-19T00:00:00.000Z",
-        }}
+        hasCurrentCv
       />,
     );
 

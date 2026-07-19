@@ -173,8 +173,17 @@ export async function uploadCv(
   const { kind } = inspection;
   const { mediaType } = fileKinds[kind];
 
-  const path = `${userId}/${crypto.randomUUID()}.${kind}`;
-  const sha256 = await sha256Hex(bytes);
+  // Web Crypto is available wherever a Supabase session is, so this failing is
+  // close to impossible — but the contract above says errors are returned and
+  // never thrown, and an unguarded await here would quietly make that untrue.
+  let path: string;
+  let sha256: string;
+  try {
+    path = `${userId}/${crypto.randomUUID()}.${kind}`;
+    sha256 = await sha256Hex(bytes);
+  } catch {
+    return { kind: "failed" };
+  }
 
   const begun = await client.rpc("begin_career_cv_upload", {
     expected_generation: generation,
