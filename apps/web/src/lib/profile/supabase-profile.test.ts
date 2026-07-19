@@ -21,7 +21,10 @@ const profileRow = {
 };
 type TestQueryResponse = { data: unknown; error: unknown };
 
-function client(overrides: Partial<Record<string, unknown[]>> = {}) {
+function client(
+  overrides: Partial<Record<string, unknown[]>> = {},
+  snapshotOverrides: Record<string, unknown> = {},
+) {
   const responses: Record<string, unknown[]> = {
     career_profile_generations: [{ generation: 7 }],
     career_profiles: [profileRow],
@@ -71,6 +74,7 @@ function client(overrides: Partial<Record<string, unknown[]>> = {}) {
               suggestions: responses.profile_suggestions ?? [],
               searches: responses.search_profiles ?? [],
               cvs: responses.cv_documents ?? [],
+              ...snapshotOverrides,
             }
           : null,
       error: null,
@@ -109,6 +113,33 @@ function client(overrides: Partial<Record<string, unknown[]>> = {}) {
 }
 
 describe("caller-bound Supabase career profile repository", () => {
+  it("opens the upload control only when the server says uploads are open", async () => {
+    const open = await createSupabaseProfileRepository(
+      client({}, { uploadsEnabled: true }).client,
+    ).getSnapshot();
+    expect(open.uploadCapability).toEqual({ enabled: true });
+
+    const closed = await createSupabaseProfileRepository(
+      client({}, { uploadsEnabled: false }).client,
+    ).getSnapshot();
+    expect(closed.uploadCapability).toEqual({
+      enabled: false,
+      reason: "uploads_disabled",
+    });
+  });
+
+  it("keeps uploads closed against a database that does not report the flag", async () => {
+    // An older database has no `uploadsEnabled` key. Offering an upload the
+    // Storage policy would then refuse is worse than offering none.
+    const snapshot = await createSupabaseProfileRepository(
+      client().client,
+    ).getSnapshot();
+    expect(snapshot.uploadCapability).toEqual({
+      enabled: false,
+      reason: "uploads_disabled",
+    });
+  });
+
   it("builds a strict owner snapshot from one transactionally consistent RPC", async () => {
     const fake = client();
     const snapshot = await createSupabaseProfileRepository(

@@ -137,6 +137,10 @@ const storageObjectSchema = z.object({
 });
 const snapshotRowSchema = z.object({
   generation: z.coerce.number().int().nonnegative(),
+  // Absent when the database predates the upload client. Treating that as
+  // "closed" keeps the older-database case fail-closed rather than offering an
+  // upload the Storage policy would then refuse.
+  uploadsEnabled: z.boolean().default(false),
   profile: profileRowSchema.nullable(),
   evidence: z.array(evidenceRowSchema),
   suggestions: z.array(suggestionRowSchema),
@@ -148,9 +152,10 @@ const columns = {
   cv: "id,storage_path,original_file_name,file_kind,lifecycle_status,is_current,uploaded_at",
 } as const;
 
-const disabledUpload = Object.freeze({
+const uploadsOpen = Object.freeze({ enabled: true as const });
+const uploadsClosed = Object.freeze({
   enabled: false as const,
-  reason: "live_auth_and_storage_verification_required" as const,
+  reason: "uploads_disabled" as const,
 });
 
 function data(response: QueryResponse): unknown {
@@ -308,8 +313,6 @@ export function createSupabaseProfileRepository(
 ): ProfileRepository {
   const supabase = client as ProfileClient;
   return {
-    uploadCapability: disabledUpload,
-
     async getSnapshot(): Promise<ProfileSnapshot> {
       try {
         const snapshot = snapshotRowSchema.parse(
@@ -359,7 +362,9 @@ export function createSupabaseProfileRepository(
           currentCv,
           suggestions: mapSuggestions(snapshot.suggestions),
           searches: mapSearches(snapshot.searches),
-          uploadCapability: disabledUpload,
+          uploadCapability: snapshot.uploadsEnabled
+            ? uploadsOpen
+            : uploadsClosed,
           dataMode: "supabase",
         };
       } catch (error) {

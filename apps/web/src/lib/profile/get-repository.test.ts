@@ -22,14 +22,13 @@ describe("career profile repository factory", () => {
     expect(createClient).not.toHaveBeenCalled();
   });
 
-  it("uses the caller-bound client and keeps real upload disabled", async () => {
+  it("uses the caller-bound client", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("JOBWARDEN_DEV_ACCESS_BYPASS", "false");
     createClient.mockResolvedValue({ from: vi.fn(), rpc: vi.fn() });
 
-    const repository = await getProfileRepository();
+    await getProfileRepository();
 
-    expect(repository.uploadCapability.enabled).toBe(false);
     expect(createClient).toHaveBeenCalledWith();
   });
 

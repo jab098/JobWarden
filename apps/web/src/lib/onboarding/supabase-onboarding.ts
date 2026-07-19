@@ -124,6 +124,8 @@ export function createSupabaseOnboardingRepository(
           answers,
           evidence: confirmableEvidence,
           hasSignal: hasSearchSignal({ answers, confirmedEvidence }),
+          generation: snapshot.generation,
+          uploadCapability: snapshot.uploadCapability,
           dataMode: snapshot.dataMode,
         };
       } catch {

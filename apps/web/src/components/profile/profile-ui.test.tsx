@@ -61,10 +61,7 @@ const emptySnapshot: ProfileSnapshot = {
   currentCv: null,
   suggestions: [],
   searches: [],
-  uploadCapability: {
-    enabled: false,
-    reason: "live_auth_and_storage_verification_required",
-  },
+  uploadCapability: { enabled: false, reason: "uploads_disabled" },
   dataMode: "supabase",
 };
 
@@ -81,9 +78,14 @@ describe("career profile onboarding", () => {
     expect(screen.getByLabelText("Current seniority")).toBeDisabled();
     expect(screen.getByLabelText("Target seniority")).toBeDisabled();
     expect(
-      screen.getByText("Real CV upload is unavailable"),
+      screen.getByText(
+        "This preview runs on fictional data, so uploading is switched off here.",
+      ),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Upload CV")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Choose a CV file")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Upload" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Evidence to review" }),
     ).toBeInTheDocument();
@@ -132,10 +134,7 @@ describe("career profile onboarding", () => {
     const editableSnapshot: ProfileSnapshot = {
       ...fictionalSnapshot,
       dataMode: "supabase",
-      uploadCapability: {
-        enabled: false,
-        reason: "live_auth_and_storage_verification_required",
-      },
+      uploadCapability: { enabled: false, reason: "uploads_disabled" },
     };
     const { container } = render(
       <ProfileOnboarding snapshot={editableSnapshot} />,

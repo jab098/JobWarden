@@ -5,7 +5,7 @@ import type {
   NamedSearchProfileDraft,
 } from "@jobwarden/domain";
 
-import type { ProfileSnapshot, ProfileUploadCapability } from "./types";
+import type { ProfileSnapshot } from "./types";
 
 export type ProfileRepositoryErrorCode =
   "invalid" | "not_found" | "read_only" | "unavailable";
@@ -19,7 +19,6 @@ export class ProfileRepositoryError extends Error {
 }
 
 export interface ProfileRepository {
-  readonly uploadCapability: ProfileUploadCapability;
   getSnapshot(): Promise<ProfileSnapshot>;
   saveDraft(generation: number, draft: CareerProfileDraft): Promise<void>;
   acceptEvidence(evidenceId: string): Promise<void>;

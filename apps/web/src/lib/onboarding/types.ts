@@ -7,6 +7,8 @@ import type {
   OnboardingStep,
 } from "@jobwarden/domain";
 
+import type { ProfileUploadCapability } from "@/lib/profile/types";
+
 export type OnboardingView = {
   state: OnboardingState | null;
   /** The earliest step still needed, or null when every step is done. */
@@ -22,6 +24,9 @@ export type OnboardingView = {
   evidence: readonly CareerEvidenceItem[];
   /** Whether enough has been gathered to save a named search. */
   hasSignal: boolean;
+  /** The profile fence the CV upload handshake has to quote. */
+  generation: number;
+  uploadCapability: ProfileUploadCapability;
   dataMode: "supabase" | "fixtures";
 };
 

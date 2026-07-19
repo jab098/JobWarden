@@ -92,6 +92,8 @@ export function createDevelopmentOnboardingRepository(): OnboardingRepository {
           notificationsEnabled: false,
           exploreEnabled: false,
         },
+        generation: 0,
+        uploadCapability: { enabled: false, reason: "fictional_preview" },
         evidence: previewEvidence,
         hasSignal: true,
         dataMode: "fixtures",
