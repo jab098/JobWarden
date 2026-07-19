@@ -35,7 +35,7 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 17   | Home activity dashboard                                                    | reviewed | Delivered by PR #17 (`2246b49`); no schema change was required                        |
 | 18   | Onboarding gate and state machine                                          | reviewed | Delivered by PR #19 (`51f8eaf`)                                                       |
 | 19   | Guided setup and first-run population                                      | reviewed | Delivered by PR #20 (`00a5ea7`)                                                       |
-| 20   | Administrator audit log and operational health                             | pending  | None; both datasets already exist with no interface                                   |
+| 20   | Administrator audit log and operational health                             | reviewed | Delivered by PR #21 (`babf725`)                                                       |
 | 21   | Authentication activation                                                  | pending  | Supabase project and Google OAuth — setup runbook steps 1–4                           |
 
 ## Task 7 — Administrator operations

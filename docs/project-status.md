@@ -33,7 +33,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Handoff
 
-- Current integration branch: `main`; Task 19 was delivered by PR #20 at merge commit `00a5ea7`
+- Current integration branch: `main`; Task 20 was delivered by PR #21 at merge commit `babf725`
 - Last independently reviewed task implementation commit: Task 18 (delivered by merge `51f8eaf`)
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
 - Active feature branch: none
