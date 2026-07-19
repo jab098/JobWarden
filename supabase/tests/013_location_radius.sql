@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(12);
+select plan(15);
 
 select has_table('public', 'uk_places', 'seeded place centroids exist');
 select has_function(
@@ -50,6 +50,27 @@ select is(
   private.normalise_place_name('Stoke-on-Trent'),
   'stoke on trent',
   'normalisation folds punctuation and case'
+);
+-- The application strips combining marks rather than spacing them, so a name
+-- carrying one has to normalise the same way here or it matches in one layer
+-- and not the other.
+select is(
+  private.normalise_place_name('Ynys Mon'),
+  'ynys mon',
+  'an unaccented name is unchanged'
+);
+select is(
+  private.normalise_place_name(U&'Ynys M\00F4n'),
+  'ynys mon',
+  'a combining mark is removed, not turned into a word break'
+);
+
+-- "Bangor" names a city in Gwynedd and another in County Down, both seeded.
+-- Guessing one would write the wrong coordinates and the wrong nation onto
+-- roughly half of all Bangor jobs, permanently and invisibly.
+select ok(
+  (select id from public.resolve_uk_place('Bangor')) is null,
+  'an ambiguous place name resolves to nothing rather than to a guess'
 );
 select is(
   (select name from public.resolve_uk_place('Leeds, West Yorkshire (hybrid)')),

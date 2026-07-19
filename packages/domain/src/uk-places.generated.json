@@ -70,9 +70,9 @@
       "region": "Northern Ireland / Tuaisceart Éireann",
       "nation": "Northern Ireland",
       "outcode": null,
-      "latitude": 54.7181,
-      "longitude": -6.21148,
-      "localType": "railway"
+      "latitude": 54.71514,
+      "longitude": -6.2192,
+      "localType": "town"
     },
     {
       "source": "os-open-names",
@@ -195,16 +195,16 @@
       "localType": "Town"
     },
     {
-      "source": "openstreetmap",
+      "source": "os-open-names",
       "name": "Barrow-in-Furness",
       "canonicalName": "Barrow-in-Furness",
       "county": "Westmorland and Furness",
-      "region": "England",
+      "region": "North West",
       "nation": "England",
-      "outcode": null,
-      "latitude": 54.0977,
-      "longitude": -3.25683,
-      "localType": "road"
+      "outcode": "LA14",
+      "latitude": 54.11136,
+      "longitude": -3.22716,
+      "localType": "Town"
     },
     {
       "source": "openstreetmap",
@@ -274,9 +274,9 @@
       "region": "Northern Ireland / Tuaisceart Éireann",
       "nation": "Northern Ireland",
       "outcode": null,
-      "latitude": 54.58429,
-      "longitude": -5.93366,
-      "localType": "amenity"
+      "latitude": 54.59639,
+      "longitude": -5.93018,
+      "localType": "city"
     },
     {
       "source": "os-open-names",
@@ -521,7 +521,7 @@
     {
       "source": "openstreetmap",
       "name": "Canary Wharf",
-      "canonicalName": "Greater London",
+      "canonicalName": "Canary Wharf",
       "county": null,
       "region": "England",
       "nation": "England",
@@ -557,14 +557,14 @@
     {
       "source": "openstreetmap",
       "name": "Carlisle",
-      "canonicalName": "Carlisle",
+      "canonicalName": "Carlisle Historical Quarter",
       "county": "Cumberland",
       "region": "England",
       "nation": "England",
       "outcode": null,
-      "latitude": 54.89026,
-      "longitude": -2.93305,
-      "localType": "railway"
+      "latitude": 54.89503,
+      "longitude": -2.93913,
+      "localType": "locality"
     },
     {
       "source": "os-open-names",
@@ -1066,9 +1066,9 @@
       "region": "England",
       "nation": "England",
       "outcode": null,
-      "latitude": 51.38685,
-      "longitude": 0.55145,
-      "localType": "railway"
+      "latitude": 51.38717,
+      "longitude": 0.54616,
+      "localType": "town"
     },
     {
       "source": "os-open-names",
@@ -1359,16 +1359,16 @@
       "localType": "Town"
     },
     {
-      "source": "openstreetmap",
+      "source": "os-open-names",
       "name": "Kendal",
       "canonicalName": "Kendal",
       "county": "Westmorland and Furness",
-      "region": "England",
+      "region": "North West",
       "nation": "England",
-      "outcode": null,
-      "latitude": 54.33681,
-      "longitude": -2.74291,
-      "localType": "shop"
+      "outcode": "LA9",
+      "latitude": 54.33041,
+      "longitude": -2.74738,
+      "localType": "Town"
     },
     {
       "source": "os-open-names",
@@ -1486,9 +1486,9 @@
       "region": "Northern Ireland / Tuaisceart Éireann",
       "nation": "Northern Ireland",
       "outcode": null,
-      "latitude": 54.51403,
-      "longitude": -6.0455,
-      "localType": "railway"
+      "latitude": 54.51129,
+      "longitude": -6.04672,
+      "localType": "city"
     },
     {
       "source": "os-open-names",
@@ -1541,7 +1541,7 @@
     {
       "source": "openstreetmap",
       "name": "Londonderry",
-      "canonicalName": "Derry/Londonderry",
+      "canonicalName": "Londonderry",
       "county": "County Londonderry",
       "region": "Northern Ireland / Tuaisceart Éireann",
       "nation": "Northern Ireland",
@@ -1841,14 +1841,14 @@
     {
       "source": "openstreetmap",
       "name": "Omagh",
-      "canonicalName": "Enniskillen",
+      "canonicalName": "Omagh",
       "county": null,
       "region": "Northern Ireland / Tuaisceart Éireann",
       "nation": "Northern Ireland",
       "outcode": null,
-      "latitude": 54.35589,
-      "longitude": -7.59366,
-      "localType": "industrial"
+      "latitude": 54.59925,
+      "longitude": -7.30299,
+      "localType": "town"
     },
     {
       "source": "os-open-names",
@@ -2045,14 +2045,14 @@
     {
       "source": "openstreetmap",
       "name": "Richmond",
-      "canonicalName": "Greater London",
+      "canonicalName": "Richmond",
       "county": null,
       "region": "England",
       "nation": "England",
       "outcode": null,
-      "latitude": 51.44055,
-      "longitude": -0.30764,
-      "localType": "city_district"
+      "latitude": 51.46135,
+      "longitude": -0.30328,
+      "localType": "town"
     },
     {
       "source": "os-open-names",
@@ -2266,9 +2266,9 @@
       "region": "England",
       "nation": "England",
       "outcode": null,
-      "latitude": 53.64687,
-      "longitude": -3.00283,
-      "localType": "railway"
+      "latitude": 53.64874,
+      "longitude": -3.0045,
+      "localType": "town"
     },
     {
       "source": "os-open-names",
@@ -2405,7 +2405,7 @@
     {
       "source": "openstreetmap",
       "name": "Sutton Coldfield",
-      "canonicalName": "Birmingham",
+      "canonicalName": "Sutton Coldfield",
       "county": "West Midlands",
       "region": "England",
       "nation": "England",
@@ -2482,9 +2482,9 @@
       "region": "England",
       "nation": "England",
       "outcode": null,
-      "latitude": 50.46105,
-      "longitude": -3.54303,
-      "localType": "railway"
+      "latitude": 50.46524,
+      "longitude": -3.52114,
+      "localType": "town"
     },
     {
       "source": "os-open-names",

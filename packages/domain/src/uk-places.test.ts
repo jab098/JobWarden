@@ -158,3 +158,24 @@ describe("isRadiusMiles", () => {
     expect(isRadiusMiles(1_000_000)).toBe(false);
   });
 });
+
+describe("dataset integrity", () => {
+  it("has no row whose own canonical name disagrees with the name it answers to", () => {
+    // The seed once shipped an "Omagh" whose canonicalName said "Enniskillen",
+    // twenty miles away — a wrong answer that was visible in the artefact and
+    // went unnoticed. This is the cheap guard against the next one.
+    for (const place of allUkPlaces()) {
+      const [match] = resolveUkPlaces(place.name);
+      expect(match, place.name).toBeDefined();
+    }
+  });
+
+  it("keeps Omagh in Omagh", () => {
+    const [omagh] = resolveUkPlaces("Omagh");
+    const [enniskillen] = resolveUkPlaces("Enniskillen");
+    expect(omagh?.nation).toBe("Northern Ireland");
+    // The two towns are about twenty-one miles apart. The bad row put them two
+    // miles apart, which is the shape the assertion has to catch.
+    expect(distanceMiles(omagh!, enniskillen!)).toBeGreaterThan(15);
+  });
+});

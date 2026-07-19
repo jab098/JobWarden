@@ -8,10 +8,11 @@
  * runtime, so radius search has no external source to be rate-limited by, to go
  * down, or to need a compliance record of its own.
  *
- * Coordinates come from Ordnance Survey Open Names, served by postcodes.io.
- * Both are Open Government Licence v3, which permits use and redistribution
- * with attribution. The attribution lives in the generated file's header and in
- * docs/architecture/free-tier-services.md.
+ * Coordinates come from two open sources: Ordnance Survey Open Names served by
+ * postcodes.io, under Open Government Licence v3, for Great Britain; and
+ * OpenStreetMap served by Nominatim, under ODbL, for Northern Ireland and for
+ * names Open Names spells differently. Attribution travels in both generated
+ * files' headers and is recorded in docs/architecture/free-tier-services.md.
  *
  *   node scripts/build-uk-places.mjs
  *
@@ -227,8 +228,8 @@ const places = [
   ["Newquay", "Cornwall"],
   ["Penzance", "Cornwall"],
   ["Carlisle", "Carlisle"],
-  ["Barrow-in-Furness", "Cumbria"],
-  ["Kendal", "Cumbria"],
+  ["Barrow-in-Furness", "Westmorland and Furness"],
+  ["Kendal", "Westmorland and Furness"],
   ["Lancaster", "Lancashire"],
   ["Blackburn", "Blackburn"],
   ["Burnley", "Lancashire"],
@@ -387,47 +388,109 @@ function shape(result, name) {
  * script can honour comfortably. OSM data is ODbL; the attribution travels in
  * the generated file.
  */
-async function lookupOpenStreetMap(name, county) {
-  const query = county === undefined ? name : `${name}, ${county}`;
-  const url =
-    "https://nominatim.openstreetmap.org/search" +
-    `?q=${encodeURIComponent(query)}&countrycodes=gb&format=json&limit=5&addressdetails=1`;
-  const response = await fetch(url, {
-    headers: {
-      accept: "application/json",
-      "user-agent": "JobWarden-place-seed/1.0 (build-time UK place centroids)",
-    },
-  });
-  if (!response.ok) throw new Error(`${name}: OSM HTTP ${response.status}`);
-  const results = await response.json();
-  if (!Array.isArray(results)) return null;
+/**
+ * Settlement feature types. Anything else is a building, a road, or a facility
+ * that merely sits inside an area whose name matched.
+ */
+const settlementTypes = new Set([
+  "city",
+  "town",
+  "village",
+  "hamlet",
+  "suburb",
+  "borough",
+  "municipality",
+  "administrative",
+  "locality",
+  "quarter",
+  "neighbourhood",
+]);
 
-  for (const result of results) {
-    const address = result.address ?? {};
-    if (address.country_code !== "gb") continue;
-    const latitude = Number(result.lat);
-    const longitude = Number(result.lon);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
-    // Nominatim reports Welsh, Scottish, and Northern Irish states
-    // bilingually — "Cymru / Wales", "Alba / Scotland", "Northern Ireland /
-    // Tuaisceart Éireann" — so an equality check silently drops three of the
-    // four nations.
-    const state = String(address.state ?? "");
-    const nation =
-      [...nations].find((candidate) => state.includes(candidate)) ?? null;
-    if (nation === null) continue;
-    return {
-      name,
-      canonicalName: address.city ?? address.town ?? address.village ?? name,
-      county: address.county ?? address.state_district ?? null,
-      region: state || null,
-      nation,
-      outcode: null,
-      latitude: Number(latitude.toFixed(5)),
-      longitude: Number(longitude.toFixed(5)),
-      localType: result.addresstype ?? result.type ?? "Other Settlement",
-      source: "openstreetmap",
-    };
+/**
+ * Whether a Nominatim result is actually the place that was asked for.
+ *
+ * Nominatim answers a fuzzy query with its best nearby guess rather than
+ * nothing, so "no match" arrives looking like a match. This shipped a real
+ * wrong answer once: querying "Omagh, Fermanagh and Omagh" returned the
+ * "Fermanagh and Omagh District Council Maintenance Depot" — an industrial site
+ * beside Enniskillen, twenty miles from Omagh — and it survived a word-boundary
+ * name check because the district's own name contains the town's.
+ *
+ * So the feature must be a settlement, not a depot, and the town's name must
+ * lead or close the feature's name rather than merely appear somewhere inside
+ * it. Parent areas in the address fields are deliberately not consulted: a
+ * correct result legitimately reports "Greater London" or "Birmingham" there.
+ */
+function namesTheSamePlace(name, result) {
+  const type = String(result.addresstype ?? result.type ?? "");
+  if (!settlementTypes.has(type)) return false;
+  const wanted = normalise(name);
+  const actual = normalise(String(result.name ?? ""));
+  if (actual.length === 0) return false;
+  return (
+    actual === wanted ||
+    actual.startsWith(`${wanted} `) ||
+    actual.endsWith(` ${wanted}`)
+  );
+}
+
+async function lookupOpenStreetMap(name, county) {
+  // Structured search, not free text. Passing "Omagh, Fermanagh and Omagh" as
+  // one query let the district's name pollute the match and returned a council
+  // depot beside Enniskillen; `city=Omagh` returns Omagh. The county-qualified
+  // query runs first because it is the only thing that separates the two
+  // Bangors, and the bare query answers the names no county is needed for.
+  const attempts =
+    county === undefined
+      ? [`city=${encodeURIComponent(name)}`]
+      : [
+          `city=${encodeURIComponent(name)}&county=${encodeURIComponent(county)}`,
+          `city=${encodeURIComponent(name)}`,
+        ];
+
+  for (const attempt of attempts) {
+    const url =
+      "https://nominatim.openstreetmap.org/search" +
+      `?${attempt}&countrycodes=gb&format=json&limit=5&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: {
+        accept: "application/json",
+        "user-agent":
+          "JobWarden-place-seed/1.0 (build-time UK place centroids)",
+      },
+    });
+    if (!response.ok) throw new Error(`${name}: OSM HTTP ${response.status}`);
+    const results = await response.json();
+    await new Promise((resume) => setTimeout(resume, 1_100));
+    if (!Array.isArray(results)) continue;
+
+    for (const result of results) {
+      const address = result.address ?? {};
+      if (address.country_code !== "gb") continue;
+      if (!namesTheSamePlace(name, result)) continue;
+      const latitude = Number(result.lat);
+      const longitude = Number(result.lon);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+      // Nominatim reports Welsh, Scottish, and Northern Irish states
+      // bilingually — "Cymru / Wales", "Northern Ireland / Tuaisceart Éireann"
+      // — so an equality check silently drops three of the four nations.
+      const state = String(address.state ?? "");
+      const nation =
+        [...nations].find((candidate) => state.includes(candidate)) ?? null;
+      if (nation === null) continue;
+      return {
+        name,
+        canonicalName: String(result.name ?? name),
+        county: address.county ?? address.state_district ?? null,
+        region: state || null,
+        nation,
+        outcode: null,
+        latitude: Number(latitude.toFixed(5)),
+        longitude: Number(longitude.toFixed(5)),
+        localType: result.addresstype ?? result.type ?? "Other Settlement",
+        source: "openstreetmap",
+      };
+    }
   }
   return null;
 }
@@ -484,7 +547,6 @@ async function main() {
         missing.push(`${name}: ${error.message}`);
         continue;
       }
-      await new Promise((resume) => setTimeout(resume, 1_100));
     }
 
     if (place) resolved.push({ source: "os-open-names", ...place });

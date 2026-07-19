@@ -42,23 +42,21 @@ language sql
 immutable
 set search_path = ''
 as $$
-  select trim(regexp_replace(lower(unaccent_static(value)), '[^a-z0-9]+', ' ', 'g'));
-$$;
-
--- `unaccent` is an extension and may not be installed. This does the same job
--- for the Latin-1 letters that actually occur in UK place names, and stays
--- immutable so it can be used in an index.
-create or replace function public.unaccent_static(value text)
-returns text
-language sql
-immutable
-set search_path = ''
-as $$
-  select translate(
-    value,
-    'àáâãäåèéêëìíîïòóôõöùúûüýÿñçÀÁÂÃÄÅÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÝÑÇ',
-    'aaaaaaeeeeiiiiooooouuuuyyncAAAAAAEEEEIIIIOOOOOUUUUYNC'
-  );
+  -- Character for character the same algorithm as `normalisePlaceName` in the
+  -- domain package and `normalise` in scripts/build-uk-places.mjs: decompose,
+  -- drop the combining marks, fold case, then collapse everything that is not
+  -- a letter or digit to single spaces.
+  --
+  -- An earlier version used a hand-written translate() over the Latin-1
+  -- accented letters, which agreed with the other two only for the characters
+  -- it happened to list. Anything outside that set -- a Welsh w-circumflex, a
+  -- Polish o-acute -- survived and was then collapsed to a space, so the same
+  -- name normalised one way in the application and another in the database.
+  -- Removing the marks rather than spacing them is what keeps them identical.
+  select trim(regexp_replace(
+    lower(regexp_replace(normalize(value, nfd), U&'[\0300-\036F]', '', 'g')),
+    '[^a-z0-9]+', ' ', 'g'
+  ));
 $$;
 
 /**
@@ -88,27 +86,64 @@ as $$
 $$;
 
 /**
- * Resolves advert location prose to a seeded place.
+ * Resolves advert location prose to a seeded place, or to nothing.
  *
- * Adverts write locations as sentences — "Leeds, West Yorkshire (hybrid)" — so
- * an equality test finds very little. The longest contained place name wins, so
- * "Newcastle upon Tyne" beats "Newcastle" on a string holding both, and the
- * space padding keeps "Bath" from matching "Bathgate".
+ * Adverts write locations as sentences, so an equality test finds very little.
+ * The longest contained place name wins, so "Newcastle upon Tyne" beats
+ * "Newcastle" on a string holding both, and the space padding keeps "Bath" from
+ * matching "Bathgate".
+ *
+ * An ambiguous name resolves to NOTHING rather than to a winner. "Bangor" names
+ * a city in Gwynedd and another in County Down and both are seeded correctly.
+ * Ordering by name length cannot separate them, their names being identical, so
+ * the row returned was whichever the scan reached first -- and the trigger below
+ * then wrote that arbitrary choice permanently onto the job, wrong coordinates
+ * and wrong nation for roughly half of them. Refusing to guess leaves the job
+ * matchable by text, where it started, rather than confidently placing it in the
+ * wrong country.
+ *
+ * SECURITY DEFINER because the body calls a `private` function that
+ * `authenticated` is deliberately revoked from, so an invoker-rights version
+ * fails on a permission error for every direct caller. Nothing is leaked by
+ * that: the table holds open government place data the client already bundles.
  */
 create or replace function public.resolve_uk_place(location_text text)
 returns public.uk_places
-language sql
+language plpgsql
 stable
+security definer
 set search_path = ''
 as $$
-  select place.*
+declare
+  needle text := ' ' || private.normalise_place_name(location_text) || ' ';
+  longest integer;
+  candidates integer;
+  resolved public.uk_places;
+begin
+  select max(char_length(place.normalised_name))
+  into longest
   from public.uk_places as place
-  where position(
-    ' ' || place.normalised_name || ' '
-    in ' ' || private.normalise_place_name(location_text) || ' '
-  ) > 0
-  order by char_length(place.normalised_name) desc, place.name
-  limit 1;
+  where position(' ' || place.normalised_name || ' ' in needle) > 0;
+  if longest is null then
+    return null;
+  end if;
+
+  select count(*)
+  into candidates
+  from public.uk_places as place
+  where char_length(place.normalised_name) = longest
+    and position(' ' || place.normalised_name || ' ' in needle) > 0;
+  if candidates <> 1 then
+    return null;
+  end if;
+
+  select place.*
+  into resolved
+  from public.uk_places as place
+  where char_length(place.normalised_name) = longest
+    and position(' ' || place.normalised_name || ' ' in needle) > 0;
+  return resolved;
+end;
 $$;
 
 create or replace function private.set_job_location_coordinates()
@@ -120,10 +155,23 @@ as $$
 declare
   resolved public.uk_places;
 begin
-  -- An ingestion adapter that supplied real coordinates is more authoritative
+  -- An adapter that supplied real coordinates on insert is more authoritative
   -- than a centroid lookup, so never overwrite what it provided.
-  if new.latitude is not null and new.longitude is not null then
+  --
+  -- On update the test has to be narrower. This trigger only fires when the
+  -- location text changed, and coordinates already present at that point may
+  -- well be ones this trigger derived from the OLD text. Treating those as
+  -- adapter-supplied would pin a job to a location it no longer advertises.
+  if tg_op = 'INSERT'
+    and new.latitude is not null
+    and new.longitude is not null then
     return new;
+  end if;
+  if tg_op = 'UPDATE'
+    and new.latitude is not distinct from old.latitude
+    and new.longitude is not distinct from old.longitude then
+    new.latitude := null;
+    new.longitude := null;
   end if;
   resolved := public.resolve_uk_place(
     coalesce(nullif(new.town_city, ''), new.raw_location)
@@ -214,8 +262,6 @@ revoke all on function private.set_job_location_coordinates()
   from public, anon, authenticated, service_role;
 
 grant execute on function public.miles_between(numeric, numeric, numeric, numeric)
-  to authenticated, service_role;
-grant execute on function public.unaccent_static(text)
   to authenticated, service_role;
 grant execute on function public.resolve_uk_place(text)
   to authenticated, service_role;
