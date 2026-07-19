@@ -6,7 +6,6 @@ import { PublicHome } from "./public-home";
 import { SignInView } from "./sign-in-view";
 import { ProtectedErrorView } from "./protected-error-view";
 import { ProtectedLoadingView } from "./protected-loading-view";
-import { WorkspaceHoldingView } from "./workspace-holding-view";
 
 describe("public private-beta entry", () => {
   it("explains the UK job-search purpose without commercial promises", () => {
@@ -149,17 +148,5 @@ describe("protected workspace states", () => {
       /could not open the workspace/i,
     );
     expect(screen.getByRole("button", { name: /try again/i })).toBeEnabled();
-  });
-
-  it("provides a real protected jobs destination without fake data", () => {
-    render(<WorkspaceHoldingView signOutAction={vi.fn()} />);
-
-    expect(
-      screen.getByRole("heading", { name: /jobs workspace/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/your access is active/i)).toBeInTheDocument();
-    expect(document.body).not.toHaveTextContent(
-      /match score|jobs found|upgrade/i,
-    );
   });
 });

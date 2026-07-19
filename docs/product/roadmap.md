@@ -223,16 +223,29 @@ The onboarding experience itself, and making the product come alive the moment i
 
 Questions are **pre-filled from CV evidence** rather than blank, because Task 10's extraction already produces confirmed skills, tools, responsibilities, role history, and seniority. The user confirms and corrects rather than typing from nothing. Where evidence is absent — the student and career-changer paths — the same steps ask about aspirations instead: target role families, skills to develop, and the direction they want to move in.
 
-On completion, onboarding writes an enabled named search profile, an Explore opt-in decision, and a digest preference, then lands the user on `/jobs` with their hard preferences carried as URL-backed filters.
+On completion, onboarding writes an enabled named search profile, an Explore opt-in decision, and a digest preference, then lands the user on the hub.
+
+> **Superseded by Task 23 (2026-07-19).** This section originally landed the user on `/jobs` with their hard preferences carried as URL-backed filters. That only ever worked on a page that reads those filters, and the page an enabled search profile produced was not one, so the parameters applied nothing. The destination is now `/home`, and the preferences are applied where they always actually were — in the saved search profile that drives matching — and edited from `/profile`. Do not reintroduce `buildFirstRunFilters`.
 
 Acceptance:
 
 - every question is pre-filled from confirmed evidence wherever evidence exists, and the user approves every field before it becomes active;
 - a user with no CV completes through aspirations and receives a working Explore-led setup;
-- the first feed after onboarding is non-empty, or states precisely why it is empty and what to change;
-- every preference applied to that first feed is **visible and removable in one click**, using the existing URL-backed filters rather than a second filtering mechanism;
+- onboarding refuses to complete with nothing to match on, and says exactly what is missing, rather than unlocking an empty hub;
+- ~~every preference applied to that first feed is **visible and removable in one click**, using the existing URL-backed filters rather than a second filtering mechanism~~ — **retracted by Task 23**: every preference is instead editable in one place, `/profile`, and no second filtering mechanism exists;
 - every choice made during onboarding is editable afterwards from `/profile`; nothing is write-once; and
 - no CV text reaches logs, analytics, errors, URLs, or emails at any point in the flow.
+
+## Task 23 — Single landing destination and public legal footer
+
+Three paths answered "signed in and set up" differently: finishing onboarding went to `/jobs` with filter parameters, revisiting a completed `/onboarding` went to `/home`, and signing in went to `/matches`. A product with one hub should have one landing.
+
+Acceptance:
+
+- every path that means "signed in, approved, and onboarded" lands on `/home`: the OAuth callback fallback, the approved branch of `/access/pending`, a revisit to a completed `/onboarding`, and onboarding completion itself;
+- no code path carries onboarding preferences as URL filters, and `buildFirstRunFilters` does not exist — preferences reach matching through the saved search profile and are edited from `/profile`;
+- the open-redirect protection on the callback destination is unchanged apart from its fallback constant; and
+- `/privacy` and `/terms` are reachable from the public landing and sign-in pages through a quiet footer that meets WCAG AA contrast and does not compete with the call to action.
 
 ## Task 20 — Administrator audit log and operational health
 
