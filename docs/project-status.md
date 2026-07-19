@@ -26,11 +26,11 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Handoff
 
-- Current integration branch: `main`; Task 14 was delivered by PR #15 at merge commit `41ab43f`
-- Last independently reviewed task implementation commit: `89a9a80` (Task 14 review remediation; delivered by merge `41ab43f`)
+- Current integration branch: `main`; Task 15 was delivered by PR #16 at merge commit `ed75c9d`
+- Last independently reviewed task implementation commit: `dc2f448` (Task 15; delivered by merge `ed75c9d`)
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
-- Active feature branch: `codex/task-15-cv-tailoring` (pending publication)
-- Active task: Task 15 (Evidence-bound CV tailoring) is implemented and reviewed; Task 17 is next by owner direction, with Task 16 last because it is the platform-activation task
+- Active feature branch: none; Task 17 has not started
+- Active task: none; Task 17 (Home activity dashboard) is next by owner direction, with Task 16 last because it is the platform-activation task
 
 ## Task progress
 
@@ -50,7 +50,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 12. Explore and career pathways                                        | reviewed | Delivered by PR #13; merge commit `124216f` verified locally  |
 | 13. Application tracker and follow-ups                                 | reviewed | Delivered by PR #14; merge commit `9e66b32` verified locally  |
 | 14. Scheduled updates and notifications                                | reviewed | Delivered by PR #15; merge commit `41ab43f` verified locally  |
-| 15. Evidence-bound CV tailoring                                        | reviewed | Independent review clean; real-CV gates remain closed         |
+| 15. Evidence-bound CV tailoring                                        | reviewed | Delivered by PR #16; merge commit `ed75c9d` verified locally  |
 | 16. Privacy, production access, deployment, and full-path verification | pending  |                                                               |
 | 17. Home activity dashboard                                            | pending  | Owner-approved 2026-07-19; earliest start after Task 13       |
 
