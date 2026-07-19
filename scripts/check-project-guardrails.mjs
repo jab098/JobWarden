@@ -27,7 +27,26 @@ const notificationAdapterPaths = [
   "supabase/functions/send-digests/resend.test.ts",
   "supabase/functions/send-digests/index.ts",
 ];
-const resendReference = /resend/i;
+// Matches the provider's *capability* — a dependency, an import path, its API
+// host, or its credential — rather than the bare word. Naming Resend in the
+// privacy policy's subprocessor list is disclosure, which the product is
+// obliged to do; reaching for it in code is what this rule forbids.
+// Deliberately not case-insensitive on the dependency form: npm package names
+// are lowercase, so `"resend"` is a dependency while `"Resend"` is the provider
+// named in the subprocessor list users read.
+const resendReference =
+  /["']resend["']|npm:resend|from\s+["'][^"']*[Rr]esend[^"']*["']|api\.[Rr]esend\.com|RESEND_[A-Z_]+/;
+// No browser analytics SDK may enter the application. This is what keeps the
+// privacy policy's "no non-essential cookies" claim true, and it is why no
+// consent gate exists yet: there is nothing to consent to.
+const forbiddenAnalytics = [
+  "@amplitude/analytics-browser",
+  "@vercel/analytics",
+  "google-analytics",
+  "gtag",
+  "mixpanel-browser",
+  "posthog-js",
+];
 const forbiddenProductCopy =
   /\b(billing|checkout|payments?|premium|pricing|subscribe|subscriptions?|trial|upgrade)\b/i;
 
@@ -84,6 +103,14 @@ for (const path of dependencyFiles) {
       source.includes(`'${dependency}'`)
     ) {
       violations.push(`${path}: forbidden dependency ${dependency}`);
+    }
+  }
+  for (const analytics of forbiddenAnalytics) {
+    if (
+      source.includes(`"${analytics}"`) ||
+      source.includes(`'${analytics}'`)
+    ) {
+      violations.push(`${path}: forbidden browser analytics ${analytics}`);
     }
   }
   if (

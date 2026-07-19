@@ -155,6 +155,15 @@ describe("NotificationSettings", () => {
     ).toBeInTheDocument();
   });
 
+  it("offers a data export alongside the existing deletion path", () => {
+    render(<NotificationSettings result={settings()} />);
+
+    expect(
+      screen.getByRole("link", { name: "Export my data" }),
+    ).toHaveAttribute("href", "/profile/export");
+    expect(screen.getByText(/stays where it is/)).toBeInTheDocument();
+  });
+
   it("refuses mutation in the fictional preview", () => {
     render(
       <NotificationSettings result={settings({ dataMode: "fixtures" })} />,

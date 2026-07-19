@@ -18,6 +18,7 @@ export const requiredMigrationFiles = [
   "202607190003_application_tracker.sql",
   "202607190004_scheduled_notifications.sql",
   "202607190005_cv_tailoring.sql",
+  "202607190006_data_export.sql",
 ];
 
 const publicTables = [
@@ -799,6 +800,14 @@ export function verifyFoundationSql(files) {
     [
       "delete from public.career_cv_variants where owner_id = actor_user_id",
       "career profile deletion must also erase tailored CV variants",
+    ],
+    [
+      "create or replace function public.export_career_profile_data()",
+      "owners must be able to export their own data, not only delete it",
+    ],
+    [
+      "'sha256', document.sha256, 'lifecycle_status'",
+      "the export must return CV metadata rather than file bytes",
     ],
     [
       "(status = 'draft' and expires_at is not null) or (status = 'saved' and expires_at is null)",
