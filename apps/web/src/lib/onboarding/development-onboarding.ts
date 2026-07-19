@@ -29,13 +29,25 @@ export function createDevelopmentOnboardingRepository(): OnboardingRepository {
         cvOutcome: "rich",
         cv: { present: true, kind: "docx", conceptCount: 14 },
         complete: false,
+        answers: {
+          roleFamilies: ["Analytics implementation"],
+          targetSeniority: "lead",
+          employmentTypes: ["permanent"],
+          workplaceTypes: ["hybrid"],
+          ukLocations: ["Manchester"],
+          allowUnknownCompensation: true,
+          notificationsEnabled: false,
+          exploreEnabled: false,
+        },
+        evidence: [],
+        hasSignal: true,
         dataMode: "fixtures",
       };
     },
     async advance() {
       throw new PreviewOnboardingUnavailableError();
     },
-    async complete() {
+    async finish() {
       throw new PreviewOnboardingUnavailableError();
     },
   };

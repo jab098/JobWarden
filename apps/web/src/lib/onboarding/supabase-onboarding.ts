@@ -1,7 +1,11 @@
 import "server-only";
 
 import {
+  buildFirstRunFilters,
+  buildSearchProfileFromAnswers,
   classifyCvOutcome,
+  hasSearchSignal,
+  parseOnboardingAnswers,
   isOnboardingComplete,
   nextOnboardingStep,
   onboardingPaths,
@@ -25,6 +29,7 @@ const stateRowSchema = z.object({
     .enum(["rich", "rich_pdf_only", "thin", "failed", "none"])
     .nullable(),
   completed_at: z.string().nullable(),
+  answers: z.unknown().optional(),
 });
 
 type QueryResponse = { data: unknown; error: unknown };
@@ -68,7 +73,7 @@ export function createSupabaseOnboardingRepository(
         const [stateResponse, snapshot] = await Promise.all([
           supabaseClient
             .from("career_onboarding_state")
-            .select("path, completed_steps, cv_outcome, completed_at")
+            .select("path, completed_steps, cv_outcome, completed_at, answers")
             .maybeSingle(),
           profileRepository.getSnapshot(),
         ]);
@@ -86,9 +91,14 @@ export function createSupabaseOnboardingRepository(
               },
         );
 
-        const confirmable = snapshot.evidence.filter(
+        const confirmableEvidence = snapshot.evidence.filter(
           (item) => item.confirmationState !== "rejected",
-        ).length;
+        );
+        const confirmable = confirmableEvidence.length;
+        const answers = parseOnboardingAnswers(row?.answers);
+        const confirmedEvidence = snapshot.evidence.filter(
+          (item) => item.confirmationState === "confirmed",
+        );
         const cv = snapshot.currentCv;
         // Recomputed from the live profile rather than trusted from the stored
         // outcome, so replacing a CV moves the user onto the right path.
@@ -112,6 +122,9 @@ export function createSupabaseOnboardingRepository(
             conceptCount: confirmable,
           },
           complete: isOnboardingComplete(state),
+          answers,
+          evidence: confirmableEvidence,
+          hasSignal: hasSearchSignal({ answers, confirmedEvidence }),
           dataMode: snapshot.dataMode,
         };
       } catch {
@@ -119,7 +132,7 @@ export function createSupabaseOnboardingRepository(
       }
     },
 
-    async advance({ path, step, cvOutcome }) {
+    async advance({ path, step, cvOutcome, answers }) {
       const targetPath = z.enum(onboardingPaths).parse(path);
       const targetStep = z.enum(onboardingSteps).parse(step);
       if (!stepsForPath(targetPath).includes(targetStep)) {
@@ -127,6 +140,15 @@ export function createSupabaseOnboardingRepository(
       }
 
       try {
+        // Answers first: if the step is recorded but the answers are lost, the
+        // user is advanced past a question they would then have to re-answer.
+        if (answers !== undefined) {
+          data(
+            await supabaseClient.rpc("save_onboarding_answers", {
+              answers_value: answers,
+            }),
+          );
+        }
         data(
           await supabaseClient.rpc("advance_onboarding", {
             target_path: targetPath,
@@ -139,14 +161,53 @@ export function createSupabaseOnboardingRepository(
       }
     },
 
-    async complete() {
+    async finish() {
+      const view = await this.getView();
+      if (!view.hasSignal) {
+        // Completing with nothing to match on would hand the user the empty
+        // feed this whole flow exists to prevent.
+        throw new Error("Unable to finish onboarding");
+      }
+
+      const confirmedEvidence = view.evidence.filter(
+        (item) => item.confirmationState === "confirmed",
+      );
+      // Read the live generation rather than assuming a fresh account: another
+      // tab, or a deletion, may have advanced it since onboarding started.
+      const { generation } = await profileRepository.getSnapshot();
+
       try {
-        // The database re-checks that every step of the chosen path is present,
-        // so this cannot be the thing that unlocks the hub on its own.
+        // The search profile is written before completion, so a failure here
+        // leaves the user inside onboarding rather than in a gated-open hub
+        // with nothing configured.
+        const draft = buildSearchProfileFromAnswers({
+          answers: view.answers,
+          confirmedEvidence,
+          name: "My first search",
+        });
+        data(
+          await supabaseClient.rpc("save_search_profile", {
+            target_search_id: null,
+            expected_generation: generation,
+            draft_value: draft,
+          }),
+        );
+        data(
+          await supabaseClient.rpc("set_career_notification_settings", {
+            target_enabled: view.answers.notificationsEnabled ?? false,
+          }),
+        );
+        data(
+          await supabaseClient.rpc("set_explore_enabled", {
+            target_enabled: view.answers.exploreEnabled ?? false,
+          }),
+        );
         data(await supabaseClient.rpc("complete_onboarding"));
       } catch {
         throw new Error("Unable to finish onboarding");
       }
+
+      return { filters: buildFirstRunFilters(view.answers) };
     },
   };
 }

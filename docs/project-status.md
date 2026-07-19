@@ -23,6 +23,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - [Task 17 completion review](reviews/task-17-home-dashboard.md)
 - [Task 16 completion review](reviews/task-16-production-readiness.md)
 - [Task 18 completion review](reviews/task-18-onboarding-gate.md)
+- [Task 19 completion review](reviews/task-19-guided-setup.md)
 - [Production setup runbook](setup/production-setup.md)
 - [Privacy policy](privacy/privacy-policy.md)
 - [Canonical Tasks 7–17 roadmap](product/roadmap.md)
@@ -35,7 +36,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - Last independently reviewed task implementation commit: Task 18 (delivered by merge `51f8eaf`)
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
 - Active feature branch: none
-- Active task: Task 19 (Guided setup and first-run population). Tasks 1–17 are merged; the owner approved four further tasks on 2026-07-19. Tasks 18–20 need no platform setup; Task 21 requires setup runbook steps 1–4
+- Active task: Task 19 is implemented and reviewed; Task 20 is next. Tasks 1–17 are merged; the owner approved four further tasks on 2026-07-19. Tasks 18–20 need no platform setup; Task 21 requires setup runbook steps 1–4
 
 ## Task progress
 
@@ -59,7 +60,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 16. Privacy, production access, deployment, and full-path verification | reviewed | Delivered by PR #18; merge commit `46dacb4`; live setup pending |
 | 17. Home activity dashboard                                            | reviewed | Delivered by PR #17; merge commit `2246b49` verified locally    |
 | 18. Onboarding gate and state machine                                  | reviewed | Independent review clean; gate fails closed in every direction  |
-| 19. Guided setup and first-run population                              | pending  | Owner-approved 2026-07-19                                       |
+| 19. Guided setup and first-run population                              | reviewed | Independent review clean; writes the profile before unlocking   |
 | 20. Administrator audit log and operational health                     | pending  | Owner-approved 2026-07-19                                       |
 | 21. Authentication activation                                          | pending  | Owner-approved 2026-07-19; needs owner platform setup           |
 

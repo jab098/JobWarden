@@ -6,6 +6,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { isTrustedMutationOrigin } from "@/lib/admin/origin";
+import {
+  createJobFiltersQueryString,
+  parseJobFilters,
+} from "@/lib/jobs/filters";
 import { getOnboardingRepository } from "@/lib/onboarding/get-repository";
 import { PreviewOnboardingUnavailableError } from "@/lib/onboarding/repository";
 import type { OnboardingActionState } from "@/lib/onboarding/types";
@@ -89,14 +93,28 @@ export async function completeOnboardingAction(
     return forbidden;
   }
 
+  let filters;
   try {
-    // The database refuses this unless every step of the chosen path is
-    // recorded, so finishing cannot be forced from the client.
-    await (await getOnboardingRepository()).complete();
+    // Writes the search profile, digest preference, and Explore choice, then
+    // asks the database to complete. The database refuses unless every step of
+    // the chosen path is recorded, so finishing cannot be forced from here.
+    ({ filters } = await (await getOnboardingRepository()).finish());
   } catch (error) {
     return mapError(error);
   }
 
   revalidatePath("/", "layout");
-  redirect("/home");
+  // Land on the feed with the chosen preferences already applied — and visible
+  // in the URL, so they are one click from being lifted.
+  redirect(
+    `/jobs?${createJobFiltersQueryString(
+      parseJobFilters({
+        employment: filters.employment,
+        workingTime: filters.workingTime,
+        workplace: filters.workplace,
+        ir35: filters.ir35,
+        compensation: filters.compensation,
+      }),
+    )}`,
+  );
 }

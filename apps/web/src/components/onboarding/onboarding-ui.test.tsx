@@ -22,6 +22,9 @@ function view(overrides: Partial<OnboardingView> = {}): OnboardingView {
     cvOutcome: "rich",
     cv: { present: true, kind: "docx", conceptCount: 14 },
     complete: false,
+    answers: { roleFamilies: ["Analytics implementation"] },
+    evidence: [],
+    hasSignal: true,
     dataMode: "supabase",
     ...overrides,
   };
@@ -169,8 +172,28 @@ describe("OnboardingFlow", () => {
     render(<OnboardingFlow view={view({ currentStep: null })} />);
 
     expect(
-      screen.getByRole("button", { name: "Finish and open my hub" }),
+      screen.getByRole("button", { name: "Finish and open my feed" }),
     ).toBeEnabled();
+  });
+
+  it("refuses to finish with nothing to match on, and says why", () => {
+    // Finishing here would unlock a hub showing an empty feed and no reason.
+    render(
+      <OnboardingFlow view={view({ currentStep: null, hasSignal: false })} />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Finish and open my feed" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /something to match you on/,
+    );
+  });
+
+  it("promises the applied filters are visible and liftable", () => {
+    render(<OnboardingFlow view={view({ currentStep: null })} />);
+
+    expect(screen.getByText(/one click from being lifted/)).toBeInTheDocument();
   });
 
   it("says every choice stays editable afterwards", () => {

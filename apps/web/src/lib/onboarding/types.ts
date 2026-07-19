@@ -1,5 +1,7 @@
 import type {
+  CareerEvidenceItem,
   CvOutcome,
+  OnboardingAnswers,
   OnboardingPath,
   OnboardingState,
   OnboardingStep,
@@ -14,6 +16,12 @@ export type OnboardingView = {
   /** Whether a CV exists and what came out of reading it. */
   cv: { present: boolean; kind: "docx" | "pdf" | null; conceptCount: number };
   complete: boolean;
+  /** Answers given so far, so every step renders pre-filled. */
+  answers: OnboardingAnswers;
+  /** Confirmable evidence the CV produced, for the confirmation step. */
+  evidence: readonly CareerEvidenceItem[];
+  /** Whether enough has been gathered to save a named search. */
+  hasSignal: boolean;
   dataMode: "supabase" | "fixtures";
 };
 

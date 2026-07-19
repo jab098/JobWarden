@@ -33,6 +33,7 @@ function client(options: { state?: unknown; rpc?: ReturnType<typeof vi.fn> }) {
 
 function snapshot(overrides: Record<string, unknown> = {}) {
   return {
+    generation: 0,
     evidence: Array.from({ length: 14 }, () => ({
       confirmationState: "proposed",
     })),
@@ -256,23 +257,119 @@ describe("advance", () => {
   });
 });
 
-describe("complete", () => {
-  it("delegates the completeness decision to the database", async () => {
+describe("finish", () => {
+  const answered = {
+    path: "cv",
+    completed_steps: [...stepsForPath("cv")],
+    cv_outcome: "rich",
+    completed_at: null,
+    answers: {
+      roleFamilies: ["Analytics implementation"],
+      employmentTypes: ["permanent"],
+      notificationsEnabled: true,
+      exploreEnabled: true,
+    },
+  };
+
+  it("writes the profile, preferences, and completion in that order", async () => {
+    // The search profile must exist before the hub unlocks, or the user lands
+    // on the empty feed this whole flow exists to prevent.
     const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
+    mocks.getSnapshot.mockResolvedValue(
+      snapshot({
+        generation: 3,
+        evidence: [
+          {
+            confirmationState: "confirmed",
+            category: "skill",
+            normalizedConcept: "python",
+            label: "Python",
+          },
+        ],
+      }),
+    );
 
-    await createSupabaseOnboardingRepository(client({ rpc })).complete();
+    await createSupabaseOnboardingRepository(
+      client({ state: answered, rpc }),
+    ).finish();
 
-    expect(rpc).toHaveBeenCalledWith("complete_onboarding");
+    const called = rpc.mock.calls.map(([name]) => name);
+    expect(called).toEqual([
+      "save_search_profile",
+      "set_career_notification_settings",
+      "set_explore_enabled",
+      "complete_onboarding",
+    ]);
   });
 
-  it("reports a refused completion without leaking detail", async () => {
-    const rpc = vi.fn().mockResolvedValue({
-      data: null,
-      error: { message: "steps incomplete" },
+  it("uses the live generation rather than assuming a fresh account", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
+    mocks.getSnapshot.mockResolvedValue(snapshot({ generation: 7 }));
+
+    await createSupabaseOnboardingRepository(
+      client({ state: answered, rpc }),
+    ).finish();
+
+    expect(rpc).toHaveBeenCalledWith(
+      "save_search_profile",
+      expect.objectContaining({ expected_generation: 7 }),
+    );
+  });
+
+  it("carries the notification and explore choices through", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
+
+    await createSupabaseOnboardingRepository(
+      client({ state: answered, rpc }),
+    ).finish();
+
+    expect(rpc).toHaveBeenCalledWith("set_career_notification_settings", {
+      target_enabled: true,
     });
+    expect(rpc).toHaveBeenCalledWith("set_explore_enabled", {
+      target_enabled: true,
+    });
+  });
+
+  it("returns the filters to pre-apply on the first feed", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
+
+    const result = await createSupabaseOnboardingRepository(
+      client({ state: answered, rpc }),
+    ).finish();
+
+    expect(result.filters).toMatchObject({ employment: "permanent" });
+  });
+
+  it("refuses to finish with nothing to match on", async () => {
+    // Completing here would unlock a hub with an empty feed and no explanation.
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
+    mocks.getSnapshot.mockResolvedValue(snapshot({ evidence: [] }));
 
     await expect(
-      createSupabaseOnboardingRepository(client({ rpc })).complete(),
-    ).rejects.toThrow(/^Unable to finish onboarding$/);
+      createSupabaseOnboardingRepository(
+        client({ state: { ...answered, answers: {} }, rpc }),
+      ).finish(),
+    ).rejects.toThrow("Unable to finish onboarding");
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("does not complete when writing the profile fails", async () => {
+    const rpc = vi
+      .fn()
+      .mockImplementation(async (name: string) =>
+        name === "save_search_profile"
+          ? { data: null, error: { message: "stale" } }
+          : { data: null, error: null },
+      );
+
+    await expect(
+      createSupabaseOnboardingRepository(
+        client({ state: answered, rpc }),
+      ).finish(),
+    ).rejects.toThrow("Unable to finish onboarding");
+    expect(rpc.mock.calls.map(([name]) => name)).not.toContain(
+      "complete_onboarding",
+    );
   });
 });
