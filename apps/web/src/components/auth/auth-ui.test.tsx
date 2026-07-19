@@ -47,6 +47,14 @@ describe("public legal footer", () => {
   it.each([
     ["landing", () => render(<PublicHome />)],
     ["sign-in", () => render(<SignInView action={() => {}} />)],
+    // The terminal screen for a rejected or suspended user: their identity and
+    // access request are already stored and there is no route onward, so this
+    // is the page most likely to want the policy.
+    [
+      "access status",
+      () =>
+        render(<AccessStateView status="rejected" signOutAction={() => {}} />),
+    ],
   ])(
     "reaches the privacy policy and terms from the %s page",
     (_page, mount) => {
@@ -54,13 +62,34 @@ describe("public legal footer", () => {
       // secret, even while the surface stays deliberately quiet.
       mount();
 
-      const legal = screen.getByRole("navigation", { name: "Legal" });
+      const legal = screen.getByRole("contentinfo");
       expect(
         within(legal).getByRole("link", { name: "Privacy" }),
       ).toHaveAttribute("href", "/privacy");
       expect(
         within(legal).getByRole("link", { name: "Terms" }),
       ).toHaveAttribute("href", "/terms");
+    },
+  );
+
+  it.each([
+    ["landing", () => render(<PublicHome />)],
+    ["sign-in", () => render(<SignInView action={() => {}} />)],
+    [
+      "access status",
+      () =>
+        render(<AccessStateView status="rejected" signOutAction={() => {}} />),
+    ],
+  ])(
+    "keeps the %s footer outside main, so it stays a landmark",
+    (_page, mount) => {
+      // <footer> maps to contentinfo only when it is not nested inside a
+      // sectioning element. Testing Library reports the role either way, so
+      // the structure is the only thing that catches a regression here.
+      const { container } = mount();
+
+      expect(container.querySelector("footer")).not.toBeNull();
+      expect(container.querySelector("main footer")).toBeNull();
     },
   );
 });
