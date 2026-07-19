@@ -18,7 +18,7 @@ export function MobileNavigation({
   activePath,
 }: {
   dataMode: "supabase" | "fixtures";
-  activePath: "jobs" | "explore" | "profile";
+  activePath: "jobs" | "explore" | "applications" | "profile";
 }) {
   return (
     <div className="lg:hidden">
@@ -62,6 +62,13 @@ export function MobileNavigation({
               className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium text-[#172033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "explore" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173]"}`}
             >
               Explore
+            </Link>
+            <Link
+              href="/applications"
+              aria-current={activePath === "applications" ? "page" : undefined}
+              className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium text-[#172033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "applications" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173]"}`}
+            >
+              Applications
             </Link>
             <Link
               href="/profile"

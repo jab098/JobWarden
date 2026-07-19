@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
+import { TrackApplicationButton } from "@/components/applications/track-application-button";
 import { JobDetailView } from "@/components/jobs/job-detail-view";
 import { resolveDevelopmentAccessMode } from "@/lib/development/access-mode";
 import { getJobsRepository } from "@/lib/jobs/get-repository";
@@ -24,6 +25,9 @@ export default async function JobDetailPage({
   const dataMode = developmentAccess.enabled ? "fixtures" : "supabase";
   return (
     <AppShell dataMode={dataMode}>
+      <div className="mx-auto max-w-[92rem] border-b border-[#dedbd2] bg-white px-5 py-3 sm:px-8">
+        <TrackApplicationButton jobId={job.id} />
+      </div>
       <JobDetailView dataMode={dataMode} job={job} />
     </AppShell>
   );
