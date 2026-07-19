@@ -17,10 +17,21 @@ export type CvDocumentView = {
 
 export type SavedSearchProfile = NamedSearchProfileDraft & { id: string };
 
-export type ProfileUploadCapability = Readonly<{
-  enabled: false;
-  reason: "fictional_preview" | "live_auth_and_storage_verification_required";
-}>;
+/**
+ * Whether the CV upload control is live, and if not, why. The reason drives the
+ * explanation the user reads, so the three cases stay distinct: a fictional
+ * preview, an administrator who has not opened uploads, and a build with no
+ * session to upload under.
+ */
+export type ProfileUploadCapability =
+  | Readonly<{ enabled: true }>
+  | Readonly<{
+      enabled: false;
+      reason:
+        | "fictional_preview"
+        | "uploads_disabled"
+        | "live_auth_and_storage_verification_required";
+    }>;
 
 export type ProfileSnapshot = Readonly<{
   generation: number;

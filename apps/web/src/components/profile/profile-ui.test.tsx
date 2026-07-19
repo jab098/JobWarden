@@ -81,9 +81,14 @@ describe("career profile onboarding", () => {
     expect(screen.getByLabelText("Current seniority")).toBeDisabled();
     expect(screen.getByLabelText("Target seniority")).toBeDisabled();
     expect(
-      screen.getByText("Real CV upload is unavailable"),
+      screen.getByText(
+        "This preview runs on fictional data, so uploading is switched off here.",
+      ),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Upload CV")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Choose a CV file")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Upload" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Evidence to review" }),
     ).toBeInTheDocument();

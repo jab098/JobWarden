@@ -8,6 +8,7 @@ import {
   deleteProfileDataAction,
   saveProfileDraftAction,
 } from "@/app/(protected)/profile/actions";
+import { CvUploadCard } from "@/components/profile/cv-upload-card";
 import { ProfileEvidenceList } from "@/components/profile/profile-evidence-list";
 import { ProfileSuggestionList } from "@/components/profile/profile-suggestion-list";
 import { SearchProfileForm } from "@/components/profile/search-profile-form";
@@ -484,24 +485,34 @@ function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
             aria-hidden="true"
             className="mt-0.5 size-5 text-[#2458a6]"
           />
-          <div>
+          <div className="min-w-0 flex-1">
             <h2
               id="cv-source-heading"
               className="text-xl font-semibold tracking-[-0.02em]"
             >
-              Real CV upload is unavailable
+              Your CV
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#596173]">
-              Upload remains disabled until live authentication, private
-              Storage, deletion, and Docker-backed RLS tests are verified. This
-              preview uses fictional evidence and never sends a file.
+              JobWarden reads your CV to find what it can honestly match you on.
+              The file is stored privately, is never shared with employers, and
+              you can delete it and everything derived from it at any time.
             </p>
             {snapshot.currentCv ? (
               <p className="mt-3 font-mono text-xs text-[#697181] [overflow-wrap:anywhere]">
                 {readOnly ? "Fictional" : "Current private"} source:{" "}
                 {snapshot.currentCv.fileName}
+                {snapshot.currentCv.lifecycleStatus === "ready"
+                  ? null
+                  : ` (${snapshot.currentCv.lifecycleStatus})`}
               </p>
             ) : null}
+            <div className="mt-4 max-w-2xl">
+              <CvUploadCard
+                capability={snapshot.uploadCapability}
+                generation={snapshot.generation}
+                currentCv={snapshot.currentCv}
+              />
+            </div>
           </div>
         </div>
       </section>

@@ -25,6 +25,8 @@ function view(overrides: Partial<OnboardingView> = {}): OnboardingView {
     answers: { roleFamilies: ["Analytics implementation"] },
     evidence: [],
     hasSignal: true,
+    generation: 0,
+    uploadCapability: { enabled: false, reason: "uploads_disabled" },
     dataMode: "supabase",
     ...overrides,
   };

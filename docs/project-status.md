@@ -38,7 +38,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - Last independently reviewed task implementation commit: Task 18 (delivered by merge `51f8eaf`)
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
 - Active feature branch: none
-- Active task: none. Tasks 18-20, 22, and 23 are merged. Task 21 (Authentication activation) is the only task left and requires owner platform setup. Tasks 1–17 are merged; the owner approved four further tasks on 2026-07-19. Tasks 18–20 need no platform setup; Task 21 requires setup runbook steps 1–4
+- Active task: Tasks 24–32, a nine-task programme the owner approved on 2026-07-19 covering CV upload, location and radius, saved jobs, source expansion, employer entity and relevance, saved searches, reminders, operational hardening, and the final three small surfaces. Tasks 1–20, 22, and 23 are merged. Task 21 (Authentication activation) still requires owner platform setup and gates the live CV upload path Task 24 builds
 
 ## Task progress
 
@@ -67,6 +67,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 21. Authentication activation                                          | pending  | Owner-approved 2026-07-19; needs owner platform setup           |
 | 22. Search Jobs, route naming, and onboarding follow-ups               | reviewed | Delivered by PR #22; independent review APPROVED at `0fa46de`   |
 | 23. Single landing destination and public legal footer                 | reviewed | Delivered by PR #23; independent review APPROVED at `25314de`   |
+| 24. CV upload client                                                   | reviewed | Closes the gap between Task 10's server RPCs and the browser    |
 
 ## Last verification commands
 

@@ -225,7 +225,6 @@ function readOnly(): Promise<never> {
 
 export function createDevelopmentProfileRepository(): ProfileRepository {
   return {
-    uploadCapability: snapshot.uploadCapability,
     async getSnapshot() {
       return snapshot;
     },

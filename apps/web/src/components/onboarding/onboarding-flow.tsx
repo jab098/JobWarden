@@ -18,6 +18,7 @@ import {
   WorkingTimeField,
   WorkplaceField,
 } from "@/components/onboarding/onboarding-fields";
+import { CvUploadCard } from "@/components/profile/cv-upload-card";
 import { ProfileEvidenceList } from "@/components/profile/profile-evidence-list";
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Button } from "@/components/ui/button";
@@ -134,9 +135,16 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
             read your real experience instead of asking you to type it out. It
             stays private to you and is never shared with employers.
           </p>
+          <div className="max-w-prose">
+            <CvUploadCard
+              capability={view.uploadCapability}
+              generation={view.generation}
+              currentCv={null}
+            />
+          </div>
           <p className="max-w-prose text-sm leading-6 text-[#596173]">
-            Uploading is not open yet in this build. Choose how you want to
-            continue and you can add a CV from your profile at any time.
+            You can also skip this and tell us what you are looking for instead.
+            A CV can be added from your profile at any time.
           </p>
         </div>
       ) : null}
