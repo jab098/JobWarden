@@ -8,5 +8,6 @@ export * from "./compensation.ts";
 export * from "./explore.ts";
 export * from "./job.ts";
 export * from "./notifications.ts";
+export * from "./onboarding.ts";
 export * from "./tailoring.ts";
 export * from "./target-feed.ts";

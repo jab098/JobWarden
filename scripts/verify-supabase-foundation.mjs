@@ -19,6 +19,7 @@ export const requiredMigrationFiles = [
   "202607190004_scheduled_notifications.sql",
   "202607190005_cv_tailoring.sql",
   "202607190006_data_export.sql",
+  "202607190007_onboarding_state.sql",
 ];
 
 const publicTables = [
@@ -53,6 +54,7 @@ const publicTables = [
   "career_notification_announcements",
   "career_notification_deliveries",
   "career_cv_variants",
+  "career_onboarding_state",
 ];
 
 // Reviewed exceptions to the "definer functions are closed to anon" rule.
@@ -802,6 +804,18 @@ export function verifyFoundationSql(files) {
       "career profile deletion must also erase tailored CV variants",
     ],
     [
+      "where not (required = any (current_state.completed_steps))",
+      "onboarding completion must be decided by the database, not the client",
+    ],
+    [
+      "delete from public.career_onboarding_state where owner_id = actor_user_id",
+      "career profile deletion must also reset onboarding",
+    ],
+    [
+      "where step = any (public.onboarding_steps_for_path(excluded.path))",
+      "switching onboarding path must drop steps the new path never asks",
+    ],
+    [
       "create or replace function public.export_career_profile_data()",
       "owners must be able to export their own data, not only delete it",
     ],
@@ -1112,6 +1126,7 @@ export function verifyFoundationSql(files) {
     );
   }
   for (const table of [
+    "career_onboarding_state",
     "career_cv_variants",
     "career_notification_settings",
     "career_notification_announcements",
@@ -1284,7 +1299,7 @@ export function verifyFoundationSql(files) {
   }
 
   const forbiddenMutationPolicy =
-    /create\s+policy[\s\S]*?on\s+public\.(jobs|user_roles|audit_log|access_requests|career_job_decisions|career_pathway_decisions|career_explore_settings|explore_pathway_analytics|career_applications|career_application_events|career_notification_settings|career_notification_announcements|career_notification_deliveries|career_cv_variants)\s+for\s+(insert|update|delete|all)\b/gi;
+    /create\s+policy[\s\S]*?on\s+public\.(jobs|user_roles|audit_log|access_requests|career_job_decisions|career_pathway_decisions|career_explore_settings|explore_pathway_analytics|career_applications|career_application_events|career_notification_settings|career_notification_announcements|career_notification_deliveries|career_cv_variants|career_onboarding_state)\s+for\s+(insert|update|delete|all)\b/gi;
   for (const match of sql.matchAll(forbiddenMutationPolicy)) {
     failures.push(
       `browser mutation policy forbidden on public.${match[1].toLowerCase()}`,
