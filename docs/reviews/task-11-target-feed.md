@@ -1,0 +1,53 @@
+# Task 11 Target Feed Review
+
+**Branch:** `codex/task-11-target-feed`
+
+**Base:** `main` merge-base `393e22b` (Task 10 publication)
+
+**Current implementation head:** `0d360cc`
+
+**Task-slice review status:** Tasks 1–4 each passed a focused independent review; every review-wave finding is remediated at `HEAD` with clean confirmation. This is not the required final whole-branch review and does not change Task 11 from `active`.
+
+## Outcome
+
+Task 11 implements a deterministic, evidence-bound target feed: a scoring engine that applies a hard eligibility gate before an integer 45/20/15/10/10 score, a repository layer that reuses the existing profile snapshot (extended with a top-level confirmed-evidence field) to feed the scorer without duplicating extraction, and a `/jobs` UI that makes the target feed the primary experience while preserving the broad list behind `?view=all`. Save/dismiss/considering decisions are owner-fenced at the database boundary and optimistic in the UI with a verified rollback on failure. The path is AI-free by design, so model unavailability cannot hide a deterministic match.
+
+Task 11 has not been published. PR #12, the final whole-branch review, and the merge to GitHub `main` remain pending.
+
+## Acceptance mapping
+
+| Roadmap criterion                                                                        | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hard eligibility and compensation filters run before scoring                             | `packages/domain/src/target-feed.ts` applies the eligibility gate (UK evidence, remote-permission, employment type, workplace, uniform-only compensation floor) before any score component runs; gated jobs are excluded outright rather than scored low. `apps/web/src/lib/target-feed/supabase-target-feed.ts` pushes a uniform-only SQL pre-filter that always includes `unknown` compensation and never replaces the in-memory gate. |
+| Each score exposes matched evidence, important gaps, profile, and compensation treatment | `scoreJobForProfile` returns a full explanation payload — matched evidence labels, important gaps, the owning profile name, and a compensation treatment distinct from the numeric score. `apps/web/src/components/target-feed/` renders this as a "Why this match" disclosure (Matching evidence / important gaps / synonym reasons / compensation treatment) alongside the accessible "Fit N of 100" score.                            |
+| Salary does not inflate the score                                                        | Compensation is scored as a separate treatment field, never folded into the 45/20/15/10/10 total; `target-feed.test.ts` includes a twin-job test asserting identical scores differing only in salary.                                                                                                                                                                                                                                    |
+| Title synonyms receive credit only through documented role/responsibility evidence       | Synonym credit is awarded only when confirmed `responsibility`/`role_history` evidence documents the synonym; unconfirmed (`proposed`) evidence never reaches `matchedEvidence` (guarded by a dedicated test in `supabase-target-feed.test.ts`).                                                                                                                                                                                         |
+| Users can save, dismiss, and mark a role as considering                                  | The security-definer `decide_career_job` RPC (migration `202607190001_target_feed.sql`) accepts `saved`/`dismissed`/`considering`/clear, derives the owner from `auth.uid()`, and takes the per-owner generation-row mutex first. `decideJobAction` in the web repository calls it; the UI exposes save/dismiss/considering controls with optimistic derived state.                                                                      |
+| Model unavailability never hides deterministic matches                                   | The scoring engine has no AI dependency — it is pure deterministic arithmetic over profile evidence and job facts, so there is no model call in the path that could fail or degrade a match.                                                                                                                                                                                                                                             |
+
+## Review remediation record
+
+Three findings surfaced across the review waves and are remediated at `HEAD`:
+
+1. **Unspecified-seniority neutrality** (commit `f7e4211` design note, fixed in `02e5866`) — when `profile.targetSeniority === "unspecified"`, the seniority component previously fell through to the not-in-order branch and awarded 0, a negative inference against a deliberate don't-care preference. `scoreSeniorityComponent` now awards the neutral 10 whenever the target is unspecified, regardless of any detected marker. Covered by a dedicated RED/GREEN test in `packages/domain/src/target-feed.test.ts`.
+2. **Evidence-path fix** (commit `779cbb8`) — `ProfileSnapshot` gained a top-level `evidence` field so confirmed evidence reaches the scorer even when no profile row exists (previously only nested under `draft`, which is null in that case). RED test in `apps/web/src/lib/target-feed/supabase-target-feed.test.ts` demonstrated the no-profile-row case scoring identically with and without evidence before the fix; GREEN after `supabase-profile.ts` and `development-profile.ts` were updated to populate the top-level field.
+3. **Optimistic rollback fix** (commits `6299593` + `0d360cc`) — the target-feed row previously used always-optimistic `useState`, so a failed decision left the row visually saved/dismissed with no visible error. `apps/web/src/components/target-feed/target-feed-item.tsx` now derives displayed decision state (`submitted` only while pending or after success; any failure falls back to `item.decision`), so a failed dismiss keeps the row visible and a failed save reverts the selected control, both alongside a `role="alert"` message. Covered by RED/GREEN tests in `target-feed-ui.test.tsx`.
+
+Minors carried forward without a required fix (recorded in `.superpowers/sdd/progress.md`): `matchedEvidence` lists matching-but-non-contributing evidence (UI copy must not imply contribution); `withinPreference` defaults to true on incomparable periods; mutex reorder-branch verifier test coverage; `updated_at now()`/`clock_timestamp()` cosmetic drift; search-result id tie-break direction; decide-action Zod parse placement outside a try block; `max-height` collapse animation is plan-mandated; `transition-colors` present on the disclosure summary; the `border-l-2` regression guard covers 5 of the 10 present neutral surfaces with a repo-wide grep backstop; long-title wrapping at 390px is cosmetic only.
+
+## Verification evidence
+
+Run from `/Users/jabed/Desktop/Jabed's Trash/Dev/JobWarden` on 2026-07-19, focused suites only (the controller runs and records the full release gate in Step 2 of this task):
+
+- `pnpm --filter @jobwarden/domain test` — 192 tests passed across 7 files;
+- `pnpm --filter @jobwarden/web test` — 272 tests passed across 34 files (the expected jsdom `HTMLCanvasElement.getContext()` notice appeared and did not fail a test; no canvas is used by the target feed);
+- `pnpm check:supabase` — passed for 11 migrations and 21 forced-RLS tables; and
+- browser verification recorded in `.superpowers/sdd/task-4-target-feed-report.md`: `/jobs` at 1280 px and 390 px renders the populated target feed sorted by score with profile chips, disclosures, and decision controls; a failing dismiss/save visibly reverts with the alert message; axe-clean.
+
+The full gate (`pnpm verify`, `pnpm check:supabase`, `pnpm audit --prod --audit-level high`, diff/secret scans) and the independent whole-branch review are Task 5 Steps 2–3, run by the controller after this documentation commit. This document does not claim those results.
+
+## Preserved pre-live blocker
+
+Docker, the Supabase CLI, `psql`, and `pg_prove` are unavailable in this environment. `supabase db reset`, database lint against a local stack, and pgTAP file `012_target_feed.sql` (21 static assertions) have therefore not executed against real PostgreSQL/Supabase. The static verifier and fictional fixtures do not replace that evidence — the `decide_career_job` RPC and its owner-fenced mutex ordering are exercised only statically.
+
+Real CV upload remains closed per Task 10 (web capability disabled, `career_cv_uploads_enabled` false); Task 11 does not touch that gate. Live approved authentication and private RLS boundary tests against a real database remain pre-live gates carried from Task 10. None of these blockers changes the deterministic, AI-free nature of the target-feed scoring path.
