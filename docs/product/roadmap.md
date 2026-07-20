@@ -49,7 +49,7 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 30   | Lever adapter and provider vocabulary widening                             | pending  | None; documented public board endpoint, no credential                                 |
 | 31   | Ashby adapter                                                              | pending  | None; documented public board endpoint, no credential                                 |
 | 32   | Workable adapter                                                           | pending  | None; documented public board endpoint, no credential                                 |
-| 33   | Emit `JobPosting` structured data                                          | pending  | Deployment for a live Rich Results check                                              |
+| 33   | Emit `JobPosting` structured data                                          | blocked  | Owner decision: public job content, plus a redistribution grant per source            |
 | 34   | Read `JobPosting` schema from allowlisted career pages                     | pending  | None; per-employer compliance record before each page is allowlisted                  |
 
 **Numbering note, 2026-07-20.** Tasks 24, 25 and 26 in an earlier revision of this file described the ATS adapters, Google Jobs schema and early-access operations. Those numbers were already taken by shipped work recorded in `docs/project-status.md`, so that outstanding work was renumbered 29–34 and the sections below match. No section in this file now shares a number with another.
@@ -363,16 +363,21 @@ Every widened database function must use `create or replace`, never `drop functi
 - the drop-reason counts and unrecognised-location list added by Task 25c populate for the new provider, so a slice that discards most of its stock is visible instead of silent; and
 - a dated compliance record with attribution rules, cadence, fixtures, and removal behaviour lands in `docs/product/source-coverage.md`, and the source ships disabled until the owner enables it.
 
-## Task 33 — Emit `JobPosting` structured data
+## Task 33 — Emit `JobPosting` structured data — blocked on an owner decision, do not build
 
-Emit `JobPosting` markup for published listings so indexed roles are discoverable. This is a rendering change on pages JobWarden already serves, and it is not a source; it is separated from Task 34 because the two share only a schema name.
+**Stopped before implementation, 2026-07-20.** The premise does not survive the programme's own constraints. Recorded here in full so it is not re-proposed, in the same spirit as the LinkedIn note above.
 
-Acceptance:
+The task read: emit `JobPosting` markup for published listings so indexed roles are discoverable, described as a rendering change on pages JobWarden already serves. Three findings, each independently fatal:
 
-- emitted markup validates against Google's Rich Results test and describes only published, UK-eligible listings;
-- markup is never emitted for a listing whose eligibility evidence is missing, so the index cannot advertise a role the product itself would not show;
-- no page emits structured data describing compensation the advert did not state, and `unknown` provenance emits no salary field at all rather than a zero or a guess; and
-- no page emits any user, career-profile, or CV-derived value, since this markup is public by definition.
+1. **No crawler can reach a job page.** Every job surface lives under `app/(protected)`, whose layout calls `requireProtectedAccess()`; an unauthenticated request is answered with `redirect()`, not markup. The only public pages are the landing, `/privacy`, `/terms`, `/unsubscribe`, `/access/pending` and the sign-in route. There is no `robots.txt` and no `sitemap.ts`. Structured data on a page Googlebot is redirected away from is inert, so the task as written would ship a control that looks configured and does nothing — the exact failure mode Task 28 just repaired.
+
+2. **Making those pages public contradicts a permanent constraint.** "Private beta with administrator-approved access and RLS as the final boundary" is the second bullet of this file, and `AGENTS.md` states product data is available only to administrator-approved users. Publishing job pages for indexing means serving product data to anonymous readers, which is not a rendering change; it is a change of product posture.
+
+3. **It would redistribute source content JobWarden has no grant to redistribute.** This is the decisive one. `docs/product/source-coverage.md` requires every source to record its attribution requirements, and states plainly of Reed that its page "does not state a data-retention, redistribution, attribution, or termination/removal grant". Emitting a listing's title, description, location and salary as public structured data is redistribution to a search index. JobWarden holds no redistribution grant from any current source, and the non-negotiable rule that connectors never bypass robots restrictions or access controls exists to keep exactly this boundary.
+
+Nothing survives a reduction. There is no public surface carrying a listing to attach markup to, and creating one is what findings 2 and 3 forbid.
+
+Unblocking it needs owner decisions, not engineering: a deliberate choice to serve some job content publicly outside the private beta, **and** a recorded redistribution and attribution grant from each source whose listings would appear. Until both exist, this task stays closed. Note that Task 34 is unaffected — reading `JobPosting` schema is ingestion, not publication, and redistributes nothing.
 
 ## Task 34 — Read `JobPosting` schema from allowlisted career pages
 
