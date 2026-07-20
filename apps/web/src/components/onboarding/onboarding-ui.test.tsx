@@ -1,5 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { act } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { axe } from "vitest-axe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -400,5 +403,53 @@ describe("OnboardingFlow", () => {
     expect(
       screen.getByRole("link", { name: /restart the walkthrough/i }),
     ).toHaveAttribute("href", "/development/journey?restart=1");
+  });
+
+  /**
+   * Task 27. A report held that this flow attached no React fiber and that
+   * every client effect inside it was inert, leaving the buttons working only
+   * through progressive enhancement. It was not reproducible: at the commit it
+   * cited, submitting a step left `window` intact and raised no new document
+   * navigation, so React had intercepted the submit.
+   *
+   * What was genuinely missing is this test. `"use client"` itself needs no
+   * test — a React hook in a server component fails the production build that
+   * `pnpm verify` already runs. A hydration *mismatch* is the uncovered risk:
+   * React discards the server HTML, re-renders on the client, and nothing
+   * fails. `Enter` carries a deliberate `suppressHydrationWarning` for its
+   * one class swap, which is exactly the kind of place a real mismatch could
+   * hide behind an intended one.
+   *
+   * So this asserts the outcome rather than the mechanism, per
+   * `docs/standards/frontend-traps.md`: real server markup, a real hydration
+   * against it, and a client effect inside the subtree proving it took.
+   */
+  it("hydrates against its own server markup and runs a client effect inside", async () => {
+    const element = <OnboardingFlow view={view()} />;
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(element);
+    document.body.append(container);
+    window.sessionStorage.clear();
+
+    const recoverableErrors: string[] = [];
+    let root: ReturnType<typeof hydrateRoot> | undefined;
+    await act(async () => {
+      root = hydrateRoot(container, element, {
+        onRecoverableError: (error) => {
+          recoverableErrors.push(String(error));
+        },
+      });
+    });
+
+    // `Enter`'s effect only runs once a fiber is committed to this subtree, so
+    // the recorded surface key is the cheapest honest proof of hydration.
+    expect(window.sessionStorage.getItem("jobwarden:seen-surfaces")).toContain(
+      "onboarding-cv-cv",
+    );
+    // A mismatch would be recovered silently; failing here is the whole point.
+    expect(recoverableErrors).toEqual([]);
+
+    root?.unmount();
+    container.remove();
   });
 });
