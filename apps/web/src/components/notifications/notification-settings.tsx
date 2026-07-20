@@ -85,7 +85,11 @@ export function NotificationSettings({
       >
         Digest emails
       </h2>
-      <p className="mt-2 max-w-prose text-sm text-ink-secondary">
+      <p className="mt-1 max-w-prose text-sm text-ink-secondary">
+        AI reads each new UK listing against your evidence and preferences, and
+        emails you only the ones that genuinely fit.
+      </p>
+      <p className="mt-3 max-w-prose text-sm text-ink-secondary">
         JobWarden checks for new matches after each shared weekday update at
         09:00, 12:00, 15:00, and 18:00 UK time. You get at most one email per
         slot, and only when a search profile has matched something it has not

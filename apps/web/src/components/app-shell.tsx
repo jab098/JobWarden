@@ -37,11 +37,14 @@ export function AppShell({
         </Link>
         <MobileNavigation dataMode={dataMode} activePath={activePath} />
       </header>
-      <aside className="fixed inset-y-0 left-0 hidden w-[var(--rail-width)] flex-col border-r border-sidebar-border bg-sidebar lg:flex">
-        <div className="px-5 pt-5 pb-4">
+      <aside className="fixed inset-y-0 left-0 hidden w-[var(--rail-width)] flex-col bg-sidebar lg:flex">
+        <div className="px-3 pt-3 pb-4">
+          {/* Boxed rather than floating on the rail: the brand is a distinct
+              object, not a heading sitting on the same colour as everything
+              around it. */}
           <Link
             href="/home"
-            className="font-display rounded-md text-[0.95rem] font-semibold tracking-[-0.02em] outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+            className="font-display flex items-center rounded-lg border border-border bg-workspace px-3 py-2.5 text-[0.95rem] font-semibold tracking-[-0.02em] shadow-[0_1px_2px_rgba(16,20,28,0.04)] outline-none transition-colors duration-(--duration-quick) hover:border-input focus-visible:ring-2 focus-visible:ring-ring/60"
           >
             JobWarden
           </Link>
@@ -69,7 +72,14 @@ export function AppShell({
           </div>
         </div>
       </aside>
-      <main className="min-w-0 lg:pl-[var(--rail-width)]">{children}</main>
+      {/* The working surface is white and the rail around it is grey, so a card
+          is visible as a lighter object on the page rather than needing its
+          shadow to be found. */}
+      <main className="min-w-0 lg:pl-[var(--rail-width)]">
+        <div className="min-h-[100dvh] bg-workspace lg:rounded-tl-xl lg:border-l lg:border-border">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }

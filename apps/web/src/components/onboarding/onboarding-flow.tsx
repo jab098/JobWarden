@@ -87,8 +87,8 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
     // short question at a time, and left at the top of a large monitor it reads
     // as a fragment of a page that failed to load. `my-auto` centres without
     // clipping the head of a step that outgrows the screen.
-    <div className="flex min-h-[100dvh] flex-col px-5 py-10">
-      <main className="mx-auto my-auto w-full max-w-flow">
+    <div className="flex min-h-[100dvh] flex-col items-center px-5 py-10">
+      <main className="my-auto w-full max-w-[var(--container-flow)]">
         <p className="text-sm font-semibold tracking-[-0.02em] text-foreground">
           JobWarden
         </p>

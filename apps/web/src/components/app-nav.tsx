@@ -87,10 +87,12 @@ export function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       href={item.href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "group flex items-center gap-2.5 rounded-md px-2.5 py-[var(--rail-item-padding)] text-sm outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring/60",
+        "group flex items-center gap-2.5 rounded-lg border px-2.5 py-[var(--rail-item-padding)] text-sm outline-none transition-[background-color,border-color,color] duration-150 focus-visible:ring-2 focus-visible:ring-ring/60",
+        // The active item is a raised white pill with its own edge, so it reads
+        // as the page you are on rather than a slightly different grey.
         active
-          ? "bg-sidebar-accent font-medium text-foreground"
-          : "text-ink-secondary hover:bg-sidebar-accent/60 hover:text-foreground",
+          ? "border-border bg-workspace font-medium text-foreground shadow-[0_1px_2px_rgba(16,20,28,0.05)]"
+          : "border-transparent text-ink-secondary hover:border-border hover:bg-workspace/60 hover:text-foreground",
       )}
     >
       <Icon

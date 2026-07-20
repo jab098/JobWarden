@@ -41,6 +41,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-workspace: var(--workspace);
   --color-link: var(--link);
   --color-data: var(--data);
   --color-data-inbound: var(--data-inbound);
@@ -65,10 +66,6 @@
      single-column reading surfaces. Prose keeps the fixed narrow scale. */
   --container-page: clamp(64rem, 80vw, 94rem);
   --container-list: clamp(48rem, 68vw, 80rem);
-  /* Guided single-column flows: onboarding and anything else that asks one
-     question at a time. Wider than prose so it does not look stranded on a
-     large monitor, still short enough that a line stays readable. */
-  --container-flow: clamp(34rem, 46vw, 52rem);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -81,9 +78,18 @@
 :root {
   /* Ground and ink: a definitely-tinted cool gray so the white sidebar and
      cards read as raised panels, never a vanilla white page. */
-  --background: oklch(0.9618 0.0052 250.5);
+  /* Owner decision, 2026-07-22: the chrome is grey and the working surface is
+     white, the reverse of the original scheme. A white card on a white page has
+     to be found by its shadow; a light card on a white page is simply visible,
+     and the grey rail reads as frame rather than content. */
+  --background: oklch(0.9709 0.0035 250.5);
   --foreground: oklch(0.2178 0.0126 254.1);
-  --card: oklch(1 0 0);
+  /* Cards sit on the white content column, so they are a shade of grey rather
+     than white; a card the same colour as its page can only be found by its
+     shadow. */
+  --card: oklch(0.9789 0.0028 250.5);
+  /* The content column the cards sit on. */
+  --workspace: oklch(1 0 0);
   --card-foreground: oklch(0.2178 0.0126 254.1);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2178 0.0126 254.1);
@@ -162,7 +168,8 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.75rem;
-  --sidebar: oklch(1 0 0);
+  /* The rail is the grey frame; the content column beside it is white. */
+  --sidebar: oklch(0.9709 0.0035 250.5);
   --sidebar-foreground: oklch(0.2178 0.0126 254.1);
   --sidebar-primary: oklch(0.2431 0.0132 254.1);
   --sidebar-primary-foreground: oklch(0.985 0.001 247.8);
@@ -175,6 +182,16 @@
      a large monitor. One value; the shell's width and the content column's
      offset both read it, so they cannot drift apart. */
   --rail-width: clamp(14rem, 13vw, 17rem);
+
+  /* Guided single-column flows: onboarding, and anything else that asks one
+     question at a time. Wider than prose so it is not stranded on a large
+     monitor, still short enough that a line stays readable. Declared here
+     rather than in `@theme` because `@theme inline` does not emit the custom
+     property, so `var()` would silently resolve to nothing. */
+  --container-flow: clamp(34rem, 46vw, 52rem);
+  /* The widest a single answer field grows. Inputs that stretch the full
+     column turn a one-word answer into a runway. */
+  --field-width: 26rem;
 
   /* The rail breathes with the window's height the way its width does with the
      width. On a short laptop the items stay tight; on a tall monitor they open
@@ -197,7 +214,8 @@
 .dark {
   --background: oklch(0.185 0.008 254);
   --foreground: oklch(0.955 0.002 247.8);
-  --card: oklch(0.225 0.009 254);
+  --card: oklch(0.235 0.009 254);
+  --workspace: oklch(0.205 0.008 254);
   --card-foreground: oklch(0.955 0.002 247.8);
   --popover: oklch(0.225 0.009 254);
   --popover-foreground: oklch(0.955 0.002 247.8);
@@ -351,10 +369,15 @@
   }
 }
 
+/* Neither entrance starts from fully transparent. The outgoing page is removed
+   in the same frame the incoming one mounts, so beginning at zero opacity
+   leaves the column empty for a moment, which is exactly the blink these are
+   supposed to prevent. Starting part-way visible keeps something on screen
+   continuously and lets the movement carry the transition. */
 @keyframes page-enter {
   from {
-    opacity: 0;
-    transform: translateY(12px);
+    opacity: 0.55;
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -364,10 +387,12 @@
 
 @keyframes page-fade {
   from {
-    opacity: 0;
+    opacity: 0.6;
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -381,11 +406,17 @@
   navigation: auto;
 }
 
-/* A plain cross-fade at the document level. The rise belongs to the content
-   inside, which runs its own entrance on the new page; doing both would move
-   the same thing twice, once nested inside the other. */
+/* The outgoing page fades out; the incoming snapshot is left alone, because the
+   content inside it runs its own entrance. Doing both would move the same thing
+   twice, once nested inside the other.
+
+   This is what removes the blink. Without a transition the old page is dropped
+   the instant a link is clicked and the new one starts at opacity 0, so for a
+   moment nothing is on screen at all. Holding the outgoing snapshot across that
+   moment is something only the browser can do; React has already unmounted the
+   tree it came from. */
 ::view-transition-old(root) {
-  animation: page-fade var(--duration-quick) var(--ease-smooth-out) reverse both;
+  animation: page-fade var(--duration-fast) var(--ease-smooth-out) reverse both;
 }
 
 ::view-transition-new(root) {
