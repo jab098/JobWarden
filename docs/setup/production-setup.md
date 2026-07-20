@@ -178,7 +178,32 @@ Reed requires a separate decision: read [the Reed runbook](../operations/reed-in
 
 ---
 
-## Step 9 — Optional error reporting
+## Step 9 — Early access list bot check
+
+Needed before the landing page can accept anyone. Until these are set the
+early-access form is not offered at all: it says the list is not open and shows
+the sign-in tab instead. That is deliberate, not a bug. A publicly reachable
+insert with no bot check is exactly what the check exists to prevent, so the
+server action refuses every submission while the secret is missing.
+
+1. In the Cloudflare dashboard open **Turnstile** and add a widget for your
+   site's domain. It is free at any volume this product will reach, and unlike
+   reCAPTCHA it does not profile the visitor.
+2. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in Cloudflare. This one is public by
+   design; it is rendered into the page.
+3. Set `TURNSTILE_SECRET_KEY` in Cloudflare. This one is server-only and must
+   never appear in a `NEXT_PUBLIC_` variable, a client component, or a log line.
+4. Apply the `202607220001_early_access_list` migration if Step 2 predates it,
+   then submit the form once and confirm a row lands in
+   `public.early_access_signups`.
+
+The form answers identically whether an address was added or was already on the
+list. That is on purpose: an unauthenticated endpoint that distinguishes the two
+lets anyone test whether a given email is registered.
+
+---
+
+## Step 10 — Optional error reporting
 
 Skip this until the rest is working.
 

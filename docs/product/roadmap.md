@@ -271,6 +271,64 @@ Acceptance:
 - the development bypass is absent from every deployed environment, re-proven after activation; and
 - the full-path browser verification covers every surface including `/home` and onboarding, as Task 16 requires.
 
+## Task 24 — ATS source adapters: Lever, Ashby, Workable
+
+Only Greenhouse and Reed exist. The three remaining mainstream ATS boards are the cheapest real coverage available: each publishes a documented, free, employer-authored JSON feed, so they need no commercial agreement and carry no access-control risk. Deliver them as independently reviewed slices, one provider per slice, not as one change.
+
+Rejected alternative, recorded so it is not re-proposed: **LinkedIn is not a source.** There is no public jobs-search API at any partner tier, and scraping it breaks both their terms and the allowlisted-source rule in `AGENTS.md`. "Sign in with LinkedIn" returns name, email and photo only, never work history, so it cannot populate a career profile either. Do not spend a slice discovering this again.
+
+Acceptance, per provider:
+
+- the adapter reads only the provider's documented public board endpoint for an allowlisted employer, with bounded retries, sanitised errors, and append-only audit records;
+- `job_sources.provider` accepts the new value through a migration that widens the existing check constraint, and the admin source form can configure it;
+- UK eligibility evidence is extracted explicitly, never inferred, and a listing without it is not published, including remote roles without explicit UK permission;
+- compensation keeps advertised, estimated, and unknown as visibly distinct provenance, and IR35 is never inferred from contract status;
+- duplicate control across providers is proven with a listing that appears on two boards; and
+- the shared ingestion run stays global, cooldown-bound, and free of per-user cost.
+
+## Task 25 — Google Jobs structured data
+
+Emit `JobPosting` structured data for published listings so indexed roles are discoverable, and read `JobPosting` schema from allowlisted employer career pages as an ingestion path where no ATS feed exists.
+
+Acceptance:
+
+- emitted markup validates against Google's Rich Results test and describes only published, UK-eligible listings;
+- markup is never emitted for a listing whose eligibility evidence is missing, so the index cannot advertise a role the product itself would not show;
+- the reading path treats scraped schema as untrusted input: schema-validated, evidence-checked, and subject to the same source-access rules as any adapter; and
+- no page emits structured data describing compensation the advert did not state.
+
+## Task 26 — Early access list operations
+
+The list ships in the landing dialog but has no interface. The owner currently reads it with SQL.
+
+Acceptance:
+
+- an administrator surface lists pending signups oldest first, with the free-text field rendered as text and never as markup;
+- marking somebody invited sets `invited_at` and is auditable;
+- the surface is read-mostly, imports no production mutation action beyond the invite mark, and exposes no product data; and
+- the enumeration property holds: nothing in the interface or its errors reveals whether a given address is on the list to anybody but an administrator.
+
+## Task 27 — Onboarding hydration defect
+
+`OnboardingFlow` does not hydrate. No React fiber attaches to any of its subtree, so `useActionState` pending states, `ActionFeedback`, and every client effect inside onboarding are inert; the step buttons work only because form actions are progressively enhanced. Confirmed pre-existing at merge commit `9d2b49b` by stashing local work, and unchanged by a clean dev-server restart with `.next` cleared. All client chunks load 200 and the console is clean, so the cause is not a missing bundle.
+
+Acceptance:
+
+- the root cause is identified rather than worked around, and stated in the review;
+- a fiber attaches to the onboarding subtree and a client effect inside it demonstrably runs;
+- the per-step entrance recorded by `components/ui/enter.tsx` registers its surface key, which is the cheapest observable proof that hydration happened; and
+- a regression test fails if the flow stops hydrating.
+
+## Task 28 — Repair the history secret scan
+
+The `verify` workflow's "Scan full history for secrets" step fails with GitHub 403 `Resource not accessible by integration` when listing pull-request commits, and crashes before scanning. It has therefore never scanned a pull request, while presenting as a configured control.
+
+Acceptance:
+
+- the workflow grants the token the permission the step needs, or the step stops depending on the API call;
+- the scan runs to completion on a pull request and its result is visible; and
+- a deliberately planted test secret on a scratch branch is caught, proving the control works rather than merely running.
+
 ## Continuous source expansion
 
 Source work does not wait for a single final “scraping complete” milestone. After Task 8, authorised connectors can be delivered as independently reviewed slices alongside Tasks 10–15. Prioritise measured UK coverage gaps, job freshness, contract/part-time representation, compensation quality, and duplicate control. Never let a high-profile board bypass the source-access rules.
