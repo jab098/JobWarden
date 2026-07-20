@@ -10,6 +10,8 @@ const validJob = {
   descriptionText: "A UK role.",
   applicationUrl: "https://boards.greenhouse.io/example/jobs/123",
   countryCode: "GB",
+  rawLocation: "Leeds, England",
+  remoteEligibility: "not_remote",
   ukEligibilityEvidence: ["Location: England"],
   employmentType: "permanent",
   workingTime: "full_time",

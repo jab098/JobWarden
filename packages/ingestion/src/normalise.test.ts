@@ -712,3 +712,48 @@ describe("Greenhouse normalisation", () => {
     });
   });
 });
+
+describe("advert location survives normalisation", () => {
+  // The bug this guards: the advert's location text was computed, used to
+  // classify UK eligibility and workplace type, and then dropped. Every layer
+  // typechecked and every test passed, while job_locations had no writer at
+  // all — so the text filter and radius search both read an empty table and
+  // correctly returned nothing, for a whole feature.
+  it("carries the advert's own location words onto the normalised job", async () => {
+    const job = await eligibleJob({
+      ...baseJob,
+      location: "Manchester, England",
+    });
+
+    expect(job.rawLocation).toBe("Manchester, England");
+  });
+
+  it("gives every eligible job a location a resolver can read", async () => {
+    const job = await eligibleJob(baseJob);
+
+    expect(job.rawLocation.trim().length).toBeGreaterThan(0);
+  });
+
+  it("does not claim UK remote permission from an on-site advert", async () => {
+    // Remote says how the work is done, not where the worker may live, and UK
+    // permission has to be evidenced rather than inferred from the word.
+    const job = await eligibleJob({
+      ...baseJob,
+      descriptionHtml: "<p>Permanent office-based role in London, England.</p>",
+    });
+
+    expect(job.workplaceType).toBe("onsite");
+    expect(job.remoteEligibility).toBe("not_remote");
+  });
+
+  it("keeps an unevidenced remote advert out of the UK-eligible set", async () => {
+    const job = await eligibleJob({
+      ...baseJob,
+      location: "London, England",
+      descriptionHtml: "<p>Permanent fully remote role.</p>",
+    });
+
+    expect(job.workplaceType).toBe("remote");
+    expect(["uk", "ambiguous"]).toContain(job.remoteEligibility);
+  });
+});

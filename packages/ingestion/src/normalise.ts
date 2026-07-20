@@ -266,6 +266,27 @@ function classifyWorkplace(
   return "unknown";
 }
 
+/**
+ * Whether the advert permits remote work from within the UK.
+ *
+ * This is deliberately not a rename of the workplace type. "Remote" on its own
+ * says how the work is done, not where the worker may live, and JobWarden may
+ * not infer UK permission from the word alone — a globally remote advert is
+ * only in scope with explicit UK evidence. So a remote advert is `uk` only when
+ * the UK eligibility check already found that evidence, and `ambiguous`
+ * otherwise, which keeps the honest "we do not know" out of the confident set.
+ */
+function classifyRemoteEligibility(
+  workplaceType: NormalisedJob["workplaceType"],
+  hasUkEvidence: boolean,
+): NormalisedJob["remoteEligibility"] {
+  if (workplaceType === "remote") return hasUkEvidence ? "uk" : "ambiguous";
+  if (workplaceType === "onsite" || workplaceType === "hybrid") {
+    return "not_remote";
+  }
+  return "unknown";
+}
+
 function compensationEvidence(
   descriptionText: string,
   metadataText: readonly string[],
@@ -398,6 +419,7 @@ export async function normaliseProviderJob(
   const hasAdvertisedCompensation =
     compensationCurrency === "GBP" &&
     (compensationMinimum !== null || compensationMaximum !== null);
+  const workplaceType = classifyWorkplace(locationText, classificationText);
   const content: Omit<NormalisedJob, "contentHash"> = {
     sourceId: source.id,
     providerJobId: providerJob.providerJobId,
@@ -408,12 +430,21 @@ export async function normaliseProviderJob(
     descriptionText,
     applicationUrl,
     countryCode: "GB",
+    // The advert's own location words, never invented. An advert that states no
+    // location still needs a row, because the location table is what both text
+    // and distance search read, so a stated absence is recorded as such rather
+    // than dropped.
+    rawLocation: locationText.trim() || "UK location not specified",
+    remoteEligibility: classifyRemoteEligibility(
+      workplaceType,
+      ukEligibility.evidence.length > 0,
+    ),
     ukEligibilityEvidence: ukEligibility.evidence,
     employmentType:
       providerJob.employmentType ?? classifyEmployment(classificationText),
     workingTime:
       providerJob.workingTime ?? classifyWorkingTime(classificationText),
-    workplaceType: classifyWorkplace(locationText, classificationText),
+    workplaceType,
     ir35Status: classifyIr35(classificationText),
     compensationRaw,
     compensationMinimum,
