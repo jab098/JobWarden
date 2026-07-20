@@ -5,9 +5,14 @@ on:
     branches: [main]
   pull_request:
 
-# Least privilege: the workflow only reads the repository and holds no secrets.
+# Least privilege: the workflow reads the repository and, on a pull request,
+# the list of commits that pull request contains. It holds no configured
+# secrets. `pull-requests: read` is required by the secret scan and by nothing
+# else; without it that step fails with GitHub 403 before scanning anything,
+# which is exactly how it silently never ran until Task 28.
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: verify-${{ github.ref }}
@@ -42,12 +47,16 @@ jobs:
 
       - run: pnpm audit --prod
 
-      - name: Scan full history for secrets
+      # Named for what it does. On a pull request this scans that pull
+      # request's commits, and on a push to main the pushed commits; only a
+      # manual or scheduled run walks the whole history. The previous name
+      # claimed full history on every event, which was never true.
+      - name: Scan incoming commits for secrets
         uses: gitleaks/gitleaks-action@v2
         env:
           # Auto-provisioned by GitHub, not a configured secret. The action
-          # requires it to scan a pull request's commits; without it the job
-          # fails on every PR while passing on push, which is the worst of both.
+          # requires it to list a pull request's commits, which is why the job
+          # needs `pull-requests: read` above.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
           GITLEAKS_ENABLE_SUMMARY: "false"
