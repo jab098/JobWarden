@@ -393,6 +393,7 @@ export async function normaliseProviderJob(
           outcome: "quarantined",
           reason: "ambiguous_uk_eligibility",
           providerJobId: providerJob.providerJobId,
+          locationText,
         };
   }
 

@@ -345,6 +345,151 @@ describe("shared ingestion Edge Function handler", () => {
     });
   });
 
+  // Every non-eligible outcome used to be skipped by one `continue`, so a run
+  // that discarded almost everything recorded nothing but a low eligible count.
+  it("records why each discarded advert was discarded", async () => {
+    const claim = source(1);
+    const harness = repositoryHarness([claim]);
+    harness.upsertJobs.mockResolvedValueOnce({
+      insertedCount: 1,
+      updatedCount: 0,
+      unchangedCount: 0,
+    });
+    const handler = createIngestionHandler(
+      dependencies({
+        harness,
+        adapterFor: () =>
+          adapter([
+            providerJob(1),
+            { ...providerJob(2), location: "Austin, Texas" },
+            {
+              ...providerJob(3),
+              location: "Ashby-de-la-Zouch, Leicestershire",
+            },
+            {
+              ...providerJob(4),
+              location: "Ashby-de-la-Zouch, Leicestershire",
+            },
+            { ...providerJob(5), location: "Hebden Bridge, West Yorkshire" },
+            {
+              ...providerJob(6),
+              absoluteUrl: "https://not-an-allowed-host.example/jobs/6",
+            },
+          ]),
+      }),
+    );
+
+    await handler(request({ secret: expectedSecret }));
+
+    expect(harness.finishSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        receivedCount: 6,
+        eligibleCount: 1,
+        excludedNonUkCount: 1,
+        quarantinedAmbiguousCount: 3,
+        quarantinedInvalidUrlCount: 1,
+        // Deduplicated: the same unrecognised town across two adverts is one
+        // gap in the gazetteer, not two.
+        unrecognisedLocations: [
+          "Ashby-de-la-Zouch, Leicestershire",
+          "Hebden Bridge, West Yorkshire",
+        ],
+      }),
+    );
+  });
+
+  // Completeness, not attribution: this catches an outcome that is counted
+  // nowhere, while the test above catches one counted under the wrong reason.
+  // Scoped to adverts that reached normalisation — the per-source cap returns
+  // before the loop, so a capped run legitimately reports received with no
+  // outcomes at all.
+  it("counts every normalised advert under exactly one outcome", async () => {
+    const claim = source(1);
+    const harness = repositoryHarness([claim]);
+    harness.upsertJobs.mockResolvedValueOnce({
+      insertedCount: 1,
+      updatedCount: 0,
+      unchangedCount: 0,
+    });
+    const handler = createIngestionHandler(
+      dependencies({
+        harness,
+        adapterFor: () =>
+          adapter([
+            providerJob(1),
+            { ...providerJob(2), location: "Austin, Texas" },
+            { ...providerJob(3), location: "Somewhere, Nowhere" },
+          ]),
+      }),
+    );
+
+    await handler(request({ secret: expectedSecret }));
+
+    const completion = harness.finishSource.mock.calls[0][0];
+    expect(
+      completion.eligibleCount +
+        completion.excludedNonUkCount +
+        completion.quarantinedAmbiguousCount +
+        completion.quarantinedInvalidUrlCount,
+    ).toBe(completion.receivedCount);
+  });
+
+  // The diagnosis must survive the runs most worth diagnosing. A throw after
+  // normalisation used to finalise with every drop count at zero.
+  it("keeps the drop breakdown when the run fails after normalising", async () => {
+    const claim = source(1);
+    const harness = repositoryHarness([claim]);
+    harness.upsertJobs.mockRejectedValueOnce(new Error("fictional_db_error"));
+    const handler = createIngestionHandler(
+      dependencies({
+        harness,
+        adapterFor: () =>
+          adapter([
+            providerJob(1),
+            { ...providerJob(2), location: "Austin, Texas" },
+            {
+              ...providerJob(3),
+              location: "Ashby-de-la-Zouch, Leicestershire",
+            },
+          ]),
+      }),
+    );
+
+    await handler(request({ secret: expectedSecret }));
+
+    expect(harness.finishSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "failed",
+        excludedNonUkCount: 1,
+        quarantinedAmbiguousCount: 1,
+        unrecognisedLocations: ["Ashby-de-la-Zouch, Leicestershire"],
+      }),
+    );
+  });
+
+  it("bounds the recorded locations however many places go unrecognised", async () => {
+    const claim = source(1);
+    const harness = repositoryHarness([claim]);
+    const handler = createIngestionHandler(
+      dependencies({
+        harness,
+        adapterFor: () =>
+          adapter(
+            Array.from({ length: 40 }, (_, index) => ({
+              ...providerJob(index + 1),
+              location: `Fictional Town ${index + 1}, Nowhereshire`,
+            })),
+          ),
+      }),
+    );
+
+    await handler(request({ secret: expectedSecret }));
+
+    const completion = harness.finishSource.mock.calls[0][0];
+    expect(completion.quarantinedAmbiguousCount).toBe(40);
+    expect(completion.unrecognisedLocations).toHaveLength(25);
+  });
+
   it("finalises incremental discovery successfully without claiming a complete snapshot", async () => {
     const claim = source(1);
     claim.source = {

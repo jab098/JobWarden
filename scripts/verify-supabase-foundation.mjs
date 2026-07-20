@@ -23,6 +23,10 @@ export const requiredMigrationFiles = [
   "202607190008_onboarding_answers.sql",
   "202607190009_admin_observability.sql",
   "202607190010_onboarding_completion.sql",
+  "202607200001_cv_upload_client.sql",
+  "202607200002_location_radius.sql",
+  "202607200003_job_locations_writer.sql",
+  "202607200004_ingestion_drop_visibility.sql",
 ];
 
 const publicTables = [
@@ -89,6 +93,19 @@ export function verifyFoundationSql(files) {
 
   for (const file of requiredMigrationFiles) {
     if (!files.has(file)) failures.push(`missing required migration: ${file}`);
+  }
+
+  // The revoke-after-drop check below compares offsets inside the concatenated
+  // SQL, which only tracks execution order while this list is chronological.
+  // It is sorted by construction — the names are timestamp-prefixed — but the
+  // dependency is invisible at the append site, so state it here.
+  const chronological = [...requiredMigrationFiles].sort();
+  if (
+    requiredMigrationFiles.some((file, index) => file !== chronological[index])
+  ) {
+    failures.push(
+      "requiredMigrationFiles must stay in chronological order; ordering checks depend on it",
+    );
   }
 
   const sql = [...files.values()].join("\n");
@@ -1307,12 +1324,35 @@ export function verifyFoundationSql(files) {
     }
 
     const revokePattern = new RegExp(
-      `revoke\\s+all\\s+on\\s+function\\s+${escapedName}[^;]*\\sfrom\\s[^;]*\\bpublic\\b[^;]*\\banon\\b`,
-      "i",
+      // The `\(` anchor matters: without it the name is a prefix match, so
+      // `upsert_ingested_jobs`'s revoke would satisfy `upsert_ingested_job`.
+      `revoke\\s+all\\s+on\\s+function\\s+${escapedName}\\s*\\([^;]*\\sfrom\\s[^;]*\\bpublic\\b[^;]*\\banon\\b`,
+      "gi",
     );
-    if (!revokePattern.test(sql)) {
+    const revokeOffsets = [...sql.matchAll(revokePattern)].map(
+      (match) => match.index ?? -1,
+    );
+
+    // `create or replace` keeps a function's privileges, so an earlier revoke
+    // still holds. `drop function` does not: the recreated function starts from
+    // PostgreSQL's default ACL, which grants EXECUTE to PUBLIC. Matching on the
+    // name alone would accept a revoke written for the dropped overload — which
+    // is exactly what happened when finish_source_ingestion was first widened,
+    // and it passed this check while leaving the RPC open to anon.
+    const dropPattern = new RegExp(
+      `drop\\s+function\\s+(?:if\\s+exists\\s+)?${escapedName}\\s*\\(`,
+      "gi",
+    );
+    const lastDropOffset = [...sql.matchAll(dropPattern)].reduce(
+      (latest, match) => Math.max(latest, match.index ?? -1),
+      -1,
+    );
+
+    if (!revokeOffsets.some((offset) => offset > lastDropOffset)) {
       failures.push(
-        `security-definer function ${name} must revoke public and anon execution`,
+        lastDropOffset === -1
+          ? `security-definer function ${name} must revoke public and anon execution`
+          : `security-definer function ${name} is dropped and recreated, so it must revoke public and anon execution again afterwards`,
       );
     }
   }

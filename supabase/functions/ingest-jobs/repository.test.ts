@@ -217,6 +217,10 @@ describe("Supabase ingestion repository", () => {
       durationMs: 25,
       retryCount: 0,
       errorCode: null,
+      excludedNonUkCount: 1,
+      quarantinedAmbiguousCount: 3,
+      quarantinedInvalidUrlCount: 0,
+      unrecognisedLocations: ["Ashby-de-la-Zouch, Leicestershire"],
     });
 
     expect(fake.rpc).toHaveBeenCalledWith("finish_source_ingestion", {
@@ -231,6 +235,10 @@ describe("Supabase ingestion repository", () => {
       duration_ms_value: 25,
       retry_count_value: 0,
       sanitised_error_code: null,
+      excluded_non_uk_count_value: 1,
+      quarantined_ambiguous_count_value: 3,
+      quarantined_invalid_url_count_value: 0,
+      unrecognised_locations_value: ["Ashby-de-la-Zouch, Leicestershire"],
     });
   });
 

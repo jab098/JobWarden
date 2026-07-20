@@ -36,6 +36,11 @@ export type IngestionRunView = {
   upsertedCount: number;
   unchangedCount: number;
   closedCount: number;
+  excludedNonUkCount: number;
+  quarantinedAmbiguousCount: number;
+  quarantinedInvalidUrlCount: number;
+  /** Distinct advert locations recognition did not know, so the gap is nameable. */
+  unrecognisedLocations: readonly string[];
   durationMs: number | null;
   retryCount: number;
   errorCode: string | null;

@@ -58,6 +58,10 @@ const runRow = {
   upserted_count: 4,
   unchanged_count: 14,
   closed_count: 1,
+  excluded_non_uk_count: 3,
+  quarantined_ambiguous_count: 4,
+  quarantined_invalid_url_count: 0,
+  unrecognised_locations: ["Ashby-de-la-Zouch, Leicestershire"],
   duration_ms: 840,
   retry_count: 0,
   error_code: null,
@@ -250,6 +254,10 @@ describe("Supabase administrator repository", () => {
 
     await expect(repository.listIngestionRuns(50)).resolves.toEqual([
       expect.objectContaining({
+        excludedNonUkCount: 3,
+        quarantinedAmbiguousCount: 4,
+        quarantinedInvalidUrlCount: 0,
+        unrecognisedLocations: ["Ashby-de-la-Zouch, Leicestershire"],
         id: runRow.id,
         triggerType: "scheduled",
         receivedCount: 25,

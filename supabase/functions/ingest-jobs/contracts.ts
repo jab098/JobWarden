@@ -20,6 +20,21 @@ export type UpsertSummary = {
   unchangedCount: number;
 };
 
+/**
+ * Why a run discarded the adverts it discarded.
+ *
+ * Every non-eligible outcome used to be skipped by one `continue`, so a source
+ * dropping 95% of its stock was indistinguishable from a source without much UK
+ * content — which is how the eligibility classifier defect survived so long.
+ */
+export type DropBreakdown = {
+  excludedNonUkCount: number;
+  quarantinedAmbiguousCount: number;
+  quarantinedInvalidUrlCount: number;
+  /** Distinct location text of ambiguous adverts, so the gazetteer gap is nameable. */
+  unrecognisedLocations: string[];
+};
+
 export type SourceCompletion = {
   sourceRunId: string;
   status: "succeeded" | "failed";
@@ -31,7 +46,7 @@ export type SourceCompletion = {
   durationMs: number;
   retryCount: number;
   errorCode: string | null;
-};
+} & DropBreakdown;
 
 export interface IngestionRepository {
   enqueueScheduled(): Promise<number>;

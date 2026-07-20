@@ -349,6 +349,10 @@ describe("banned coloured left-border callout regression guard", () => {
               upsertedCount: 0,
               unchangedCount: 0,
               closedCount: 0,
+              excludedNonUkCount: 0,
+              quarantinedAmbiguousCount: 0,
+              quarantinedInvalidUrlCount: 0,
+              unrecognisedLocations: [],
               errorCode: "provider_unavailable",
             },
           ]}
