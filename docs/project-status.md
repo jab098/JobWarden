@@ -36,11 +36,12 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Handoff
 
-- Current integration branch: `main`; ingestion drop visibility was delivered by PR #28 at merge commit `6ad2e07`
+- Current integration branch: `main`; the card surface and graphite data revision was delivered by PR #30 at merge commit `58a80fd`
 - Last independently reviewed task implementation commit: Task 18 (delivered by merge `51f8eaf`)
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
 - Active feature branch: none
-- Active task: none. Tasks 26-32 are next; Task 21 still needs owner platform setup. Before adding a source (Task 27), read the run record on a real source: `/admin/ingestion` now names the places recognition is missing, and widening the gazetteer is cheaper stock than a new adapter
+- Active task: none. Tasks 27-32 are next; Task 21 still needs owner platform setup. Before adding a source (Task 27), read the run record on a real source: `/admin/ingestion` now names the places recognition is missing, and widening the gazetteer is cheaper stock than a new adapter
+- Outstanding on 26a: no independent review pass was run, and two owner-visible calls were deferred rather than settled. The `interviewing` stage dot is still the interactive blue, and no gauge or ring component exists because nothing on the hub has a real ratio to show. Both are recorded in PR #30
 
 ## Task progress
 
@@ -74,6 +75,8 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 25a. job_locations ingestion writer                                    | reviewed | Delivered by PR #26 at `7ffed39`; review caught a false UK remote-permission claim |
 | 25b. UK eligibility classifier                                         | reviewed | Delivered by PR #27 at `94913bf`; review rejected the first design and was right   |
 | 25c. Ingestion drop visibility                                         | reviewed | Delivered by PR #28 at `6ad2e07`; review caught an RPC left open to anon           |
+| 26. Settings, sources, and support pages                               | shipped  | Delivered directly on `main` at `3aa4283`; not recorded here at the time           |
+| 26a. Card surface, graphite data, and viewport-scaled frame            | shipped  | Delivered by PR #30 at `58a80fd`; verified green, no independent review pass       |
 
 ## Last verification commands
 
