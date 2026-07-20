@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -16,11 +16,6 @@ function seenSurfaces(): Set<string> {
     // animation.
     return new Set();
   }
-}
-
-function hasSeen(key: string): boolean {
-  if (typeof window === "undefined") return false;
-  return seenSurfaces().has(key);
 }
 
 function markSeen(key: string): void {
@@ -38,14 +33,21 @@ function markSeen(key: string): void {
 /**
  * Animates its content into view, and re-runs whenever the surface changes.
  *
- * Somewhere new in this session rises into place; somewhere already seen just
- * fades. The movement is what says "this is new", so repeating it every time a
- * reader returns to the same page turns it into noise.
+ * Owner decision, 2026-07-20: **every** arrival animates. This previously rose
+ * into place the first time a surface was seen in a session and merely faded on
+ * every return, on the argument that movement means "this is new" and repeating
+ * it is noise. The owner asked for the entrance on every step and every page
+ * change, so the distinction is gone and `page-fade` is now used only by the
+ * cross-document view transition.
  *
  * Route changes are covered by the route-group templates, which remount this on
  * every navigation. Anything that changes content *without* navigating — an
  * onboarding step advancing through a server action — has to pass its own `id`,
  * because from the router's point of view nothing moved.
+ *
+ * The visit is still recorded in session storage. It no longer selects the
+ * animation; it is the observable that proves this subtree hydrated, which is
+ * what the Task 27 regression test asserts and the only cheap proof available.
  */
 export function Enter({
   children,
@@ -79,25 +81,18 @@ function EnterOnce({
   children: React.ReactNode;
   className?: string;
 }) {
-  // A pure read, so React calling this twice in development returns the same
-  // answer. Recording the visit is a side effect and belongs after the commit;
-  // doing it here would mark the surface seen during the discarded first pass
-  // and every entrance would degrade to a fade.
-  const [first] = useState(() => !hasSeen(surfaceKey));
-
   useEffect(() => {
     markSeen(surfaceKey);
   }, [surfaceKey]);
 
   return (
-    // The server has no session store and always assumes new, so a full
-    // document load of an already-seen surface corrects itself during
-    // hydration; this covers exactly that one class swap.
-    <div
-      data-enter={surfaceKey}
-      suppressHydrationWarning
-      className={cn(first ? "page-enter" : "page-fade", className)}
-    >
+    // No `suppressHydrationWarning` any more, and that is a gain rather than an
+    // omission. It existed because the class depended on session storage, which
+    // the server cannot read, so server and client legitimately disagreed on
+    // one class. The class is now the same in both, so a mismatch here would be
+    // a real defect — and the Task 27 hydration test can see it, where before
+    // the suppression would have hidden it.
+    <div data-enter={surfaceKey} className={cn("page-enter", className)}>
       {children}
     </div>
   );

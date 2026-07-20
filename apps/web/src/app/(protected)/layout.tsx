@@ -12,12 +12,30 @@ export default async function ProtectedLayout({
     bypassFlag: process.env.JOBWARDEN_DEV_ACCESS_BYPASS,
   });
 
-  if (!developmentAccess.enabled) await requireProtectedAccess();
+  // Whether the Admin item is drawn is decided here, on the server, and never
+  // in the browser. `requireAdmin` on `/admin` itself remains the real
+  // boundary; this only decides whether a door is visible.
+  //
+  // The development bypass deliberately does NOT resolve to `/admin`: AGENTS.md
+  // forbids it from granting administrator access, and `requireAdmin` would
+  // rightly refuse it, so the link would be a dead end. It points at the
+  // read-only fictional preview instead, which is the surface a reviewer can
+  // actually use locally.
+  let adminHref: string | null = null;
+  if (developmentAccess.enabled) {
+    adminHref = "/development/admin-preview";
+  } else {
+    const access = await requireProtectedAccess();
+    adminHref = access.kind === "allowed" && access.isAdmin ? "/admin" : null;
+  }
 
   // The shell renders here, once, so the rail survives navigation and route
   // loading states appear inside the frame instead of replacing it.
   return (
-    <AppShell dataMode={developmentAccess.enabled ? "fixtures" : "supabase"}>
+    <AppShell
+      dataMode={developmentAccess.enabled ? "fixtures" : "supabase"}
+      adminHref={adminHref}
+    >
       {children}
     </AppShell>
   );

@@ -21,9 +21,12 @@ import {
 export function MobileNavigation({
   dataMode,
   activePath,
+  adminHref,
 }: {
   dataMode: "supabase" | "fixtures";
   activePath?: AppNavPath;
+  /** Server-decided; see `AppShell`. Mirrors the rail so the two agree. */
+  adminHref?: string | null;
 }) {
   return (
     <div className="lg:hidden">
@@ -50,7 +53,11 @@ export function MobileNavigation({
           </SheetHeader>
           <PrimaryNav activePath={activePath} />
           <div className="mt-auto flex flex-col gap-3 pb-4">
-            <FooterNav activePath={activePath} label="Utility mobile" />
+            <FooterNav
+              activePath={activePath}
+              label="Utility mobile"
+              adminHref={adminHref}
+            />
             <div className="border-t border-border px-5 pt-3">
               <DataModeLine dataMode={dataMode} />
             </div>

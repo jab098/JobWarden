@@ -27,7 +27,12 @@ vi.mock("@/components/auth/sign-out-button", () => ({
 }));
 vi.mock("next/headers", () => ({ headers: mocks.headers }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+// `usePathname` is needed because the admin section marks its current tab from
+// the URL, the same way the hub rail does.
+vi.mock("next/navigation", () => ({
+  redirect: mocks.redirect,
+  usePathname: () => "/admin/access",
+}));
 vi.mock("@/lib/env", () => ({
   getPublicEnv: () => ({
     NEXT_PUBLIC_SITE_URL: "https://jobwarden.example",
@@ -101,7 +106,7 @@ describe("administrator route boundaries", () => {
     mocks.getAdminRepository.mockResolvedValue(repository());
   });
 
-  it("requires administrator access before composing the shared shell", async () => {
+  it("requires administrator access before composing the admin section", async () => {
     render(
       await AdminLayout({
         children: <h1>Protected administrator content</h1>,
@@ -110,7 +115,7 @@ describe("administrator route boundaries", () => {
 
     expect(mocks.requireAdmin).toHaveBeenCalledOnce();
     expect(
-      screen.getByRole("navigation", { name: "Administrator primary" }),
+      screen.getByRole("navigation", { name: "Administration" }),
     ).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Access" })[0]).toHaveAttribute(
       "href",
@@ -119,6 +124,27 @@ describe("administrator route boundaries", () => {
     expect(
       screen.getByText("Protected administrator content"),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Administration is a section of the hub, not a second application. It used
+   * to render `AdminShell` — a second rail with its own brand block and its own
+   * sign-out — nested inside the hub shell that `(protected)/layout.tsx`
+   * already provides, which is what made entering it feel like leaving
+   * JobWarden. `AdminShell` survives only for the standalone development
+   * preview, which has no hub around it.
+   */
+  it("does not render a second brand block or sign-out inside the hub", async () => {
+    render(
+      await AdminLayout({ children: <h1>Protected administrator content</h1> }),
+    );
+
+    expect(
+      screen.queryByRole("link", { name: "JobWarden" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /sign out/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("redirects the administrator root to the access queue", () => {

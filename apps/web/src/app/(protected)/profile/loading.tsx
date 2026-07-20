@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProfileLoading() {
   return (
-    <div className="mx-auto max-w-list px-4 py-5 lg:px-6">
+    <div data-skeleton="" className="mx-auto max-w-list px-4 py-5 lg:px-6">
       <Skeleton className="h-7 w-56 max-w-full" />
       <Skeleton className="mt-2 h-4 w-96 max-w-full" />
       <div className="mt-4 space-y-3 card-surface p-4">

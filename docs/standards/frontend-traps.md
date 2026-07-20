@@ -138,6 +138,48 @@ exists separately.
 
 ---
 
+## The preview pane does not advance CSS animations
+
+An animation can be correctly attached, report `playState: "running"`, and sit
+at `currentTime: 0` forever. `requestAnimationFrame` does not tick either. The
+pane is not painting, so nothing advances.
+
+This produces a convincing false negative: the element reads `opacity: 0` long
+after the animation should have finished, which looks exactly like a broken
+animation and is not one.
+
+**Drive the animation yourself instead of waiting for it:**
+
+```js
+const a = el.getAnimations().find((x) => x.animationName === "reveal-in");
+a.pause();
+const total = a.effect.getTiming().duration;
+a.currentTime = total * 0.5; // then read getComputedStyle(el)
+```
+
+Sampling `currentTime` across `0 → 1` gives the real curve for opacity,
+transform and filter. That is the only reliable way to verify motion here.
+
+---
+
+## A zero-height viewport hides scroll-revealed content forever
+
+`window.innerHeight` measured **0** in the preview pane. Anything that hides
+content and waits for an `IntersectionObserver` to reveal it then hides it
+permanently, because a zero-height viewport can never intersect.
+
+`components/ui/reveal.tsx` guards against this twice, and both guards are
+load-bearing: it refuses to hide at all when the viewport has no height, and it
+reveals anyway if the observer never reports an initial state within 500 ms. An
+observer that is working still reports — it just says `isIntersecting: false` —
+so the fail-safe does not fire for content that is merely unscrolled.
+
+The general rule: **never let the hidden state be the one that survives a
+failure.** Apply it from an effect so that JavaScript off, an old browser, a
+hydration failure, or a broken observer all leave the content visible.
+
+---
+
 ## Verifying UI: assert the result, not the mechanism
 
 Both regressions above shipped as "done" because the mechanism was checked

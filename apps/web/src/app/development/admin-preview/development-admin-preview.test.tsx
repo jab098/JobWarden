@@ -39,17 +39,18 @@ describe("development administrator preview", () => {
     expect(
       screen.getByRole("heading", {
         level: 1,
-        name: "Administrator operations preview",
+        name: "Admin",
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("Fictional Rowan")).toBeInTheDocument();
     expect(
       screen.getAllByText("Fictional Northstar UK Ltd").length,
     ).toBeGreaterThan(0);
+    // The preview must say what it is. The wording moved from a banner in the
+    // old admin shell into the section's own description when administration
+    // became a hub section rather than a separate shell.
     expect(
-      screen.getByText(
-        "Read-only fictional administrator preview; no administrator access granted",
-      ),
+      screen.getByText(/grants no administrator access/i),
     ).toBeInTheDocument();
     expect(container.querySelector("form")).toBeNull();
     for (const button of screen.getAllByRole("button")) {

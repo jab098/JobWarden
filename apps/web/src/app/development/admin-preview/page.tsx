@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { AccessRequestList } from "@/components/admin/access-request-list";
-import { AdminShell } from "@/components/admin/admin-shell";
+
 import { IngestionRequestList } from "@/components/admin/ingestion-request-list";
 import { IngestionRunList } from "@/components/admin/ingestion-run-list";
 import { SourceHealthList } from "@/components/admin/source-health-list";
@@ -29,17 +29,23 @@ export default async function DevelopmentAdminPreview() {
   const snapshot = getDevelopmentAdminSnapshot();
   const enabledSources = snapshot.sources.filter((source) => source.enabled);
 
+  // Deliberately NOT wrapped in `AppShell`. The hub shell carries a real
+  // sign-out form, and `AGENTS.md` requires this preview to import no
+  // production mutation action — a rule its own test enforces by asserting the
+  // rendered output contains no form and no enabled button. So the preview
+  // adopts the hub's container, spacing and colour without the hub's chrome.
   return (
-    <AdminShell preview>
-      <main className="mx-auto w-full min-w-0 max-w-page px-5 py-7 sm:px-8">
-        <header className="mb-12 max-w-3xl">
-          <h1 className="break-words text-xl font-semibold tracking-[-0.02em]">
-            Administrator operations preview
+    <div className="min-h-screen bg-workspace text-foreground">
+      <div className="mx-auto max-w-page px-4 py-5 lg:px-6">
+        <header>
+          <h1 className="break-words text-xl font-semibold tracking-[-0.02em] text-foreground">
+            Admin
           </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-ink-secondary">
-            A visual review surface for access decisions, lawful source
-            controls, and ingestion outcomes. It has no production identity and
-            cannot change stored data.
+          <p className="mt-1 max-w-[62ch] text-sm leading-6 text-ink-secondary">
+            Read-only fictional preview of administrator operations: access
+            decisions, lawful source controls, and ingestion outcomes. It has no
+            production identity, grants no administrator access, and cannot
+            change stored data.
           </p>
         </header>
 
@@ -106,7 +112,7 @@ export default async function DevelopmentAdminPreview() {
           </h2>
           <AuditLogTable entries={snapshot.auditLog} />
         </div>
-      </main>
-    </AdminShell>
+      </div>
+    </div>
   );
 }

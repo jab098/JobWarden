@@ -5,6 +5,7 @@ import { ArrowRight, Check } from "lucide-react";
 import { AccessDialog } from "@/components/auth/access-dialog";
 import { PublicFooter } from "@/components/legal/public-footer";
 import { buttonVariants } from "@/components/ui/button";
+import { Reveal } from "@/components/ui/reveal";
 import { cn } from "@/lib/utils";
 
 type PublicHomeProps = {
@@ -37,8 +38,13 @@ export function PublicHome({
     <div className="flex min-h-[100dvh] flex-col overflow-x-clip bg-card text-foreground">
       <main className="flex flex-1 flex-col px-3 pt-3 sm:px-4 sm:pt-4">
         {/* The hero sits on its own tinted panel, Realm-style; the page
-            around it stays white so the panel reads as the product. */}
-        <div className="flex flex-1 flex-col rounded-xl bg-background">
+            around it stays white so the panel reads as the product.
+
+            `page-enter-blur` is applied to this existing element rather than
+            through an `Enter` wrapper: a new node in this flex chain is a
+            layout risk for no gain, and the landing page is a document load,
+            so it wants the entrance every time rather than once per session. */}
+        <div className="page-enter-blur flex flex-1 flex-col rounded-xl bg-background">
           <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-5 py-5 sm:px-8">
             <header className="flex items-center justify-between">
               <Link
@@ -164,9 +170,13 @@ export function PublicHome({
         </div>
 
         <div className="mx-auto w-full max-w-6xl px-5 sm:px-8">
+          {/* Below the fold on a laptop, so these arrive as the reader reaches
+              them rather than having already animated unseen. Each principle
+              reveals independently, which gives the row its stagger from the
+              scroll itself rather than from a delay. */}
           <ul className="grid gap-x-8 gap-y-3 py-6 sm:grid-cols-3">
             {principles.map(([title, body]) => (
-              <li key={title} className="flex items-start gap-2.5">
+              <Reveal as="li" key={title} className="flex items-start gap-2.5">
                 <Check
                   aria-hidden="true"
                   strokeWidth={2}
@@ -176,7 +186,7 @@ export function PublicHome({
                   <span className="font-medium text-foreground">{title}.</span>{" "}
                   {body}
                 </p>
-              </li>
+              </Reveal>
             ))}
           </ul>
         </div>

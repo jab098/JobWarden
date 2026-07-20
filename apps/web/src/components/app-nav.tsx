@@ -9,6 +9,7 @@ import {
   LifeBuoy,
   Search,
   Settings,
+  ShieldCheck,
   Target,
   UserRound,
   type LucideIcon,
@@ -24,7 +25,8 @@ export type AppNavPath =
   | "applications"
   | "profile"
   | "settings"
-  | "support";
+  | "support"
+  | "admin";
 
 type NavItem = {
   path: AppNavPath;
@@ -57,6 +59,21 @@ export const APP_NAV_FOOTER_ITEMS: ReadonlyArray<NavItem> = [
   { path: "settings", href: "/settings", label: "Settings", icon: Settings },
   { path: "support", href: "/support", label: "Support", icon: LifeBuoy },
 ];
+
+/**
+ * Operations, shown above Settings and only to an administrator.
+ *
+ * The `href` is supplied by the server rather than hardcoded, because the
+ * destination differs by who is asking and that decision may never be made in
+ * the browser. A real administrator gets `/admin`; local development gets the
+ * read-only fictional preview, because `AGENTS.md` forbids the development
+ * bypass from granting administrator access and `/admin` would rightly refuse
+ * it. Everybody else gets no link, and `requireAdmin` remains the real
+ * boundary regardless — this only decides whether a door is drawn.
+ */
+export function adminNavItem(href: string): NavItem {
+  return { path: "admin", href, label: "Admin", icon: ShieldCheck };
+}
 
 /**
  * Active state comes from the URL, so the rail can live in the layout and
@@ -133,17 +150,23 @@ export function PrimaryNav({
 export function FooterNav({
   activePath,
   label = "Utility",
+  adminHref,
 }: {
   activePath?: AppNavPath;
   label?: string;
+  /** Server-decided. Absent means the reader is not an administrator. */
+  adminHref?: string | null;
 }) {
   const active = useActivePath(activePath);
+  const items = adminHref
+    ? [adminNavItem(adminHref), ...APP_NAV_FOOTER_ITEMS]
+    : APP_NAV_FOOTER_ITEMS;
   return (
     <nav
       aria-label={label}
       className="flex flex-col gap-[var(--rail-gap)] px-3"
     >
-      {APP_NAV_FOOTER_ITEMS.map((item) => (
+      {items.map((item) => (
         <NavLink key={item.path} item={item} active={active === item.path} />
       ))}
     </nav>

@@ -7,7 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton";
  */
 export default function OnboardingLoading() {
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center px-5 py-10">
+    <div
+      data-skeleton=""
+      className="flex min-h-[100dvh] flex-col items-center px-5 py-10"
+    >
       <main className="my-auto w-full max-w-[var(--container-flow)]">
         <p className="sr-only">Preparing your setup</p>
         <Skeleton className="h-4 w-24" />
