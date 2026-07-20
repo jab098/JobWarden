@@ -89,20 +89,34 @@ is inspected from the DOM, and it is what made both bugs findable.
 
 ---
 
-## Onboarding does not hydrate
+## Onboarding does hydrate — the report was wrong
 
-`OnboardingFlow` attaches no React fiber. Its buttons work only because form
-actions are progressively enhanced, which is why it looks fine. `useActionState`
-pending states, `ActionFeedback`, and every client effect inside onboarding are
-inert.
+An earlier revision of this file said `OnboardingFlow` attached no React fiber
+and that every client effect inside it was inert. **That was not true**, and it
+was not true at `9d2b49b`, the commit it cited as proof. Task 27 checked it
+three ways, twice at that commit in a worktree and once on `main`:
 
-Pre-existing at merge commit `9d2b49b`, proven by stashing local work and
-retesting. Unchanged by a clean dev-server restart with `.next` cleared. All
-client chunks return 200 and the console is clean, so it is not a missing
-bundle. Tracked as **Task 27**.
+- `main`, both submit buttons, and both `Enter` divs carry `__reactFiber$`
+  properties; the only elements without them are `<head>`, `<link>` and
+  `<script>`;
+- `sessionStorage["jobwarden:seen-surfaces"]` contains `onboarding-cv-cv`, the
+  key of the `Enter` **inside** the flow, so its `useEffect` ran; and
+- setting `window.__probe` and then submitting a step advanced "Your CV" to
+  "Where you want to go" with the probe **intact** and no new navigation entry.
+  A progressively-enhanced form POST unloads the document and would have wiped
+  it. React had intercepted the submit through `useActionState`.
 
-Anything relying on client behaviour inside onboarding is currently dead code.
-Check before building on it.
+The lesson is the one already at the bottom of this file, turned on its author:
+counting fibers is a mechanism check, and it is easy to get a false negative
+from one. Most elements on any page legitimately have no fiber, and `<head>`
+and `<script>` sort first in `document.querySelectorAll("*")`. **Prove
+hydration with an effect that ran**, not with a property that exists.
+
+The regression test lives in `onboarding-ui.test.tsx`. It server-renders the
+flow, hydrates against that markup, and fails if either the effect stops
+running or a hydration mismatch appears. Note that `"use client"` needs no test
+of its own: a React hook in a server component fails the production build that
+`pnpm verify` already runs.
 
 ---
 

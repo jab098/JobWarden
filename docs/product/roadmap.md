@@ -43,7 +43,7 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 25   | Location and radius, and slices 25a–25c                                    | reviewed | Delivered by PRs #25–#28; see project status for the per-slice record                 |
 | 26   | Settings/sources/support, and 26a card surface                             | shipped  | Delivered at `3aa4283` and PR #30 (`58a80fd`); 26a had no independent review pass     |
 | 26b  | Owner surface complaints, early-access dialog                              | shipped  | Delivered by PR #31 (`53d8fbe`); the dialog needs Turnstile keys and the migration    |
-| 27   | Onboarding hydration defect                                                | pending  | None                                                                                  |
+| 27   | Onboarding hydration defect                                                | reviewed | Not reproducible; the report was a false negative. Regression test delivered          |
 | 28   | Repair the history secret scan                                             | pending  | None; needs a scratch branch pushed to GitHub                                         |
 | 29   | Early access list operations                                               | pending  | None for the surface; the list itself needs `202607220001` applied                    |
 | 30   | Lever adapter and provider vocabulary widening                             | pending  | None; documented public board endpoint, no credential                                 |
@@ -285,16 +285,23 @@ Acceptance:
 - the development bypass is absent from every deployed environment, re-proven after activation; and
 - the full-path browser verification covers every surface including `/home` and onboarding, as Task 16 requires.
 
-## Task 27 — Onboarding hydration defect
+## Task 27 — Onboarding hydration defect — closed, not reproducible
 
-`OnboardingFlow` does not hydrate. No React fiber attaches to any of its subtree, so `useActionState` pending states, `ActionFeedback`, and every client effect inside onboarding are inert; the step buttons work only because form actions are progressively enhanced. Confirmed pre-existing at merge commit `9d2b49b` by stashing local work, and unchanged by a clean dev-server restart with `.next` cleared. All client chunks load 200 and the console is clean, so the cause is not a missing bundle.
+**Outcome, 2026-07-20: there was no hydration defect.** The report held that `OnboardingFlow` attached no React fiber, that every client effect inside it was inert, and that the step buttons worked only through progressive enhancement. It was checked at `9d2b49b`, the commit the report itself cited as proof, in a clean worktree with its own dev server, and again on `main`. The flow hydrates in both.
 
-Acceptance:
+The root cause is the measurement, not the code. Counting `__reactFiber$` properties is a mechanism check that yields false negatives easily: most elements on any page legitimately carry no fiber, and `<head>`, `<link>` and `<script>` — which never do — sort first in `document.querySelectorAll("*")`. The report's own supporting facts were consistent with a working page all along: chunks returning 200 and a clean console are what hydration looks like.
 
-- the root cause is identified rather than worked around, and stated in the review;
-- a fiber attaches to the onboarding subtree and a client effect inside it demonstrably runs;
-- the per-step entrance recorded by `components/ui/enter.tsx` registers its surface key, which is the cheapest observable proof that hydration happened; and
-- a regression test fails if the flow stops hydrating.
+Three checks, each of which the report would have failed had it been true:
+
+- `main`, both submit buttons, and both `Enter` divs carry `__reactFiber$` and `__reactProps$`; the only elements without them are `<head>`, `<link>` and `<script>`;
+- `sessionStorage["jobwarden:seen-surfaces"]` contains `onboarding-cv-cv`, the key belonging to the `Enter` **inside** the flow, so its `useEffect` ran — the observable proof this task's acceptance asked for; and
+- with `window.__probe` set, submitting a step advanced "Your CV" to "Where you want to go" while the probe survived and `performance.getEntriesByType("navigation")` stayed at one entry. A progressively-enhanced form POST unloads the document and would have destroyed both. React had intercepted the submit through `useActionState`. `seenSurfaces` then grew to include `onboarding-aspiration-aspirations`, so the next step's effect ran in place too.
+
+What was genuinely missing, and is now delivered, is the regression test. `onboarding-ui.test.tsx` server-renders the flow with `renderToString`, hydrates against that markup with `hydrateRoot`, and asserts both that the `Enter` effect recorded its surface key and that `onRecoverableError` stayed silent. Both halves were mutation-checked: suppressing the effect fails the first assertion, and a genuine server/client divergence fails the second.
+
+`"use client"` deliberately has no test of its own. A React hook in a server component fails the production build that `pnpm verify` already runs, so a test for it would duplicate the compiler.
+
+`docs/standards/frontend-traps.md` carried the false claim and told the next agent that client behaviour inside onboarding was dead code. It has been corrected, because a wrong entry in that file is more expensive than no entry.
 
 ## Task 28 — Repair the history secret scan
 
