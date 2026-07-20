@@ -95,6 +95,19 @@ export function verifyFoundationSql(files) {
     if (!files.has(file)) failures.push(`missing required migration: ${file}`);
   }
 
+  // The revoke-after-drop check below compares offsets inside the concatenated
+  // SQL, which only tracks execution order while this list is chronological.
+  // It is sorted by construction — the names are timestamp-prefixed — but the
+  // dependency is invisible at the append site, so state it here.
+  const chronological = [...requiredMigrationFiles].sort();
+  if (
+    requiredMigrationFiles.some((file, index) => file !== chronological[index])
+  ) {
+    failures.push(
+      "requiredMigrationFiles must stay in chronological order; ordering checks depend on it",
+    );
+  }
+
   const sql = [...files.values()].join("\n");
   const normalised = compact(sql);
 
@@ -1311,7 +1324,9 @@ export function verifyFoundationSql(files) {
     }
 
     const revokePattern = new RegExp(
-      `revoke\\s+all\\s+on\\s+function\\s+${escapedName}[^;]*\\sfrom\\s[^;]*\\bpublic\\b[^;]*\\banon\\b`,
+      // The `\(` anchor matters: without it the name is a prefix match, so
+      // `upsert_ingested_jobs`'s revoke would satisfy `upsert_ingested_job`.
+      `revoke\\s+all\\s+on\\s+function\\s+${escapedName}\\s*\\([^;]*\\sfrom\\s[^;]*\\bpublic\\b[^;]*\\banon\\b`,
       "gi",
     );
     const revokeOffsets = [...sql.matchAll(revokePattern)].map(

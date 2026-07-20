@@ -56,7 +56,8 @@ The other finding worth recording: the drop tally was threaded into the per-sour
 
 ## Verification
 
-- A run that drops jobs for all three reasons records all three counts, and they sum with `eligible_count` to `received_count`.
+- A run that drops jobs for all three reasons records all three counts, and for adverts that reached normalisation they sum with `eligible_count` to `received_count`. The scoping is load-bearing: the per-source cap returns before the loop, so a capped run legitimately records a received count with no outcomes at all.
+- A run that throws after normalisation began still records the breakdown it had accumulated.
 - Distinct unrecognised locations are recorded, deduplicated, and capped at 25.
 - The counts and locations reach `/admin/ingestion`.
 - The fictional development preview shows the new fields without importing a production mutation.
