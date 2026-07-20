@@ -47,7 +47,8 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 28   | Repair the history secret scan                                             | reviewed | Proven by a planted secret on a scratch branch, since deleted                         |
 | 29   | Early access list operations                                               | pending  | None for the surface; the list itself needs `202607220001` applied                    |
 | 30a  | Lever adapter (TypeScript only)                                            | reviewed | None; documented public board endpoint, no credential                                 |
-| 30b  | Provider vocabulary widening (850 lines of definer SQL)                    | pending  | **Docker**, so the SQL can actually be executed before it is trusted                  |
+| 30b  | Provider vocabulary widening (850 lines of definer SQL)                    | pending  | None — Docker is installed; blocked behind Task 35 so the SQL lands on a green gate   |
+| 35   | Make the live database gate pass                                           | pending  | None; Docker installed 2026-07-20 and the gate now runs                               |
 | 31   | Ashby adapter                                                              | pending  | None; documented public board endpoint, no credential                                 |
 | 32   | Workable adapter                                                           | pending  | None; documented public board endpoint, no credential                                 |
 | 33   | Emit `JobPosting` structured data                                          | blocked  | Owner decision: public job content, plus a redistribution grant per source            |
@@ -391,6 +392,37 @@ Acceptance:
 - a listing whose UK eligibility evidence is absent from the markup is not published, and the markup's own `jobLocationType` is treated as a claim needing evidence rather than as evidence;
 - compensation provenance comes from what the markup actually states, and a `baseSalary` absent from the page stays `unknown`; and
 - the path degrades visibly: a page that stops carrying markup, changes shape, or starts refusing is a recorded source failure, not a silent zero.
+
+## Task 35 — Make the live database gate pass
+
+Docker was installed on 2026-07-20 and `pnpm verify:live` ran for the first time in the programme's history. Two defects had to be fixed before it could run at all, and once it ran it reported a great deal.
+
+**The two fixes that got it running**, both delivered with this record:
+
+- `202607180007_career_profile_review_and_retention.sql` used `references` as a bare table alias in two `cross join lateral` blocks. `REFERENCES` is a fully reserved word in PostgreSQL, so the migration raised `syntax error at or near "references"` and **could not be applied at all**. Every migration from that point on was therefore unreachable. Renamed to `evidence_refs`.
+- `scripts/verify-live.mjs` spawned a bare `supabase` binary. The CLI is not a dependency of this repository and resolves through npx here, so the gate reported `Failed: supabase db reset` — a resolution problem wearing the costume of a migration failure. It now resolves PATH, then npx, and says which it found.
+
+**What the first complete run reports.** All 24 migrations apply. `supabase db lint` and 25 pgTAP files then produce:
+
+| Finding                | Detail                                                                                                                                                                                                   |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `db lint` **error**    | `public.claim_career_profile_extraction` — `column reference "user_id" is ambiguous` (42702). A PL/pgSQL variable and a table column share a name in an `update ... where`. This would raise at runtime. |
+| `db lint` warning      | `public.get_job_source_health` is marked `STABLE` but contains a `VOLATILE` expression.                                                                                                                  |
+| 9 files abort mid-plan | 001 (0 of 21 ran), 002 (0 of 7), 003 (0 of 12), 011 (0 of 13), 005 (8 of 36), 012 (9 of 21), 006 (14 of 59), 010 (26 of 37), 007 (44 of 54).                                                             |
+| 4 files fail a test    | 004 test 8, 013 test 14, 016 test 17, 022 test 16.                                                                                                                                                       |
+| Totals                 | 378 tests ran of roughly 500 planned. `Result: FAIL`.                                                                                                                                                    |
+
+**Two distinct causes, and they must not be conflated.** Most aborts are fixture drift: `001` dies on `null value in column "deduplication_key" of relation "jobs"`, a `not null` column added by a later migration to a fixture written before it existed. `022` asserts the forced-RLS table count is 32 when it is now 34, because two tables have since been added. Those are stale tests, and fixing them is bookkeeping.
+
+**The permission failures are not, and are the reason this task exists.** Several files abort on `permission denied for table` — `jobs`, `job_sources`, `ingestion_requests` — inside blocks that have already run `set local role service_role`. The hint PostgreSQL offers is `GRANT SELECT ON public.ingestion_requests TO service_role`. The Edge Function ingestion runtime _is_ `service_role`. So the first question this task must answer, before touching a single test, is whether `service_role` genuinely lacks privileges it needs at runtime — in which case live ingestion is broken and this is a production defect the tests have just caught — or whether every real access path goes through a security-definer RPC that owns the privilege, making it a test artefact. **Do not "fix" these by granting privileges until that question is answered.** Granting to make a test green is precisely how the Task 25c hole was certified.
+
+Acceptance:
+
+- the `service_role` privilege question is answered with evidence and stated in the review, before any grant is added or any test is changed;
+- `db lint` reports no error, and the `STABLE`/`VOLATILE` warning is either fixed or recorded with a reason;
+- all 25 pgTAP files run their full plan, and `pnpm verify:live` exits zero;
+- every fixture change is a fixture change, and any change to a _migration_ is called out separately and justified; and
+- `docs/project-status.md` stops describing the database checks as never executed.
 
 ## Continuous source expansion
 
