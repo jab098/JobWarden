@@ -28,11 +28,16 @@ describe("public private-beta entry", () => {
     );
   });
 
-  it("opens the jobs workspace directly for local fixture development", () => {
+  it("offers the new-user walkthrough and a skip, for local fixture development", () => {
     render(<PublicHome dataMode="fixtures" />);
 
+    // The call to action walks onboarding into a first-run Home, which is the
+    // sequence worth reviewing; the populated workspace stays one click away.
     expect(
-      screen.getByRole("link", { name: /open jobs workspace/i }),
+      screen.getByRole("link", { name: /walk the new-user journey/i }),
+    ).toHaveAttribute("href", "/development/journey");
+    expect(
+      screen.getByRole("link", { name: /skip to the populated workspace/i }),
     ).toHaveAttribute("href", "/home");
     expect(screen.getByText(/development data/i)).toBeInTheDocument();
     expect(

@@ -79,16 +79,32 @@ export function PublicHome({ dataMode }: PublicHomeProps) {
                   Applications stay in your hands on the employer&apos;s site.
                 </p>
                 <div className="mt-7 flex flex-col items-start gap-3">
+                  {/* Locally the call to action walks the journey a real new
+                      user takes, sign-up aside: onboarding, then Home in its
+                      first-run state. That is the sequence worth reviewing, and
+                      it cannot be reached from the populated preview. */}
                   <Link
-                    href={isDevelopment ? "/home" : "/auth/sign-in"}
+                    href={
+                      isDevelopment ? "/development/journey" : "/auth/sign-in"
+                    }
                     className={cn(
                       buttonVariants({ size: "lg" }),
                       "h-10 px-5 transition-[background-color,transform] duration-150 ease-(--ease-smooth-out) active:scale-[0.98]",
                     )}
                   >
-                    {isDevelopment ? "Open jobs workspace" : "Request access"}
+                    {isDevelopment
+                      ? "Walk the new-user journey"
+                      : "Request access"}
                     <ArrowRight aria-hidden="true" />
                   </Link>
+                  {isDevelopment ? (
+                    <Link
+                      href="/home"
+                      className="rounded-sm text-sm font-medium text-link outline-none transition-colors duration-(--duration-quick) hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
+                    >
+                      Skip to the populated workspace
+                    </Link>
+                  ) : null}
                   <span className="text-xs text-ink-faint">
                     {isDevelopment
                       ? "Explicitly fictional fixtures are enabled locally."

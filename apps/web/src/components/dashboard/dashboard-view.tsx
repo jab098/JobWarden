@@ -135,16 +135,15 @@ const windowChoices = [
 function FirstRun({
   matchCount,
   topProfileName,
-  profileChecks,
-  settledChecks,
+  startSteps,
+  profileComplete,
 }: {
   matchCount: number;
   topProfileName: string | null;
-  profileChecks: { key: ProfileNudge; done: boolean; settled: string }[];
-  settledChecks: number;
+  startSteps: readonly StartStep[];
+  profileComplete: boolean;
 }) {
-  const outstanding = profileChecks.filter((check) => !check.done);
-  const setUp = settledChecks === profileChecks.length;
+  const setUp = profileComplete;
 
   return (
     <>
@@ -172,35 +171,46 @@ function FirstRun({
         ) : null}
       </section>
 
-      <section
-        aria-labelledby="first-run-next"
-        className="card-surface mt-2.5 p-5"
-      >
-        <h2 id="first-run-next" className="text-sm font-semibold">
-          What fills this page
-        </h2>
-        <ul className="mt-3.5 flex flex-col gap-3">
-          <NextStep
-            href="/matches"
-            title="Save or dismiss a few matches"
-            body="Your decisions are the record JobWarden measures. They also tell it which roles to keep showing you."
-          />
-          <NextStep
-            href="/jobs"
-            title="Track an application"
-            body="Applied on an employer's site? Track it here and this page starts reporting your funnel, your follow-ups, and what has gone quiet."
-          />
-          {outstanding.map((check) => (
-            <NextStep
-              key={check.key}
-              href={nudgeCopy[check.key].href}
-              title="Finish your career profile"
-              body={nudgeCopy[check.key].text}
-            />
-          ))}
-        </ul>
-      </section>
+      <GettingStarted steps={startSteps} />
     </>
+  );
+}
+
+type StartStep = { key: string; href: string; title: string; body: string };
+
+/**
+ * What is still outstanding before the page can report anything useful. It is
+ * the same card whether it stands alone on a new account or sits pinned above a
+ * dashboard that has begun to fill; only its heading changes, because in one
+ * case the page is empty and in the other it is partly answered.
+ */
+function GettingStarted({
+  steps,
+  pinned = false,
+}: {
+  steps: readonly StartStep[];
+  pinned?: boolean;
+}) {
+  if (steps.length === 0) return null;
+  return (
+    <section
+      aria-labelledby="getting-started"
+      className={cn("card-surface p-5", pinned ? "mt-4" : "mt-2.5")}
+    >
+      <h2 id="getting-started" className="text-sm font-semibold">
+        {pinned ? "Still to set up" : "What fills this page"}
+      </h2>
+      <ul className="mt-3.5 flex flex-col gap-3">
+        {steps.map((step) => (
+          <NextStep
+            key={step.key}
+            href={step.href}
+            title={step.title}
+            body={step.body}
+          />
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -308,6 +318,37 @@ export function DashboardView({ result }: { result: DashboardResult }) {
   // the user made them, so they are what separates a new account from a quiet
   // week on an established one.
   const firstRun = insights.totalTracked === 0 && decisionTotal === 0;
+  const profileComplete = settledChecks === profileChecks.length;
+
+  // The getting-started list retires itself: each entry disappears as the fact
+  // behind it becomes true, and the card goes when the last one does. There is
+  // no timer, because time does not make a dashboard informative; doing these
+  // does. Nobody is held away from their own data waiting for a clock.
+  const startSteps: StartStep[] = [
+    ...(decisionTotal === 0
+      ? [
+          {
+            key: "decide",
+            href: "/matches",
+            title: "Save or dismiss a few matches",
+            body: "Your decisions are the record JobWarden measures. They also tell it which roles to keep showing you.",
+          },
+        ]
+      : []),
+    ...(insights.totalTracked === 0
+      ? [
+          {
+            key: "track",
+            href: "/jobs",
+            title: "Track an application",
+            body: "Applied on an employer's site? Track it here and this page starts reporting your funnel, your follow-ups, and what has gone quiet.",
+          },
+        ]
+      : []),
+  ];
+  // Profile set-up is deliberately absent: the Profile health panel is on this
+  // same screen, owns that checklist, and links to the fix. Repeating it here
+  // would say the same thing twice on one page.
 
   // Extracted because both the first-run layout and the full dashboard show it:
   // it is the one panel that already has real content for a new account, since
@@ -385,8 +426,8 @@ export function DashboardView({ result }: { result: DashboardResult }) {
         <FirstRun
           matchCount={result.targetFeed.currentMatchCount}
           topProfileName={result.targetFeed.topProfileName}
-          profileChecks={profileChecks}
-          settledChecks={settledChecks}
+          startSteps={startSteps}
+          profileComplete={profileComplete}
         />
         <div className="mt-2.5">{profileHealthPanel}</div>
         {result.dataMode === "fixtures" ? (
@@ -432,6 +473,10 @@ export function DashboardView({ result }: { result: DashboardResult }) {
           employer is never reported as a rejection.
         </p>
       </header>
+
+      {/* Pinned above the dashboard until the last item is done, so the guidance
+          persists while the page is still sparse without ever hiding data. */}
+      <GettingStarted steps={startSteps} pinned />
 
       <div className="stagger-children mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <StatCard

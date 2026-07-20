@@ -1,6 +1,17 @@
 import "server-only";
 
-import { nextOnboardingStep, parseOnboardingState } from "@jobwarden/domain";
+import {
+  nextOnboardingStep,
+  parseOnboardingState,
+  type OnboardingAnswers,
+} from "@jobwarden/domain";
+
+import {
+  readPreviewJourney,
+  recordPreviewStep,
+  writePreviewJourney,
+  type PreviewJourney,
+} from "@/lib/development/preview-journey";
 
 import {
   PreviewOnboardingUnavailableError,
@@ -68,42 +79,91 @@ const previewEvidence: OnboardingView["evidence"] = [
   },
 ];
 
+const previewAnswers: OnboardingAnswers = {
+  roleFamilies: ["Analytics implementation"],
+  targetSeniority: "lead",
+  employmentTypes: ["permanent"],
+  workplaceTypes: ["hybrid"],
+  ukLocations: ["Manchester"],
+  allowUnknownCompensation: true,
+  notificationsEnabled: false,
+  exploreEnabled: false,
+};
+
+/** The frozen mid-flow preview, shown when no review walkthrough is running. */
+function frozenView(): OnboardingView {
+  return {
+    state: previewState,
+    currentStep: nextOnboardingStep(previewState),
+    path: "cv",
+    cvOutcome: "rich",
+    cv: { present: true, kind: "docx", conceptCount: previewEvidence.length },
+    complete: false,
+    answers: previewAnswers,
+    generation: 0,
+    uploadCapability: { enabled: false, reason: "fictional_preview" },
+    evidence: previewEvidence,
+    hasSignal: true,
+    canAdvance: false,
+    dataMode: "fixtures",
+  };
+}
+
+/**
+ * The same fictional data, but positioned wherever the review walkthrough has
+ * got to. The CV is presented as already on file so both branches of the first
+ * step are reachable: a journey with no CV could only ever show the aspiration
+ * path, and half the flow would be unreviewable.
+ */
+function journeyView(journey: PreviewJourney): OnboardingView {
+  const state = parseOnboardingState({
+    path: journey.path,
+    completedSteps: journey.completedSteps,
+    completedAt: journey.finishedAt,
+  });
+  return {
+    state,
+    currentStep: nextOnboardingStep(state),
+    path: journey.path,
+    // Nothing has been read yet on the first step, so there is no outcome to
+    // report; claiming one before the CV is accepted would be a lie.
+    cvOutcome: journey.completedSteps.includes("cv")
+      ? journey.path === "cv"
+        ? "rich"
+        : "none"
+      : null,
+    cv: { present: true, kind: "docx", conceptCount: previewEvidence.length },
+    complete: journey.finishedAt !== null,
+    answers: { ...previewAnswers, ...(journey.answers as OnboardingAnswers) },
+    generation: 0,
+    uploadCapability: { enabled: false, reason: "fictional_preview" },
+    evidence: journey.path === "cv" ? previewEvidence : [],
+    hasSignal: true,
+    canAdvance: true,
+    dataMode: "fixtures",
+  };
+}
+
 export function createDevelopmentOnboardingRepository(): OnboardingRepository {
   return {
     async getView(): Promise<OnboardingView> {
-      return {
-        state: previewState,
-        currentStep: nextOnboardingStep(previewState),
-        path: "cv",
-        cvOutcome: "rich",
-        cv: {
-          present: true,
-          kind: "docx",
-          conceptCount: previewEvidence.length,
-        },
-        complete: false,
-        answers: {
-          roleFamilies: ["Analytics implementation"],
-          targetSeniority: "lead",
-          employmentTypes: ["permanent"],
-          workplaceTypes: ["hybrid"],
-          ukLocations: ["Manchester"],
-          allowUnknownCompensation: true,
-          notificationsEnabled: false,
-          exploreEnabled: false,
-        },
-        generation: 0,
-        uploadCapability: { enabled: false, reason: "fictional_preview" },
-        evidence: previewEvidence,
-        hasSignal: true,
-        dataMode: "fixtures",
-      };
+      const journey = await readPreviewJourney();
+      return journey === null ? frozenView() : journeyView(journey);
     },
-    async advance() {
-      throw new PreviewOnboardingUnavailableError();
+    async advance(input): Promise<void> {
+      const journey = await readPreviewJourney();
+      if (journey === null) throw new PreviewOnboardingUnavailableError();
+      await writePreviewJourney(
+        recordPreviewStep(journey, input.step, input.path, input.answers),
+      );
     },
-    async finish() {
-      throw new PreviewOnboardingUnavailableError();
+    async finish(): Promise<void> {
+      const journey = await readPreviewJourney();
+      if (journey === null) throw new PreviewOnboardingUnavailableError();
+      await writePreviewJourney({
+        ...journey,
+        finishedAt: new Date().toISOString(),
+      });
     },
   };
 }

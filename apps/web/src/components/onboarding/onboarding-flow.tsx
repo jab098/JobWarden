@@ -278,7 +278,7 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
             </>
           ) : null}
 
-          <Button type="submit" disabled={readOnly || advancePending}>
+          <Button type="submit" disabled={!view.canAdvance || advancePending}>
             {advancePending ? "Saving…" : "Save and continue"}
           </Button>
         </form>
@@ -317,7 +317,10 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
                   name="cvOutcome"
                   value={view.cvOutcome ?? "none"}
                 />
-                <Button type="submit" disabled={readOnly || advancePending}>
+                <Button
+                  type="submit"
+                  disabled={!view.canAdvance || advancePending}
+                >
                   Continue with my CV
                 </Button>
               </form>
@@ -329,7 +332,7 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
               <Button
                 type="submit"
                 variant={view.cv.present ? "outline" : "default"}
-                disabled={readOnly || advancePending}
+                disabled={!view.canAdvance || advancePending}
               >
                 {view.cv.present
                   ? "I do not have a CV yet"
@@ -343,7 +346,7 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
           <form action={complete}>
             <Button
               type="submit"
-              disabled={readOnly || completePending || !view.hasSignal}
+              disabled={!view.canAdvance || completePending || !view.hasSignal}
             >
               {completePending ? "Finishing…" : "Finish and open my hub"}
             </Button>
@@ -356,8 +359,19 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
 
       {readOnly ? (
         <p className="mt-6 text-sm text-ink-secondary">
-          This preview shows the onboarding flow with fictional data and cannot
-          save progress.
+          {view.canAdvance
+            ? "A fictional walkthrough for review. Every step works, nothing is saved to a real account, and confirming evidence is switched off."
+            : "This preview shows the onboarding flow with fictional data and cannot save progress."}
+        </p>
+      ) : null}
+      {view.canAdvance && readOnly ? (
+        <p className="mt-2">
+          <a
+            href="/development/journey?restart=1"
+            className="rounded-sm text-sm font-medium text-link outline-none transition-colors duration-(--duration-quick) hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
+          >
+            Restart the walkthrough
+          </a>
         </p>
       ) : null}
 
