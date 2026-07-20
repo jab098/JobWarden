@@ -5,6 +5,7 @@ import {
   normalisedJobSchema,
   parseCompensation,
   type NormalisedJob,
+  type UkEligibilityReason,
 } from "@jobwarden/domain";
 import sanitizeHtml from "sanitize-html";
 
@@ -266,6 +267,36 @@ function classifyWorkplace(
   return "unknown";
 }
 
+/**
+ * Whether the advert permits remote work from within the UK.
+ *
+ * This is deliberately not a rename of the workplace type. "Remote" says how
+ * the work is done, not where the worker may live, and AGENTS.md forbids
+ * publishing remote work without explicit UK permission — so the question is
+ * which evidence the eligibility check actually found, not whether it found
+ * any.
+ *
+ * `explicit_uk_remote` is remote-permission language in the advert itself.
+ * `explicit_uk_location` is an office address, which is ample for an onsite or
+ * hybrid role and says nothing at all about who may work remotely. An earlier
+ * version took a `hasUkEvidence` boolean, which is always true this far into
+ * normalisation because every ineligible job has already returned — so the
+ * cautious branch was unreachable and a London-office advert saying "fully
+ * remote" was stamped as UK-permitted on the strength of the office address.
+ */
+function classifyRemoteEligibility(
+  workplaceType: NormalisedJob["workplaceType"],
+  reason: UkEligibilityReason,
+): NormalisedJob["remoteEligibility"] {
+  if (workplaceType === "onsite" || workplaceType === "hybrid") {
+    return "not_remote";
+  }
+  if (workplaceType === "remote") {
+    return reason === "explicit_uk_remote" ? "uk" : "ambiguous";
+  }
+  return "unknown";
+}
+
 function compensationEvidence(
   descriptionText: string,
   metadataText: readonly string[],
@@ -398,6 +429,7 @@ export async function normaliseProviderJob(
   const hasAdvertisedCompensation =
     compensationCurrency === "GBP" &&
     (compensationMinimum !== null || compensationMaximum !== null);
+  const workplaceType = classifyWorkplace(locationText, classificationText);
   const content: Omit<NormalisedJob, "contentHash"> = {
     sourceId: source.id,
     providerJobId: providerJob.providerJobId,
@@ -408,12 +440,22 @@ export async function normaliseProviderJob(
     descriptionText,
     applicationUrl,
     countryCode: "GB",
+    // The advert's own location words, never invented. An advert that states no
+    // location still needs a row, because the location table is what both text
+    // and distance search read, so a stated absence is recorded as such rather
+    // than dropped.
+    rawLocation:
+      locationText.trim().slice(0, 1_000) || "UK location not specified",
+    remoteEligibility: classifyRemoteEligibility(
+      workplaceType,
+      ukEligibility.reason,
+    ),
     ukEligibilityEvidence: ukEligibility.evidence,
     employmentType:
       providerJob.employmentType ?? classifyEmployment(classificationText),
     workingTime:
       providerJob.workingTime ?? classifyWorkingTime(classificationText),
-    workplaceType: classifyWorkplace(locationText, classificationText),
+    workplaceType,
     ir35Status: classifyIr35(classificationText),
     compensationRaw,
     compensationMinimum,

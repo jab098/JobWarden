@@ -55,6 +55,18 @@ export const normalisedJobSchema = z.object({
     .url()
     .refine((url) => url.startsWith("https://"), "HTTPS required"),
   countryCode: z.literal("GB"),
+  /**
+   * The advert's own words for where the work is. Carried through rather than
+   * discarded after classification, because it is the only thing the location
+   * table can be built from and the only text a distance lookup can resolve.
+   */
+  rawLocation: z.string().min(1).max(1_000),
+  /**
+   * Whether the advert permits remote work from within the UK. Derived from the
+   * same classification the workplace type uses, never guessed: "unknown" is a
+   * real answer and is preserved as one.
+   */
+  remoteEligibility: z.enum(["uk", "not_remote", "ambiguous", "unknown"]),
   ukEligibilityEvidence: z.array(z.string().min(1).max(500)).min(1),
   employmentType: z.enum(employmentTypes),
   workingTime: z.enum(workingTimes),

@@ -19,6 +19,8 @@ export async function hashNormalisedJobContent(
     descriptionText: job.descriptionText,
     applicationUrl: job.applicationUrl,
     countryCode: job.countryCode,
+    rawLocation: job.rawLocation,
+    remoteEligibility: job.remoteEligibility,
     ukEligibilityEvidence: job.ukEligibilityEvidence,
     employmentType: job.employmentType,
     workingTime: job.workingTime,
