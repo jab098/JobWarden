@@ -289,14 +289,18 @@ describe("UK eligibility", () => {
 
   // A UK nation outranks a homonym. Washington in Tyne and Wear is a real town
   // of 67,000 people, and excluding it is unrecoverable where quarantine is not.
-  it.each([["Washington, England"], ["Washington, Tyne and Wear"]])(
-    "does not spend a hard exclusion on a UK homonym: %s",
-    (location) => {
-      expect(classifyUkEligibility(location, "Office based")).toMatchObject({
-        reason: "ambiguous",
-      });
-    },
-  );
+  // The third case is what pins the nation-anchor branch itself: a location
+  // naming both a UK nation and a foreign country is quarantined for a person
+  // rather than hard-excluded on the foreign half alone.
+  it.each([
+    ["Washington, England"],
+    ["Washington, Tyne and Wear"],
+    ["London, England, USA"],
+  ])("does not spend a hard exclusion on a UK homonym: %s", (location) => {
+    expect(classifyUkEligibility(location, "Office based")).toMatchObject({
+      reason: "ambiguous",
+    });
+  });
 
   // An unrecognised place is unknown, not foreign. Excluding on absence of
   // recognition is what discarded the stock; quarantine keeps it reviewable.
@@ -375,10 +379,17 @@ describe("UK eligibility", () => {
   // back to a denylist: every bundled UK place name, beside a qualifier that is
   // not British, must never publish — whether or not anyone listed it.
   //
-  // Canterbury is deliberately not among these. It names a city in Kent as well
-  // as a region of New Zealand, and a location whose every label is a real UK
-  // place name cannot be told apart from a UK one by name alone. That is a real
-  // limit of name-based classification, not something this sweep can assert away.
+  // Canterbury is deliberately not among these, and the reason is worth stating
+  // exactly, because a location whose every label is a real UK place name cannot
+  // be told from a UK one by name alone. `Lincoln, Canterbury` and
+  // `Oxford, Canterbury` — both real New Zealand towns — DO publish, because
+  // Canterbury is also a city in Kent. So does `Newport, Manchester`, a parish
+  // in Jamaica. Adding a country closes it (`Lincoln, Canterbury, New Zealand`
+  // is non_uk); the exposure is a two-label advert naming no country.
+  //
+  // The fix would be to require qualifier positions to be administrative areas
+  // rather than any UK place name, which costs `London, Canary Wharf` and
+  // `Manchester, Salford Quays`. Documented rather than asserted away.
   it("never publishes a bundled UK place beside a foreign qualifier", () => {
     const foreignQualifiers = [
       "Ontario",

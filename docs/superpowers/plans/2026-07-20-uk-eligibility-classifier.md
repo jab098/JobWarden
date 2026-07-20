@@ -54,7 +54,13 @@ The denylist survives only to answer honestly where the answer is known — `Lon
 
 ### Known limit
 
-A location whose every label is a real UK place name cannot be told from a UK one by name alone — `Christchurch, Canterbury` in New Zealand is the honest example, since Canterbury is a city in Kent. The test suite documents this rather than asserting it away.
+A location whose every label is a real UK place name cannot be told from a UK one by name alone. The inputs that actually publish are `Lincoln, Canterbury` and `Oxford, Canterbury` — both real New Zealand towns, where Canterbury is also a city in Kent — and `Newport, Manchester`, a parish in Jamaica.
+
+Naming a country closes it: `Lincoln, Canterbury, New Zealand` is `non_uk`. The exposure is a two-label advert naming no country.
+
+Closing it properly would mean requiring qualifier positions to be administrative areas rather than any UK place name, which costs `London, Canary Wharf` and `Manchester, Salford Quays` — measured, both fall to quarantine. Not worth it. The limit is documented in the test suite rather than asserted away.
+
+(An earlier draft of this section cited `Christchurch, Canterbury`. That input is safe, for a reason unrelated to Canterbury — Christchurch is not in the gazetteer — so it would have led a reader to conclude the case was handled.)
 
 ### Widening UK recognition
 

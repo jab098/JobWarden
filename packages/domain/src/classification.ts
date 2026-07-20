@@ -122,12 +122,12 @@ const ukCeremonialCounties = new Set([
  * What it buys is precision. Naming the obvious cases returns the honest
  * `non_uk` instead of sending "London, Ontario" to a review queue.
  *
- * Because it is optional, entries are omitted rather than risked: no bare
- * abbreviation (fifteen UK postcode areas are two letters, so "Derby, DE" would
- * be discarded) and no name shared with a UK place — there is a Washington in
- * Tyne and Wear, a Boston in Lincolnshire, a Perth in Scotland and a Hamilton in
- * Lanarkshire, and none of them appear below. Every entry was checked against
- * the bundled 230-place dataset; none names a UK place.
+ * Because it is optional, entries are omitted rather than risked wherever a
+ * name is shared with a UK place: there is a Washington in Tyne and Wear, a
+ * Boston in Lincolnshire, a Perth in Scotland and a Hamilton in Lanarkshire, and
+ * none of them appear below. Subdivision codes are included only where they are
+ * not also UK postcode areas, for the same reason. Every entry was checked
+ * against the bundled 230-place dataset; none names a UK place.
  */
 const foreignRegionAnchors = new Set([
   // United States
@@ -181,6 +181,62 @@ const foreignRegionAnchors = new Set([
   "wisconsin",
   "wyoming",
   "district of columbia",
+  // Subdivision codes, because "City, ST" is how foreign adverts are actually
+  // written and quarantine is a queue a person has to read. Only the codes that
+  // are not also UK postcode areas are here: AL CA CO CT DE KY LA ME NE PA TN WA
+  // WV AB SK PE are omitted, so "Derby, DE" and "Bangor, ME" quarantine as
+  // unrecognised rather than being discarded as foreign.
+  "ak",
+  "az",
+  "ar",
+  "dc",
+  "fl",
+  "ga",
+  "hi",
+  "id",
+  "il",
+  "ia",
+  "ks",
+  "md",
+  "ma",
+  "mi",
+  "mn",
+  "ms",
+  "mo",
+  "mt",
+  "nv",
+  "nh",
+  "nj",
+  "nm",
+  "ny",
+  "nc",
+  "nd",
+  "oh",
+  "ok",
+  "ri",
+  "sc",
+  "sd",
+  "tx",
+  "ut",
+  "vt",
+  "va",
+  "wi",
+  "wy",
+  "on",
+  "qc",
+  "bc",
+  "mb",
+  "ns",
+  "nb",
+  "nl",
+  "yt",
+  "nt",
+  "nu",
+  "nsw",
+  "qld",
+  "vic",
+  "tas",
+  "act",
   // Canada
   "ontario",
   "quebec",
@@ -204,8 +260,9 @@ const foreignRegionAnchors = new Set([
   "tasmania",
   "northern territory",
   "australian capital territory",
-  // Victoria is deliberately absent: it names a district of London as well as an
-  // Australian state, and "Brighton, Victoria" is already refused as unrecognised.
+  // Victoria is absent on purpose — it names a district of London as well as an
+  // Australian state, and "Brighton, Victoria" is already refused as
+  // unrecognised. The "vic" code above carries no such ambiguity.
   // Countries
   "usa",
   "u s a",
