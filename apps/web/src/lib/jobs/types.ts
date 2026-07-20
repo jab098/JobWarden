@@ -83,6 +83,12 @@ export type CompensationProvenance = (typeof compensationProvenances)[number];
 
 export type JobListItem = {
   id: string;
+  /**
+   * The configured source this listing was ingested from. Optional because
+   * embedded job snapshots (an application's listing) do not carry it; the
+   * search repositories always set it so the source filter can apply.
+   */
+  sourceId?: string;
   title: string;
   employer: string;
   location: string;
@@ -110,11 +116,17 @@ export type JobFilters = {
    * not at all.
    */
   radius: RadiusMiles | null;
-  employment: EmploymentType | "all";
-  workingTime: WorkingTime | "all";
-  workplace: WorkplaceType | "all";
-  ir35: Ir35Status | "all";
-  compensation: CompensationProvenance | "all";
+  /**
+   * Multi-choice allow-lists. An empty list means the choice is not applied,
+   * which is what "all" used to say; several values are ORed together.
+   */
+  employment: readonly EmploymentType[];
+  workingTime: readonly WorkingTime[];
+  workplace: readonly WorkplaceType[];
+  ir35: readonly Ir35Status[];
+  compensation: readonly CompensationProvenance[];
+  /** Source ids the listings must come from. Empty applies no source test. */
+  sources: readonly string[];
   /**
    * Whole pounds, paired with the period below. A floor without a period would
    * compare a day rate to an annual salary, so neither applies without both.

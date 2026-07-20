@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function JobsLoadingView() {
   return (
     <section
-      className="mx-auto max-w-6xl px-5 py-7 lg:px-8"
+      className="mx-auto max-w-6xl px-4 py-5 lg:px-6"
       aria-labelledby="loading-heading"
     >
       <h1

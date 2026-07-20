@@ -10,11 +10,20 @@ const {
   getJobsRepository,
   getTargetFeedRepository,
   getApplicationsRepository,
+  getSourcesRepository,
   notFound,
 } = vi.hoisted(() => ({
   getJobsRepository: vi.fn(),
   getTargetFeedRepository: vi.fn(),
   getApplicationsRepository: vi.fn(),
+  getSourcesRepository: vi.fn(() =>
+    Promise.resolve({
+      listEnabled: async () => ({
+        sources: [],
+        dataMode: "fixtures" as const,
+      }),
+    }),
+  ),
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),
@@ -27,6 +36,7 @@ vi.mock("@/lib/target-feed/get-repository", () => ({
 vi.mock("@/lib/applications/get-repository", () => ({
   getApplicationsRepository,
 }));
+vi.mock("@/lib/sources/get-repository", () => ({ getSourcesRepository }));
 vi.mock("next/navigation", () => ({ notFound }));
 
 import MatchesPage from "../matches/page";
@@ -116,11 +126,12 @@ describe("jobs routes", () => {
       q: "engineer",
       location: "Leeds",
       radius: 10,
-      employment: "all",
-      workingTime: "all",
-      workplace: "hybrid",
-      ir35: "all",
-      compensation: "all",
+      employment: [],
+      workingTime: [],
+      workplace: ["hybrid"],
+      ir35: [],
+      compensation: [],
+      sources: [],
       salaryMin: 45_000,
       salaryPeriod: "year",
       posted: "7",

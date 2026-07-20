@@ -1,9 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Briefcase,
   Compass,
   House,
+  LifeBuoy,
   Search,
+  Settings,
   Target,
   UserRound,
   type LucideIcon,
@@ -12,14 +17,23 @@ import {
 import { cn } from "@/lib/utils";
 
 export type AppNavPath =
-  "home" | "matches" | "jobs" | "pathways" | "applications" | "profile";
+  | "home"
+  | "matches"
+  | "jobs"
+  | "pathways"
+  | "applications"
+  | "profile"
+  | "settings"
+  | "support";
 
-export const APP_NAV_ITEMS: ReadonlyArray<{
+type NavItem = {
   path: AppNavPath;
   href: string;
   label: string;
   icon: LucideIcon;
-}> = [
+};
+
+export const APP_NAV_ITEMS: ReadonlyArray<NavItem> = [
   { path: "home", href: "/home", label: "Home", icon: House },
   { path: "matches", href: "/matches", label: "Matches", icon: Target },
   { path: "jobs", href: "/jobs", label: "Search jobs", icon: Search },
@@ -38,13 +52,35 @@ export const APP_NAV_ITEMS: ReadonlyArray<{
   },
 ];
 
-export function NavLink({
-  item,
-  active,
-}: {
-  item: (typeof APP_NAV_ITEMS)[number];
-  active: boolean;
-}) {
+/** The quiet utility items that live at the bottom of the rail. */
+export const APP_NAV_FOOTER_ITEMS: ReadonlyArray<NavItem> = [
+  { path: "settings", href: "/settings", label: "Settings", icon: Settings },
+  { path: "support", href: "/support", label: "Support", icon: LifeBuoy },
+];
+
+/**
+ * Active state comes from the URL, so the rail can live in the layout and
+ * stay mounted across navigations instead of re-rendering with every page.
+ * Tests (and any caller outside the router) may pass `activePath` directly.
+ */
+function useActivePath(override?: AppNavPath): AppNavPath | null {
+  // Returns null outside the app router (component tests), which is fine:
+  // tests that care pass `override` explicitly.
+  const pathname = usePathname();
+  if (override) return override;
+  if (!pathname) return null;
+  const match = [...APP_NAV_ITEMS, ...APP_NAV_FOOTER_ITEMS]
+    .filter(
+      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+    )
+    .toSorted((a, b) => b.href.length - a.href.length)[0];
+  if (match) return match.path;
+  // Detail routes belong to the surface that lists them.
+  if (pathname.startsWith("/tailor")) return "jobs";
+  return null;
+}
+
+export function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   const Icon = item.icon;
   return (
     <Link
@@ -69,6 +105,40 @@ export function NavLink({
       />
       {item.label}
     </Link>
+  );
+}
+
+export function PrimaryNav({
+  activePath,
+  label = "Primary",
+}: {
+  activePath?: AppNavPath;
+  label?: string;
+}) {
+  const active = useActivePath(activePath);
+  return (
+    <nav aria-label={label} className="flex flex-col gap-0.5 px-3">
+      {APP_NAV_ITEMS.map((item) => (
+        <NavLink key={item.path} item={item} active={active === item.path} />
+      ))}
+    </nav>
+  );
+}
+
+export function FooterNav({
+  activePath,
+  label = "Utility",
+}: {
+  activePath?: AppNavPath;
+  label?: string;
+}) {
+  const active = useActivePath(activePath);
+  return (
+    <nav aria-label={label} className="flex flex-col gap-0.5 px-3">
+      {APP_NAV_FOOTER_ITEMS.map((item) => (
+        <NavLink key={item.path} item={item} active={active === item.path} />
+      ))}
+    </nav>
   );
 }
 

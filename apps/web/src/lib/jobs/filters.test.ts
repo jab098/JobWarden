@@ -11,7 +11,7 @@ import {
 const defaults = parseJobFilters({});
 
 describe("job URL filters", () => {
-  it("parses valid scalar filters", () => {
+  it("parses valid filters, single choices arriving as one-element lists", () => {
     expect(
       parseJobFilters({
         q: "  platform engineer  ",
@@ -26,11 +26,12 @@ describe("job URL filters", () => {
       q: "platform engineer",
       location: "",
       radius: null,
-      employment: "contract",
-      workingTime: "part_time",
-      workplace: "remote",
-      ir35: "outside",
-      compensation: "advertised",
+      employment: ["contract"],
+      workingTime: ["part_time"],
+      workplace: ["remote"],
+      ir35: ["outside"],
+      compensation: ["advertised"],
+      sources: [],
       salaryMin: null,
       salaryPeriod: "all",
       posted: "any",
@@ -39,21 +40,26 @@ describe("job URL filters", () => {
     });
   });
 
-  it("falls back for arrays instead of accepting ambiguous values", () => {
+  it("accepts repeated multi-choice values, deduplicated and validated one by one", () => {
     expect(
       parseJobFilters({
-        q: ["engineer", "researcher"],
-        employment: ["contract"],
-        workingTime: ["full_time"],
-        workplace: ["remote"],
-        ir35: ["inside"],
-        compensation: ["advertised"],
-        page: ["2"],
+        workplace: ["remote", "hybrid", "remote", "moon", ""],
+        employment: ["contract", "freelance"],
       }),
-    ).toEqual(defaults);
+    ).toMatchObject({
+      workplace: ["remote", "hybrid"],
+      employment: ["contract"],
+    });
   });
 
-  it("falls back for unexpected categories", () => {
+  it("still refuses ambiguity where only one value can apply", () => {
+    // Scalar fields keep their old rule: an array falls back to the default.
+    expect(
+      parseJobFilters({ q: ["engineer", "researcher"], page: ["2"] }),
+    ).toMatchObject({ q: "", page: 1 });
+  });
+
+  it("drops unexpected category values rather than applying them", () => {
     expect(
       parseJobFilters({
         employment: "freelance",
@@ -134,11 +140,11 @@ describe("canonical jobs query strings", () => {
         ...defaults,
         q: "platform & data",
         location: "Leeds",
-        employment: "contract",
-        workingTime: "part_time",
-        workplace: "remote",
-        ir35: "outside",
-        compensation: "unknown",
+        employment: ["contract"],
+        workingTime: ["part_time"],
+        workplace: ["remote"],
+        ir35: ["outside"],
+        compensation: ["unknown"],
         salaryMin: 45_000,
         salaryPeriod: "year",
         posted: "7",

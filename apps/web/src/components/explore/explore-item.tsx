@@ -30,7 +30,7 @@ export function ExploreItem({ item }: { item: ExploreSuggestionItem }) {
   const dismissed = item.decision === "dismissed";
 
   return (
-    <li className="not-first:mt-2.5">
+    <li className="not-first:mt-2">
       <article
         className={cn(
           "rounded-lg border border-border bg-card p-4 [overflow-wrap:anywhere] transition-[border-color,box-shadow] duration-150 ease-(--ease-smooth-out) hover:border-input hover:shadow-[0_2px_8px_rgba(16,20,28,0.05)] sm:p-5",

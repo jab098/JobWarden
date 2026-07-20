@@ -13,7 +13,7 @@ export function JobDetailView({
   dataMode: "supabase" | "fixtures";
 }) {
   return (
-    <div className="mx-auto max-w-4xl px-5 py-7 sm:px-8">
+    <div className="mx-auto max-w-4xl px-4 py-5 sm:px-6">
       <Link
         href="/jobs"
         className="rounded-sm text-sm text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"

@@ -18,9 +18,9 @@ describe("fictional development jobs", () => {
       repository.list({
         ...allFilters,
         q: "north",
-        employment: "contract",
-        workplace: "hybrid",
-        ir35: "outside",
+        employment: ["contract"],
+        workplace: ["hybrid"],
+        ir35: ["outside"],
       }),
     ).resolves.toMatchObject({
       total: 1,
@@ -37,7 +37,7 @@ describe("fictional development jobs", () => {
       repository.list({
         ...allFilters,
         q: "civic evidence",
-        workingTime: "full_time",
+        workingTime: ["full_time"],
       }),
     ).resolves.toMatchObject({
       total: 1,

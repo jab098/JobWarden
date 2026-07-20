@@ -114,7 +114,7 @@ export function ApplicationItem({
       className={
         compact
           ? "not-first:border-t not-first:border-border"
-          : "not-first:mt-2.5"
+          : "not-first:mt-2"
       }
     >
       <article

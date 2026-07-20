@@ -12,6 +12,7 @@ const allFilters = parseJobFilters({});
 
 const listRow = {
   id: "0d74a055-d0e6-4f50-a77a-9c8fd8543af3",
+  source_id: "5c000000-0000-4000-8000-000000000001",
   title: "Platform Engineer",
   employer: "Example Employer",
   employment_type: "contract",
@@ -55,6 +56,7 @@ function createBuilder(response: {
   const builder = {
     select: vi.fn(),
     eq: vi.fn(),
+    in: vi.fn(),
     gte: vi.fn(),
     ilike: vi.fn(),
     not: vi.fn(),
@@ -67,6 +69,7 @@ function createBuilder(response: {
   for (const method of [
     builder.select,
     builder.eq,
+    builder.in,
     builder.gte,
     builder.ilike,
     builder.not,
@@ -104,6 +107,7 @@ describe("RLS-bound Supabase jobs list", () => {
       items: [
         {
           id: listRow.id,
+          sourceId: "5c000000-0000-4000-8000-000000000001",
           title: "Platform Engineer",
           employer: "Example Employer",
           location: "Edinburgh, Scotland",
@@ -134,21 +138,22 @@ describe("RLS-bound Supabase jobs list", () => {
 
     await createSupabaseJobsRepository(client).list({
       ...allFilters,
-      employment: "contract",
-      workingTime: "part_time",
-      workplace: "remote",
-      ir35: "inside",
-      compensation: "unknown",
+      employment: ["contract"],
+      workingTime: ["part_time"],
+      workplace: ["remote"],
+      ir35: ["inside"],
+      compensation: ["unknown"],
       page: 2,
     });
 
-    expect(builder.eq.mock.calls).toEqual([
-      ["lifecycle_status", "active"],
-      ["employment_type", "contract"],
-      ["working_time", "part_time"],
-      ["workplace_type", "remote"],
-      ["ir35_status", "inside"],
-      ["compensation_provenance", "unknown"],
+    expect(builder.eq.mock.calls).toEqual([["lifecycle_status", "active"]]);
+    // Multi-choice fields travel as allow-lists.
+    expect(builder.in.mock.calls).toEqual([
+      ["employment_type", ["contract"]],
+      ["working_time", ["part_time"]],
+      ["workplace_type", ["remote"]],
+      ["ir35_status", ["inside"]],
+      ["compensation_provenance", ["unknown"]],
     ]);
     expect(builder.range).toHaveBeenCalledWith(25, 49);
   });

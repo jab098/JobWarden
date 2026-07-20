@@ -1,54 +1,10 @@
 import Link from "next/link";
 
+import { ActivityChart } from "@/components/dashboard/activity-chart";
+
 import type { DashboardResult } from "@/lib/dashboard/types";
-import type {
-  DayCount,
-  PeriodComparison,
-  ProfileNudge,
-} from "@jobwarden/domain";
+import type { PeriodComparison, ProfileNudge } from "@jobwarden/domain";
 import { cn } from "@/lib/utils";
-
-/**
- * A sparkline drawn as inline SVG. A charting dependency would be a lot of
- * bytes for a few bars, and the roadmap requires separate approval for one.
- */
-function Sparkline({
-  series,
-  label,
-  className,
-}: {
-  series: readonly DayCount[];
-  label: string;
-  className?: string;
-}) {
-  const peak = Math.max(1, ...series.map((day) => day.count));
-  const width = Math.max(1, series.length) * 12;
-
-  return (
-    <svg
-      role="img"
-      aria-label={label}
-      viewBox={`0 0 ${width} 32`}
-      className={cn("h-8 w-full max-w-[9rem]", className)}
-      preserveAspectRatio="none"
-    >
-      {series.map((day, index) => {
-        const height = day.count === 0 ? 1.5 : (day.count / peak) * 30;
-        return (
-          <rect
-            key={day.date}
-            x={index * 12 + 2}
-            y={32 - height}
-            width={8}
-            height={height}
-            rx={1}
-            className={day.count === 0 ? "fill-border" : "fill-link/80"}
-          />
-        );
-      })}
-    </svg>
-  );
-}
 
 function Comparison({
   value,
@@ -126,7 +82,7 @@ function Panel({
   return (
     <section
       className={cn(
-        "flex flex-col rounded-lg border border-border bg-card p-5",
+        "flex flex-col rounded-lg border border-border bg-card p-4",
         className,
       )}
     >
@@ -194,25 +150,52 @@ const nudgeCopy: Record<ProfileNudge, { text: string; href: string }> = {
   },
 };
 
+const windowChoices = [
+  [7, "7 days"],
+  [30, "30 days"],
+] as const;
+
 export function DashboardView({ result }: { result: DashboardResult }) {
   const { insights } = result.applications;
   const funnelPeak = Math.max(1, ...insights.funnel.map((s) => s.reached));
   const dueNow = insights.followUps.overdue + insights.followUps.dueToday;
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-7 lg:px-8">
+    <div className="mx-auto max-w-6xl px-4 py-5 lg:px-6">
       <header>
-        <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
-          Home
-        </h1>
-        <p className="mt-1.5 max-w-[62ch] text-sm leading-6 text-ink-secondary">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
+            Home
+          </h1>
+          <nav
+            aria-label="Activity window"
+            className="flex items-center rounded-lg border border-border bg-surface-sunken/60 p-0.5"
+          >
+            {windowChoices.map(([days, label]) => (
+              <Link
+                key={days}
+                href={days === 7 ? "/home" : `/home?window=${days}`}
+                aria-current={result.windowDays === days ? "true" : undefined}
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-xs outline-none transition-[background-color,color,box-shadow] duration-(--duration-quick) ease-(--ease-smooth-out) focus-visible:ring-2 focus-visible:ring-ring/60",
+                  result.windowDays === days
+                    ? "bg-card font-medium text-foreground shadow-[0_1px_3px_rgba(16,20,28,0.1)] ring-1 ring-border"
+                    : "text-ink-secondary hover:text-foreground",
+                )}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+        <p className="mt-1 max-w-[62ch] text-sm leading-6 text-ink-secondary">
           Everything here is counted from your own records over the last{" "}
           {result.windowDays} days. Nothing is estimated, and silence from an
           employer is never reported as a rejection.
         </p>
       </header>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="stagger-children mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <StatCard
           label="Matches right now"
           value={result.targetFeed.currentMatchCount}
@@ -245,7 +228,7 @@ export function DashboardView({ result }: { result: DashboardResult }) {
         />
       </div>
 
-      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+      <div className="mt-2.5 grid gap-2.5 lg:grid-cols-2">
         <Panel
           title="Applications"
           action={{ href: "/applications", label: "Open tracker" }}
@@ -313,10 +296,10 @@ export function DashboardView({ result }: { result: DashboardResult }) {
             </div>
           </div>
           <div className="mt-auto border-t border-border pt-4">
-            <Sparkline
+            <ActivityChart
               series={result.targetFeed.byDay}
               label={`Matching jobs by the day JobWarden first saw them, over ${result.windowDays} days`}
-              className="h-10 max-w-[14rem]"
+              unit="matching jobs first seen"
             />
             <p className="mt-1.5 text-xs text-ink-faint">
               By the day JobWarden first saw each job
@@ -349,10 +332,10 @@ export function DashboardView({ result }: { result: DashboardResult }) {
             </div>
           </dl>
           <div className="mt-auto border-t border-border pt-4">
-            <Sparkline
+            <ActivityChart
               series={result.decisions.byDay}
               label={`Decisions per day over ${result.windowDays} days`}
-              className="h-10 max-w-[14rem]"
+              unit="decisions"
             />
             <p className="mt-1.5 text-xs text-ink-faint">
               {result.decisions.inPeriod} in this period
@@ -407,7 +390,7 @@ export function DashboardView({ result }: { result: DashboardResult }) {
         </Panel>
       </div>
 
-      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+      <div className="mt-2.5 grid gap-2.5 lg:grid-cols-2">
         <Panel
           title="Pathways"
           action={{ href: "/pathways", label: "Open pathways" }}

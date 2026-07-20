@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
 
-import { AppShell } from "@/components/app-shell";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
 import { getDashboardRepository } from "@/lib/dashboard/get-repository";
 
 export const metadata: Metadata = { title: "Home" };
 
-const defaultWindowDays = 7;
-
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { window: windowParam } = await searchParams;
+  // Two windows, both derived from stored records; anything else is 7.
+  const windowDays = windowParam === "30" ? 30 : 7;
   const result = await (
     await getDashboardRepository()
-  ).getDashboard(defaultWindowDays);
+  ).getDashboard(windowDays);
 
-  return (
-    <AppShell dataMode={result.dataMode} activePath="home">
-      <DashboardView result={result} />
-    </AppShell>
-  );
+  return <DashboardView result={result} />;
 }

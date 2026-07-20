@@ -46,14 +46,6 @@ beforeEach(() => {
   });
 });
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
-}
-
 const emptySnapshot: ProfileSnapshot = {
   generation: 0,
   draft: null,
@@ -449,80 +441,6 @@ describe("career profile onboarding", () => {
     );
   });
 
-  it("interlocks profile deletion while a save is queued", async () => {
-    const user = userEvent.setup();
-    const save = deferred<{ kind: "success"; message: string }>();
-    actionMocks.saveProfileDraftAction.mockReturnValueOnce(save.promise);
-    render(
-      <ProfileOnboarding
-        snapshot={{
-          ...fictionalSnapshot,
-          dataMode: "supabase",
-          uploadCapability: emptySnapshot.uploadCapability,
-        }}
-      />,
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: "Save career direction" }),
-    );
-    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: "Delete full profile" }),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: "Save named search" }),
-    ).toBeDisabled();
-    expect(actionMocks.deleteProfileDataAction).not.toHaveBeenCalled();
-
-    save.resolve({ kind: "success", message: "Career direction saved." });
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: "Save career direction" }),
-      ).toBeEnabled(),
-    );
-  });
-
-  it("interlocks every save while profile deletion is queued", async () => {
-    const user = userEvent.setup();
-    const deletion = deferred<{ kind: "success"; message: string }>();
-    actionMocks.deleteProfileDataAction.mockReturnValueOnce(deletion.promise);
-    render(
-      <ProfileOnboarding
-        snapshot={{
-          ...fictionalSnapshot,
-          dataMode: "supabase",
-          uploadCapability: emptySnapshot.uploadCapability,
-        }}
-      />,
-    );
-    const profileSave = screen.getByRole("button", {
-      name: "Save career direction",
-    });
-    const searchSave = screen.getByRole("button", {
-      name: "Save named search",
-    });
-
-    await user.click(
-      screen.getByRole("button", { name: "Delete full profile" }),
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Delete full profile" }),
-    );
-    await waitFor(() => expect(profileSave).toBeDisabled());
-    expect(searchSave).toBeDisabled();
-    expect(actionMocks.saveProfileDraftAction).not.toHaveBeenCalled();
-    expect(actionMocks.saveSearchProfileAction).not.toHaveBeenCalled();
-
-    deletion.resolve({
-      kind: "success",
-      message: "Career profile data deleted.",
-    });
-    await waitFor(() =>
-      expect(actionMocks.deleteProfileDataAction).toHaveBeenCalledOnce(),
-    );
-  });
-
   it("wraps long user-controlled concepts instead of widening the page", () => {
     const longSnapshot: ProfileSnapshot = {
       ...fictionalSnapshot,
@@ -545,10 +463,12 @@ describe("career profile onboarding", () => {
   });
 
   it("provides designed loading and recoverable error states", () => {
-    const { rerender } = render(<ProfileLoading />);
+    // The loading state is a silent skeleton shaped like the page; deletion
+    // and export controls now live on /settings, covered by settings-ui tests.
+    const { rerender, container } = render(<ProfileLoading />);
     expect(
-      screen.getByText("Preparing your career profile"),
-    ).toBeInTheDocument();
+      container.querySelectorAll('[data-slot="skeleton"]').length,
+    ).toBeGreaterThan(3);
 
     const reset = vi.fn();
     rerender(

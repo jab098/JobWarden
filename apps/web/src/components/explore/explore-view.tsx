@@ -6,12 +6,16 @@ export function ExploreView({ result }: { result: ExploreResult }) {
   const count = result.items.length;
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-7 lg:px-8">
+    <div className="mx-auto max-w-4xl px-4 py-5 lg:px-6">
       <header>
         <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
           Career pathways
         </h1>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-secondary">
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-ink-secondary">
+          Adjacent careers your confirmed skills already cover, suggested only
+          when the evidence overlap is strong.
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-secondary">
           {result.enabled ? (
             <span className="tnum font-medium text-foreground">
               {count} {count === 1 ? "credible pathway" : "credible pathways"}
@@ -39,7 +43,7 @@ export function ExploreView({ result }: { result: ExploreResult }) {
       {!result.enabled ? (
         <section
           aria-label="About pathways"
-          className="mt-5 rounded-lg border border-border bg-card px-6 py-14 text-center"
+          className="mt-4 rounded-lg border border-border bg-card px-6 py-14 text-center"
         >
           <h2 className="text-base font-semibold tracking-[-0.01em]">
             Adjacent careers your confirmed skills already cover
@@ -56,7 +60,7 @@ export function ExploreView({ result }: { result: ExploreResult }) {
         </section>
       ) : (
         <>
-          <section aria-label="Suggested pathways" className="mt-5 min-w-0">
+          <section aria-label="Suggested pathways" className="mt-4 min-w-0">
             {count === 0 ? (
               <div className="rounded-lg border border-border bg-card px-6 py-14 text-center">
                 <h2 className="text-base font-semibold tracking-[-0.01em]">

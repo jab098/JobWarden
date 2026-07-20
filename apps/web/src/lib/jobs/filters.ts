@@ -24,11 +24,12 @@ export const jobFilterSchema = z.object({
     )
     .nullable()
     .catch(null),
-  employment: z.enum([...employmentTypes, "all"]).catch("all"),
-  workingTime: z.enum([...workingTimes, "all"]).catch("all"),
-  workplace: z.enum([...workplaceTypes, "all"]).catch("all"),
-  ir35: z.enum([...ir35Statuses, "all"]).catch("all"),
-  compensation: z.enum([...compensationProvenances, "all"]).catch("all"),
+  employment: z.array(z.enum(employmentTypes)).catch([]),
+  workingTime: z.array(z.enum(workingTimes)).catch([]),
+  workplace: z.array(z.enum(workplaceTypes)).catch([]),
+  ir35: z.array(z.enum(ir35Statuses)).catch([]),
+  compensation: z.array(z.enum(compensationProvenances)).catch([]),
+  sources: z.array(z.string().uuid()).max(50).catch([]),
   salaryMin: z.coerce
     .number()
     .int()
@@ -48,16 +49,39 @@ function text(value: string | string[] | undefined): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+/**
+ * A multi-choice field arrives once per chosen value, or once with "" when
+ * nothing is chosen. Invalid entries are dropped one at a time rather than
+ * voiding the rest, and duplicates collapse so a chip can never appear twice.
+ */
+function list(value: string | string[] | undefined): string[] {
+  const raw =
+    value === undefined ? [] : typeof value === "string" ? [value] : value;
+  return [...new Set(raw.map((entry) => entry.trim()).filter(Boolean))];
+}
+
+function validList<T extends string>(
+  value: string | string[] | undefined,
+  allowed: readonly T[],
+): T[] {
+  return list(value).filter((entry): entry is T =>
+    (allowed as readonly string[]).includes(entry),
+  );
+}
+
 export function parseJobFilters(input: JobFilterInput): JobFilters {
   const filters = jobFilterSchema.parse({
     q: text(input.q),
     location: text(input.location),
     radius: text(input.radius)?.trim() ? text(input.radius) : null,
-    employment: text(input.employment),
-    workingTime: text(input.workingTime),
-    workplace: text(input.workplace),
-    ir35: text(input.ir35),
-    compensation: text(input.compensation),
+    employment: validList(input.employment, employmentTypes),
+    workingTime: validList(input.workingTime, workingTimes),
+    workplace: validList(input.workplace, workplaceTypes),
+    ir35: validList(input.ir35, ir35Statuses),
+    compensation: validList(input.compensation, compensationProvenances),
+    sources: list(input.source).filter(
+      (entry) => z.string().uuid().safeParse(entry).success,
+    ),
     // An empty field is "no floor", not zero — coercing "" would otherwise
     // parse as 0 and read as a deliberate answer.
     salaryMin: text(input.salaryMin)?.trim() ? text(input.salaryMin) : null,
@@ -88,19 +112,14 @@ export function createJobFiltersQueryString(filters: JobFilters): string {
   if (filters.location && filters.radius !== null) {
     query.set("radius", String(filters.radius));
   }
-  if (filters.employment !== "all") {
-    query.set("employment", filters.employment);
+  for (const value of filters.employment) query.append("employment", value);
+  for (const value of filters.workingTime) query.append("workingTime", value);
+  for (const value of filters.workplace) query.append("workplace", value);
+  for (const value of filters.ir35) query.append("ir35", value);
+  for (const value of filters.compensation) {
+    query.append("compensation", value);
   }
-  if (filters.workingTime !== "all") {
-    query.set("workingTime", filters.workingTime);
-  }
-  if (filters.workplace !== "all") {
-    query.set("workplace", filters.workplace);
-  }
-  if (filters.ir35 !== "all") query.set("ir35", filters.ir35);
-  if (filters.compensation && filters.compensation !== "all") {
-    query.set("compensation", filters.compensation);
-  }
+  for (const value of filters.sources) query.append("source", value);
   if (filters.salaryMin !== null && filters.salaryPeriod !== "all") {
     query.set("salaryMin", String(filters.salaryMin));
     query.set("salaryPeriod", filters.salaryPeriod);
@@ -125,96 +144,99 @@ export type ActiveJobFilter = {
   clearedFilters: JobFilters;
 };
 
-const removals: readonly {
-  key: string;
-  label: (filters: JobFilters) => string | null;
-  clear: (filters: JobFilters) => Partial<JobFilters>;
-}[] = [
-  {
-    key: "q",
-    label: (filters) => (filters.q ? `“${filters.q}”` : null),
-    clear: () => ({ q: "" }),
-  },
-  {
-    key: "location",
-    label: (filters) =>
-      filters.location
-        ? filters.radius === null
-          ? `In ${filters.location}`
-          : `Within ${filters.radius} miles of ${filters.location}`
-        : null,
-    // The radius goes with it: a radius around nothing narrows nothing, and
-    // leaving it set would resurrect itself the next time a place was typed.
-    clear: () => ({ location: "", radius: null }),
-  },
-  {
-    key: "employment",
-    label: (filters) =>
-      filters.employment === "all"
-        ? null
-        : filters.employment.replaceAll("_", " "),
-    clear: () => ({ employment: "all" }),
-  },
-  {
-    key: "workingTime",
-    label: (filters) =>
-      filters.workingTime === "all"
-        ? null
-        : filters.workingTime.replaceAll("_", " "),
-    clear: () => ({ workingTime: "all" }),
-  },
-  {
-    key: "workplace",
-    label: (filters) =>
-      filters.workplace === "all" ? null : filters.workplace,
-    clear: () => ({ workplace: "all" }),
-  },
-  {
-    key: "ir35",
-    label: (filters) =>
-      filters.ir35 === "all"
-        ? null
-        : `IR35 ${filters.ir35.replaceAll("_", " ")}`,
-    clear: () => ({ ir35: "all" }),
-  },
-  {
-    key: "compensation",
-    label: (filters) =>
-      filters.compensation === "all" ? null : `${filters.compensation} salary`,
-    clear: () => ({ compensation: "all" }),
-  },
-  {
-    key: "salary",
-    label: (filters) =>
-      filters.salaryMin === null || filters.salaryPeriod === "all"
-        ? null
-        : `£${filters.salaryMin.toLocaleString("en-GB")}+ per ${filters.salaryPeriod}`,
-    clear: () => ({ salaryMin: null, salaryPeriod: "all" as const }),
-  },
-  {
-    key: "posted",
-    label: (filters) =>
-      filters.posted === "any"
-        ? null
-        : filters.posted === "1"
-          ? "Posted in the last 24 hours"
-          : `Posted in the last ${filters.posted} days`,
-    clear: () => ({ posted: "any" as const }),
-  },
-];
+function without<T>(values: readonly T[], value: T): T[] {
+  return values.filter((entry) => entry !== value);
+}
 
-export function activeJobFilters(filters: JobFilters): ActiveJobFilter[] {
+/** One chip per chosen value, each lifting only itself. */
+function listChips<
+  Field extends
+    "employment" | "workingTime" | "workplace" | "ir35" | "compensation",
+>(
+  filters: JobFilters,
+  field: Field,
+  label: (value: string) => string,
+): ActiveJobFilter[] {
+  return filters[field].map((value) => ({
+    key: `${field}:${value}`,
+    label: label(value),
+    clearedFilters: {
+      ...filters,
+      [field]: without(filters[field], value),
+      page: 1,
+    },
+  }));
+}
+
+export function activeJobFilters(
+  filters: JobFilters,
+  sourceLabels?: ReadonlyMap<string, string>,
+): ActiveJobFilter[] {
   const active: ActiveJobFilter[] = [];
-  for (const removal of removals) {
-    const label = removal.label(filters);
-    if (label === null) continue;
+
+  if (filters.q) {
     active.push({
-      key: removal.key,
-      label,
-      // Lifting one choice returns to the first page: the page the user was on
-      // may not exist in the wider result set.
-      clearedFilters: { ...filters, ...removal.clear(filters), page: 1 },
+      key: "q",
+      label: `“${filters.q}”`,
+      clearedFilters: { ...filters, q: "", page: 1 },
     });
   }
+  if (filters.location) {
+    active.push({
+      key: "location",
+      label:
+        filters.radius === null
+          ? `In ${filters.location}`
+          : `Within ${filters.radius} miles of ${filters.location}`,
+      // The radius goes with it: a radius around nothing narrows nothing, and
+      // leaving it set would resurrect itself the next time a place was typed.
+      clearedFilters: { ...filters, location: "", radius: null, page: 1 },
+    });
+  }
+  active.push(
+    ...listChips(filters, "employment", (value) => value.replaceAll("_", " ")),
+    ...listChips(filters, "workingTime", (value) => value.replaceAll("_", " ")),
+    ...listChips(filters, "workplace", (value) => value),
+    ...listChips(
+      filters,
+      "ir35",
+      (value) => `IR35 ${value.replaceAll("_", " ")}`,
+    ),
+    ...listChips(filters, "compensation", (value) => `${value} salary`),
+  );
+  for (const source of filters.sources) {
+    active.push({
+      key: `source:${source}`,
+      label: sourceLabels?.get(source) ?? "Selected source",
+      clearedFilters: {
+        ...filters,
+        sources: without(filters.sources, source),
+        page: 1,
+      },
+    });
+  }
+  if (filters.salaryMin !== null && filters.salaryPeriod !== "all") {
+    active.push({
+      key: "salary",
+      label: `£${filters.salaryMin.toLocaleString("en-GB")}+ per ${filters.salaryPeriod}`,
+      clearedFilters: {
+        ...filters,
+        salaryMin: null,
+        salaryPeriod: "all",
+        page: 1,
+      },
+    });
+  }
+  if (filters.posted !== "any") {
+    active.push({
+      key: "posted",
+      label:
+        filters.posted === "1"
+          ? "Posted in the last 24 hours"
+          : `Posted in the last ${filters.posted} days`,
+      clearedFilters: { ...filters, posted: "any", page: 1 },
+    });
+  }
+
   return active;
 }

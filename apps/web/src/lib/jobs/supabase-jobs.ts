@@ -21,6 +21,7 @@ const locationSchema = z.object({
 
 const listRowSchema = z.object({
   id: z.string().uuid(),
+  source_id: z.string().uuid(),
   title: z.string().min(1).max(300),
   employer: z.string().min(1).max(300),
   employment_type: z.enum(employmentTypes),
@@ -48,6 +49,7 @@ const detailRowSchema = listRowSchema.extend({
 
 const baseColumns = [
   "id",
+  "source_id",
   "title",
   "employer",
   "employment_type",
@@ -143,6 +145,7 @@ function selectLocation(
 function toListItem(row: ListRow): JobListItem {
   return {
     id: row.id,
+    sourceId: row.source_id,
     title: row.title,
     employer: row.employer,
     location: selectLocation(row.job_locations),
@@ -281,20 +284,24 @@ export function createSupabaseJobsRepository(client: object): JobsRepository {
           query = query.in("id", radiusJobIds);
         }
 
-        if (filters.employment !== "all") {
-          query = query.eq("employment_type", filters.employment);
+        // A chosen set is an allow-list; an empty set applies no test.
+        if (filters.employment.length > 0) {
+          query = query.in("employment_type", filters.employment);
         }
-        if (filters.workingTime !== "all") {
-          query = query.eq("working_time", filters.workingTime);
+        if (filters.workingTime.length > 0) {
+          query = query.in("working_time", filters.workingTime);
         }
-        if (filters.workplace !== "all") {
-          query = query.eq("workplace_type", filters.workplace);
+        if (filters.workplace.length > 0) {
+          query = query.in("workplace_type", filters.workplace);
         }
-        if (filters.ir35 !== "all") {
-          query = query.eq("ir35_status", filters.ir35);
+        if (filters.ir35.length > 0) {
+          query = query.in("ir35_status", filters.ir35);
         }
-        if (filters.compensation !== "all") {
-          query = query.eq("compensation_provenance", filters.compensation);
+        if (filters.compensation.length > 0) {
+          query = query.in("compensation_provenance", filters.compensation);
+        }
+        if (filters.sources.length > 0) {
+          query = query.in("source_id", filters.sources);
         }
         if (useLocationJoin) {
           query = query.ilike(

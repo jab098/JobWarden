@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { AppShell } from "@/components/app-shell";
 import { TailoringWorkspaceView } from "@/components/tailoring/tailoring-workspace";
 import { getTailoringRepository } from "@/lib/tailoring/get-repository";
 import { TailoringUnavailableError } from "@/lib/tailoring/repository";
@@ -32,9 +31,5 @@ export default async function TailorPage({
   const { jobId } = await params;
   const workspace = await loadWorkspace(jobId);
 
-  return (
-    <AppShell dataMode={workspace.dataMode} activePath="jobs">
-      <TailoringWorkspaceView workspace={workspace} />
-    </AppShell>
-  );
+  return <TailoringWorkspaceView workspace={workspace} />;
 }

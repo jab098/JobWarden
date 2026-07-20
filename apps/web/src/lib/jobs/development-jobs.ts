@@ -5,11 +5,18 @@ import { placesWithinRadius, resolveUkPlaces } from "@jobwarden/domain";
 import type { JobsRepository } from "./repository";
 import type { JobDetail, JobFilters, JobListItem } from "./types";
 
+/** The fictional source ids the fixture sources module also announces. */
+export const developmentSourceIds = {
+  northstar: "5c000000-0000-4000-8000-000000000001",
+  civic: "5c000000-0000-4000-8000-000000000002",
+} as const;
+
 export const developmentJobs = [
   {
     id: "0d74a055-d0e6-4f50-a77a-9c8fd8543af3",
     title: "Senior Software Engineer",
     employer: "Fictional Northstar Tools UK Ltd",
+    sourceId: developmentSourceIds.northstar,
     location: "Manchester, England",
     employmentType: "permanent",
     workingTime: "full_time",
@@ -35,6 +42,7 @@ export const developmentJobs = [
     id: "d10b4459-e154-41ed-8bce-dac32eb9c5e0",
     title: "Public Policy Researcher",
     employer: "Fictional Civic Evidence Partnership",
+    sourceId: developmentSourceIds.civic,
     location: "Cardiff, Wales",
     employmentType: "fixed_term",
     workingTime: "full_time",
@@ -60,6 +68,7 @@ export const developmentJobs = [
     id: "2dff65c2-c153-43db-befc-f3bb66210458",
     title: "Customer Support Specialist",
     employer: "Fictional Harbour Desk Ltd",
+    sourceId: developmentSourceIds.northstar,
     location: "Remote within the United Kingdom",
     employmentType: "permanent",
     workingTime: "part_time",
@@ -85,6 +94,7 @@ export const developmentJobs = [
     id: "77666bdf-2e96-49d4-8cfa-764271731640",
     title: "Digital Delivery Lead",
     employer: "Fictional Calder Programme Office",
+    sourceId: developmentSourceIds.civic,
     location: "Leeds, England (remote within the UK)",
     employmentType: "contract",
     workingTime: "full_time",
@@ -110,6 +120,7 @@ export const developmentJobs = [
     id: "a3fa829f-4e9f-47d4-b7fe-4098b3098b61",
     title: "Platform Engineer",
     employer: "Fictional North Coast Systems Ltd",
+    sourceId: developmentSourceIds.northstar,
     location: "Edinburgh, Scotland",
     employmentType: "contract",
     workingTime: "full_time",
@@ -135,6 +146,7 @@ export const developmentJobs = [
     id: "7bdb95d3-7fde-4a08-9d37-4501525e61b6",
     title: "Data Migration Analyst",
     employer: "Fictional Severn Records Project",
+    sourceId: developmentSourceIds.civic,
     location: "Bristol, England",
     employmentType: "contract",
     workingTime: "full_time",
@@ -161,6 +173,7 @@ export const developmentJobs = [
 function toListItem(job: JobDetail): JobListItem {
   return {
     id: job.id,
+    sourceId: job.sourceId,
     title: job.title,
     employer: job.employer,
     location: job.location,
@@ -226,14 +239,17 @@ function matchesFilters(job: JobDetail, filters: JobFilters): boolean {
   return (
     searchText.includes(query) &&
     matchesLocation(job, filters) &&
-    (filters.employment === "all" ||
-      job.employmentType === filters.employment) &&
-    (filters.workingTime === "all" ||
-      job.workingTime === filters.workingTime) &&
-    (filters.workplace === "all" || job.workplaceType === filters.workplace) &&
-    (filters.ir35 === "all" || job.ir35Status === filters.ir35) &&
-    (filters.compensation === "all" ||
-      job.compensationProvenance === filters.compensation) &&
+    (filters.employment.length === 0 ||
+      filters.employment.includes(job.employmentType)) &&
+    (filters.workingTime.length === 0 ||
+      filters.workingTime.includes(job.workingTime)) &&
+    (filters.workplace.length === 0 ||
+      filters.workplace.includes(job.workplaceType)) &&
+    (filters.ir35.length === 0 || filters.ir35.includes(job.ir35Status)) &&
+    (filters.compensation.length === 0 ||
+      filters.compensation.includes(job.compensationProvenance)) &&
+    (filters.sources.length === 0 ||
+      filters.sources.includes(job.sourceId ?? "")) &&
     matchesSalaryFloor(job, filters) &&
     matchesPostedWindow(job, filters)
   );

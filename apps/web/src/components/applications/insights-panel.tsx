@@ -47,7 +47,7 @@ export function InsightsPanel({ insights }: { insights: ApplicationInsights }) {
   return (
     <section
       aria-label="Application insights"
-      className="mt-5 grid gap-3 lg:grid-cols-3"
+      className="stagger-children mt-4 grid gap-2.5 lg:grid-cols-3"
     >
       <div className="rounded-lg border border-border bg-card p-4">
         <h2 className="text-sm font-semibold text-foreground">

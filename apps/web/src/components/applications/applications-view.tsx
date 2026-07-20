@@ -41,15 +41,21 @@ export function ApplicationsViewPage({
   const count = result.items.length;
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-7 lg:px-8">
+    <div className="mx-auto max-w-6xl px-4 py-5 lg:px-6">
       <header>
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
-            Applications
-          </h1>
+          <div>
+            <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
+              Applications
+            </h1>
+            <p className="mt-1 text-sm text-ink-secondary">
+              Every application you made yourself, tracked from applied through
+              to its outcome.
+            </p>
+          </div>
           <nav
             aria-label="Applications view"
-            className="flex items-center rounded-lg border border-border bg-surface-sunken p-0.5"
+            className="flex items-center rounded-lg border border-border bg-surface-sunken/60 p-0.5"
           >
             {(
               [
@@ -64,7 +70,7 @@ export function ApplicationsViewPage({
                 className={cn(
                   "rounded-md px-2.5 py-1 text-xs outline-none transition-[background-color,color,box-shadow] duration-(--duration-quick) ease-(--ease-smooth-out) focus-visible:ring-2 focus-visible:ring-ring/60",
                   view === key
-                    ? "bg-card font-medium text-foreground shadow-[0_1px_2px_rgba(16,20,28,0.08)]"
+                    ? "bg-card font-medium text-foreground shadow-[0_1px_3px_rgba(16,20,28,0.1)] ring-1 ring-border"
                     : "text-ink-secondary hover:text-foreground",
                 )}
               >
@@ -73,7 +79,7 @@ export function ApplicationsViewPage({
             ))}
           </nav>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-secondary">
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-secondary">
           <span className="tnum font-medium text-foreground">
             {count}{" "}
             {count === 1 ? "tracked application" : "tracked applications"}
@@ -93,7 +99,7 @@ export function ApplicationsViewPage({
       <InsightsPanel insights={result.insights} />
 
       {count === 0 ? (
-        <div className="mt-5 rounded-lg border border-border bg-card px-6 py-14 text-center">
+        <div className="mt-4 rounded-lg border border-border bg-card px-6 py-14 text-center">
           <h2 className="text-base font-semibold tracking-[-0.01em]">
             No applications tracked yet
           </h2>
@@ -110,7 +116,7 @@ export function ApplicationsViewPage({
           </Link>
         </div>
       ) : view === "list" ? (
-        <section aria-label="Tracked applications" className="mt-5 min-w-0">
+        <section aria-label="Tracked applications" className="mt-4 min-w-0">
           <ul>
             {result.items.map((item) => (
               <ApplicationItem key={item.id} item={item} />

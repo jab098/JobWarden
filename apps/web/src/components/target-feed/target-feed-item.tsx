@@ -84,7 +84,7 @@ export function TargetFeedItem({
         "overflow-hidden transition-[max-height,opacity,margin] duration-200 ease-out motion-reduce:transition-none",
         collapsed
           ? "pointer-events-none max-h-0 opacity-0"
-          : "max-h-[80rem] opacity-100 not-first:mt-2.5",
+          : "max-h-[80rem] opacity-100 not-first:mt-2",
       )}
     >
       <article className="rounded-lg border border-border bg-card p-4 [overflow-wrap:anywhere] transition-[border-color,box-shadow] duration-150 ease-(--ease-smooth-out) hover:border-input hover:shadow-[0_2px_8px_rgba(16,20,28,0.05)] sm:p-5">

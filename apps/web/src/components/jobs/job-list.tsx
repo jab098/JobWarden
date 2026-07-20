@@ -10,7 +10,7 @@ export function JobList({
   decisions: ReadonlyMap<string, JobDecision>;
 }) {
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex flex-col gap-2">
       {jobs.map((job) => (
         <JobCard
           key={job.id}

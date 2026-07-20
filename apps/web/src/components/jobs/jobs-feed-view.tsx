@@ -6,6 +6,7 @@ import { JobList } from "@/components/jobs/job-list";
 import { activeJobFilters, jobsHref } from "@/lib/jobs/filters";
 import type { JobFilters as Filters, JobsPageResult } from "@/lib/jobs/types";
 import type { JobDecision } from "@/lib/target-feed/types";
+import type { JobSourceOption } from "@/lib/sources/types";
 import { cn } from "@/lib/utils";
 
 const sortLabels: Record<Filters["sort"], string> = {
@@ -17,12 +18,17 @@ export function JobsFeedView({
   filters,
   result,
   decisions,
+  sources = [],
 }: {
   filters: Filters;
   result: JobsPageResult;
   decisions: ReadonlyMap<string, JobDecision>;
+  sources?: readonly JobSourceOption[];
 }) {
-  const active = activeJobFilters(filters);
+  const active = activeJobFilters(
+    filters,
+    new Map(sources.map((source) => [source.id, source.label])),
+  );
   const hasPreviousPage = result.page > 1;
   const hasNextPage = result.page * result.pageSize < result.total;
   const isOutOfRange = result.items.length === 0 && result.total > 0;
@@ -33,12 +39,17 @@ export function JobsFeedView({
   const pageHref = (page: number) => jobsHref({ ...filters, page });
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-7 lg:px-8">
+    <div className="mx-auto max-w-6xl px-4 py-5 lg:px-6">
       <header>
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
-            Search jobs
-          </h1>
+          <div>
+            <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
+              Search jobs
+            </h1>
+            <p className="mt-1 text-sm text-ink-secondary">
+              Browse every indexed UK listing, from every connected source.
+            </p>
+          </div>
           <div className="flex items-center gap-4">
             <Link
               href="/matches"
@@ -46,7 +57,7 @@ export function JobsFeedView({
             >
               My matches
             </Link>
-            <JobFilters filters={filters} variant="mobile" />
+            <JobFilters filters={filters} variant="mobile" sources={sources} />
           </div>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-secondary">
@@ -76,7 +87,7 @@ export function JobsFeedView({
               keeps working without JavaScript, exactly like the filters. */}
           <nav
             aria-label="Sort results"
-            className="ml-auto flex items-center rounded-lg border border-border bg-surface-sunken p-0.5"
+            className="ml-auto flex items-center rounded-lg border border-border bg-surface-sunken/60 p-0.5"
           >
             {(Object.keys(sortLabels) as Filters["sort"][]).map((order) => (
               <Link
@@ -86,7 +97,7 @@ export function JobsFeedView({
                 className={cn(
                   "rounded-md px-2.5 py-1 text-xs outline-none transition-[background-color,color,box-shadow] duration-(--duration-quick) ease-(--ease-smooth-out) focus-visible:ring-2 focus-visible:ring-ring/60",
                   filters.sort === order
-                    ? "bg-card font-medium text-foreground shadow-[0_1px_2px_rgba(16,20,28,0.08)]"
+                    ? "bg-card font-medium text-foreground shadow-[0_1px_3px_rgba(16,20,28,0.1)] ring-1 ring-border"
                     : "text-ink-secondary hover:text-foreground",
                 )}
               >
@@ -129,13 +140,11 @@ export function JobsFeedView({
           </ul>
         )}
       </header>
-      <div className="mt-5 grid md:grid-cols-[17rem_minmax(0,1fr)] md:gap-5">
+      <div className="mt-4">
         <div className="hidden md:block">
-          <div className="sticky top-4 rounded-lg border border-border bg-card">
-            <JobFilters filters={filters} variant="desktop" />
-          </div>
+          <JobFilters filters={filters} variant="desktop" sources={sources} />
         </div>
-        <section aria-label="Job results" className="min-w-0">
+        <section aria-label="Job results" className="mt-3 min-w-0">
           {result.items.length > 0 ? (
             <JobList jobs={result.items} decisions={decisions} />
           ) : (

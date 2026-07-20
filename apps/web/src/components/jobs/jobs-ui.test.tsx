@@ -3,8 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { axe } from "vitest-axe";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// The save control imports a server action; the component test only needs the
-// control's own behaviour, not the action's server module graph.
+vi.mock("server-only", () => ({}));
+// The shell's sign-out and the save control import server actions; the
+// component tests only need their own behaviour, not the server module graph.
+vi.mock("@/app/auth/sign-in/actions", () => ({ signOut: vi.fn() }));
 vi.mock("@/app/(protected)/matches/actions", () => ({
   decideJobAction: vi.fn(async () => ({
     kind: "success" as const,
@@ -473,7 +475,7 @@ describe("jobs workspace", () => {
     const noResults = render(
       <JobsFeedView
         decisions={noDecisions}
-        filters={{ ...defaultFilters, workplace: "remote" }}
+        filters={{ ...defaultFilters, workplace: ["remote"] }}
         result={createResult({
           items: [],
           total: 0,

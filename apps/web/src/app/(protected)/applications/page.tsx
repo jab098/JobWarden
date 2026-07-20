@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { AppShell } from "@/components/app-shell";
 import {
   ApplicationsViewPage,
   resolveApplicationsView,
@@ -18,9 +17,5 @@ export default async function ApplicationsPage({
   const view = resolveApplicationsView(params.view);
   const result = await (await getApplicationsRepository()).getApplications();
 
-  return (
-    <AppShell dataMode={result.dataMode} activePath="applications">
-      <ApplicationsViewPage result={result} view={view} />
-    </AppShell>
-  );
+  return <ApplicationsViewPage result={result} view={view} />;
 }

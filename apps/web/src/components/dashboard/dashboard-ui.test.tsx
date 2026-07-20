@@ -3,6 +3,7 @@ import { axe } from "vitest-axe";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/app/auth/sign-in/actions", () => ({ signOut: vi.fn() }));
 
 import { AppShell } from "@/components/app-shell";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
@@ -91,13 +92,14 @@ describe("DashboardView", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders sparklines as labelled images without a charting dependency", () => {
+  it("renders every activity chart as a labelled image", () => {
+    // Recharts was approved by the owner on 2026-07-20 to match the reference
+    // dashboards; the figure carries the name, the drawing inside is hidden.
     render(<DashboardView result={result()} />);
 
     const charts = screen.getAllByRole("img");
     expect(charts.length).toBeGreaterThan(0);
     for (const chart of charts) {
-      expect(chart.tagName.toLowerCase()).toBe("svg");
       expect(chart).toHaveAccessibleName();
     }
   });

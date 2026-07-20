@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { AppShell } from "@/components/app-shell";
 import { TargetFeedView } from "@/components/target-feed/target-feed-view";
 import { parseJobFilters } from "@/lib/jobs/filters";
 import { getJobsRepository } from "@/lib/jobs/get-repository";
@@ -25,12 +24,10 @@ export default async function MatchesPage({
   ]);
 
   return (
-    <AppShell dataMode={feed.dataMode} activePath="matches">
-      <TargetFeedView
-        result={feed}
-        includeDismissed={includeDismissed}
-        latestListingUpdate={listResult.latestListingUpdate}
-      />
-    </AppShell>
+    <TargetFeedView
+      result={feed}
+      includeDismissed={includeDismissed}
+      latestListingUpdate={listResult.latestListingUpdate}
+    />
   );
 }
