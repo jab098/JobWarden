@@ -65,6 +65,10 @@
      single-column reading surfaces. Prose keeps the fixed narrow scale. */
   --container-page: clamp(64rem, 80vw, 94rem);
   --container-list: clamp(48rem, 68vw, 80rem);
+  /* Guided single-column flows: onboarding and anything else that asks one
+     question at a time. Wider than prose so it does not look stranded on a
+     large monitor, still short enough that a line stays readable. */
+  --container-flow: clamp(34rem, 46vw, 52rem);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -314,10 +318,16 @@
   .font-display {
     font-family: var(--font-display);
   }
-  /* Route content enters with a soft rise; template.tsx remounts per
-     navigation so the animation replays without any JS. */
+  /* Route content enters with a rise; template.tsx remounts per navigation so
+     the animation replays. `components/ui/enter.tsx` picks between the two:
+     somewhere new in this session arrives with the rise, somewhere already
+     seen just fades, because the movement is what says "this is new" and
+     repeating it on every return is noise. */
   .page-enter {
     animation: page-enter var(--duration-medium) var(--ease-smooth-out) both;
+  }
+  .page-fade {
+    animation: page-fade var(--duration-fast) var(--ease-smooth-out) both;
   }
   /* First rows of a grid drift in one after another. Capped: children past
      the eighth appear with the last delay, which is below the fold anyway. */
@@ -344,12 +354,42 @@
 @keyframes page-enter {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes page-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Navigations that swap the whole document — the signed-out landing page into
+   the walkthrough, the walkthrough into the hub — are the ones that used to
+   flash white, because no amount of entrance animation on the new page can
+   cover the gap between two documents. This hands the gap to the browser,
+   which cross-fades the old page into the new one instead. Browsers without
+   cross-document view transitions simply navigate as they did before. */
+@view-transition {
+  navigation: auto;
+}
+
+/* A plain cross-fade at the document level. The rise belongs to the content
+   inside, which runs its own entrance on the new page; doing both would move
+   the same thing twice, once nested inside the other. */
+::view-transition-old(root) {
+  animation: page-fade var(--duration-quick) var(--ease-smooth-out) reverse both;
+}
+
+::view-transition-new(root) {
+  animation: page-fade var(--duration-fast) var(--ease-smooth-out) both;
 }
 
 /* Disclosures grow open rather than appearing; see `components/ui/disclosure`.
