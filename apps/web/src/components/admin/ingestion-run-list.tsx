@@ -38,8 +38,8 @@ export function IngestionRunList({
           Recent source runs
         </h2>
         <p className="mt-1 text-sm text-[#596173]">
-          Complete counts and sanitised failure codes only; provider payloads
-          are never shown.
+          Counts, sanitised failure codes, and the location text of adverts
+          whose place could not be recognised. Advert content is never shown.
         </p>
       </div>
       {runs.length === 0 ? (

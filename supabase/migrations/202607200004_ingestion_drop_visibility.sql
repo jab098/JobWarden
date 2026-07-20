@@ -254,3 +254,18 @@ begin
   );
 end;
 $$;
+
+-- `create or replace` preserves a function's privileges; `drop` plus `create`
+-- does not. Without these the recreated function would carry PostgreSQL's
+-- default ACL, which grants EXECUTE to PUBLIC — and because service_role is a
+-- member of PUBLIC, ingestion would keep working and nothing would surface it.
+-- This is a security-definer function that bypasses RLS to close live jobs and
+-- append audit records, so it must be reachable only by the service role.
+revoke all on function public.finish_source_ingestion(
+  uuid, text, boolean, integer, integer, integer, integer, integer, integer,
+  integer, text, integer, integer, integer, jsonb
+) from public, anon, authenticated;
+grant execute on function public.finish_source_ingestion(
+  uuid, text, boolean, integer, integer, integer, integer, integer, integer,
+  integer, text, integer, integer, integer, jsonb
+) to service_role;

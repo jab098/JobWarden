@@ -42,6 +42,18 @@ This also keeps the change away from the `jobs` table. Storing quarantined adver
 
 `unrecognised_locations` records the location text of adverts quarantined as `ambiguous_uk_eligibility` only. Public advert location strings, no personal data, bounded length, and they never reach a user surface.
 
+## What review found, and why it was not the SQL body
+
+The risky-looking part of this change was the `finish_source_ingestion` body, which was extracted from `202607180003` by script and patched rather than hand-written. Review diffed it line by line and found it faithful — every branch, lock, and audit insert intact.
+
+The damage was one rung above it. **This is the repository's first `drop function`.** Every other migration uses `create or replace`, which *preserves* a function's privileges. `drop` plus `create` does not: the recreated function starts from PostgreSQL's default ACL, which grants `EXECUTE` to `PUBLIC`. The two `revoke ... from public, anon, authenticated` statements that protected this RPC both name the **eleven-argument** signature this migration deletes, so the fifteen-argument replacement was left open to any holder of the anon key — a `security definer` function that bypasses RLS to close live jobs and append audit records.
+
+It was also silent in both available directions. `service_role` is a member of `PUBLIC`, so ingestion kept working and nothing failed at runtime. And `verify-supabase-foundation.mjs` matched the revoke rule on the function *name* with any argument list, so the stale eleven-argument revoke satisfied the check for a function that no longer existed. The guardrail certified it.
+
+Both are fixed: the migration now revokes and grants explicitly, and the verifier compares the position of each revoke against the last `drop function` for that name, so a revoke written before a drop no longer counts. Removing the revoke from the migration now fails `pnpm check:supabase` with a message naming the drop — verified by doing it. pgTAP `022` also asserts directly that `anon` and `authenticated` cannot execute the RPC, which the file had omitted while asserting `is_definer`.
+
+The other finding worth recording: the drop tally was threaded into the per-source cap path, where it is always empty, and *not* into the generic `catch`, where it is full. Anything thrown after normalisation began — a parse failure, an upsert error — finalised with every drop count at zero, erasing the diagnosis on precisely the runs most worth diagnosing.
+
 ## Verification
 
 - A run that drops jobs for all three reasons records all three counts, and they sum with `eligible_count` to `received_count`.

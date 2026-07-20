@@ -77,7 +77,11 @@ const runRowSchema = z.object({
   excluded_non_uk_count: z.number().int().nonnegative(),
   quarantined_ambiguous_count: z.number().int().nonnegative(),
   quarantined_invalid_url_count: z.number().int().nonnegative(),
-  unrecognised_locations: z.array(z.string().min(1).max(120)).max(25),
+  // 240 rather than 120: the database bounds these with `left(x, 120)`,
+  // which counts characters, while zod counts UTF-16 code units. A place
+  // name of astral characters is valid in the column and would otherwise
+  // fail to parse here, taking the whole administrator page down with it.
+  unrecognised_locations: z.array(z.string().min(1).max(240)).max(25),
   duration_ms: z.number().int().nonnegative().nullable(),
   retry_count: z.number().int().min(0).max(10),
   error_code: z.string().min(3).max(100).nullable(),

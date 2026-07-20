@@ -1312,11 +1312,32 @@ export function verifyFoundationSql(files) {
 
     const revokePattern = new RegExp(
       `revoke\\s+all\\s+on\\s+function\\s+${escapedName}[^;]*\\sfrom\\s[^;]*\\bpublic\\b[^;]*\\banon\\b`,
-      "i",
+      "gi",
     );
-    if (!revokePattern.test(sql)) {
+    const revokeOffsets = [...sql.matchAll(revokePattern)].map(
+      (match) => match.index ?? -1,
+    );
+
+    // `create or replace` keeps a function's privileges, so an earlier revoke
+    // still holds. `drop function` does not: the recreated function starts from
+    // PostgreSQL's default ACL, which grants EXECUTE to PUBLIC. Matching on the
+    // name alone would accept a revoke written for the dropped overload — which
+    // is exactly what happened when finish_source_ingestion was first widened,
+    // and it passed this check while leaving the RPC open to anon.
+    const dropPattern = new RegExp(
+      `drop\\s+function\\s+(?:if\\s+exists\\s+)?${escapedName}\\s*\\(`,
+      "gi",
+    );
+    const lastDropOffset = [...sql.matchAll(dropPattern)].reduce(
+      (latest, match) => Math.max(latest, match.index ?? -1),
+      -1,
+    );
+
+    if (!revokeOffsets.some((offset) => offset > lastDropOffset)) {
       failures.push(
-        `security-definer function ${name} must revoke public and anon execution`,
+        lastDropOffset === -1
+          ? `security-definer function ${name} must revoke public and anon execution`
+          : `security-definer function ${name} is dropped and recreated, so it must revoke public and anon execution again afterwards`,
       );
     }
   }

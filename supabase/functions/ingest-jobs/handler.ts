@@ -382,6 +382,10 @@ async function processSource(options: {
       unchangedCount,
       retryCount: retryCount(error),
       errorCode: runtimeErrorCode(error),
+      // Anything thrown after normalisation begins — a parse failure, an upsert
+      // error — arrives here with a populated tally. Dropping it would erase the
+      // diagnosis on exactly the runs most worth diagnosing.
+      drops,
     });
   }
 }
