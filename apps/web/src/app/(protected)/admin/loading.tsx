@@ -1,6 +1,7 @@
 export default function AdminLoading() {
   return (
     <main
+      data-skeleton=""
       className="mx-auto max-w-page px-5 py-8 sm:px-8 lg:px-12 lg:py-12"
       aria-busy="true"
     >

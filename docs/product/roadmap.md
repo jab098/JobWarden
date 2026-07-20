@@ -53,6 +53,7 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 33   | Emit `JobPosting` structured data                                          | blocked  | Owner decision: public job content, plus a redistribution grant per source            |
 | 34   | Read `JobPosting` schema from allowlisted career pages                     | pending  | None; per-employer compliance record before each page is allowlisted                  |
 | 35   | Make the live database gate pass                                           | pending  | None; Docker installed 2026-07-20 and the gate now runs                               |
+| 36   | Entrance motion, admin in the hub                                          | shipped  | None                                                                                  |
 
 ## Remaining work, in the order it should be done
 
@@ -405,6 +406,24 @@ Acceptance:
 - a listing whose UK eligibility evidence is absent from the markup is not published, and the markup's own `jobLocationType` is treated as a claim needing evidence rather than as evidence;
 - compensation provenance comes from what the markup actually states, and a `baseSalary` absent from the page stays `unknown`; and
 - the path degrades visibly: a page that stops carrying markup, changes shape, or starts refusing is a recorded source failure, not a silent zero.
+
+## Task 36 — Entrance motion, and administration inside the hub
+
+Owner request, 2026-07-20, from a reference video. Delivered.
+
+**Motion.** Three animations were identified in the reference: opacity, translate and blur. Fade and rise already existed; blur and scroll-triggered entrance did not. Entrances now have their own duration scale (`--duration-entrance: 620ms`, `--duration-entrance-page: 900ms`), deliberately separate from the interaction durations, which are shared with hover tilts, progress bars, the disclosure and the dialog — lengthening those to slow an entrance would have made every hover sluggish.
+
+Blur is reserved for **page-level arrival only**: the landing hero and the first paint of the hub shell. It is never used on a component or on a route change inside the shell, because the shell element persists across navigation. Components use fade and rise through `components/ui/reveal.tsx`, an `IntersectionObserver` reveal that fails visible in every direction.
+
+Owner decision recorded in the code: **every arrival animates**, including a return to a surface seen earlier in the session. `Enter` previously faded on a repeat visit; that branch is gone, and `page-fade` now serves only the cross-document view transition.
+
+**The defect this exposed.** Route entrances did not animate on navigation, only on reload. The cause is structural: the App Router nests `layout → template → Suspense(loading.tsx) → page`, so `template.tsx` sits above the Suspense boundary. Every protected route has a `loading.tsx`, so on navigation the entrance was spent on the loading skeleton and the real content arrived underneath without remounting. Fixed by animating the wrapper's child rather than the wrapper, so the skeleton-to-content swap is itself a new node.
+
+**Skeletons no longer interrupt.** A skeleton does not run the entrance, and is held invisible for `--delay-skeleton: 260ms`, so a navigation that resolves quickly shows no loading state at all. The delay is a backwards animation fill rather than a visibility toggle, so `role="status"` still announces immediately.
+
+**Administration.** `/admin` lives under `(protected)`, so `AdminShell` was rendering a second rail, brand block and sign-out _inside_ the hub shell, on the wrong background. That is why entering administration read as leaving the product. It is now `AdminSection`: the hub rail stays, Admin is lit in it, and the five surfaces are tabs in the hub's own container. `AdminShell` is deleted. An Admin item was added to the rail above Settings, its destination decided on the server — `/admin` for an administrator, the read-only preview under the development bypass, nothing otherwise. `requireAdmin` is unchanged and remains the boundary.
+
+**Left undone, deliberately.** The development admin preview does not render the hub rail. Wrapping it in `AppShell` was tried and backed out: the shell carries a live sign-out form, and `AGENTS.md` requires the preview to import no production mutation action — an invariant its own test enforces by asserting no form and no enabled button appear. Closing that gap means separating the rail's presentation from its sign-out, which is a shell refactor and its own change.
 
 ## Task 35 — Make the live database gate pass
 

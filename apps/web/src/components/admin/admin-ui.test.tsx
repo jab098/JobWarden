@@ -1,13 +1,16 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "vitest-axe";
+
+// The admin section marks its current tab from the URL, as the hub rail does.
+vi.mock("next/navigation", () => ({ usePathname: () => "/admin/access" }));
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
 import { AccessDecisionForm } from "./access-decision-form";
 import { AccessRequestList } from "./access-request-list";
-import { AdminShell } from "./admin-shell";
+import { AdminSection } from "./admin-section";
 import { IngestionRequestList } from "./ingestion-request-list";
 import { IngestionRunList } from "./ingestion-run-list";
 import { SourceHealthList } from "./source-health-list";
@@ -23,31 +26,35 @@ const successAction = vi.fn(async (): Promise<AdminActionState> => ({
 }));
 
 describe("administrator workspace", () => {
-  it("uses a compact semantic shell with an explicit preview boundary", () => {
+  /**
+   * Administration is a section of the hub. It used to render its own shell —
+   * a second rail with its own brand block and sign-out — nested inside the hub
+   * shell, which is what made entering it feel like a different application.
+   */
+  it("presents administration as a hub section, not a second shell", () => {
     render(
-      <AdminShell preview>
+      <AdminSection>
         <h1>Administrator overview</h1>
-      </AdminShell>,
+      </AdminSection>,
     );
 
+    const nav = screen.getByRole("navigation", { name: "Administration" });
+    expect(within(nav).getByRole("link", { name: "Access" })).toHaveAttribute(
+      "href",
+      "/admin/access",
+    );
+    expect(within(nav).getByRole("link", { name: "Sources" })).toHaveAttribute(
+      "href",
+      "/admin/sources",
+    );
+    // No second brand block and no second sign-out inside the hub.
     expect(
-      screen.getByText(
-        "Read-only fictional administrator preview; no administrator access granted",
-      ),
-    ).toBeInTheDocument();
-    const primaryNavigation = screen.getByRole("navigation", {
-      name: "Administrator primary",
-    });
-    expect(primaryNavigation).toBeInTheDocument();
+      screen.queryByRole("link", { name: "JobWarden" }),
+    ).not.toBeInTheDocument();
     expect(
-      within(primaryNavigation).getByRole("link", { name: "Access" }),
-    ).toHaveAttribute("href", "#access");
-    expect(
-      within(primaryNavigation).getByRole("link", { name: "Sources" }),
-    ).toHaveAttribute("href", "#sources");
-    expect(
-      within(primaryNavigation).getByRole("link", { name: "Ingestion" }),
-    ).toHaveAttribute("href", "#ingestion");
+      screen.queryByRole("button", { name: /sign out/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Administrator overview")).toBeInTheDocument();
   });
 
   it("renders access states and disables every decision in preview mode", () => {
@@ -295,7 +302,7 @@ describe("administrator workspace", () => {
 
   it("has no automated accessibility violations across the three admin lists", async () => {
     const { container } = render(
-      <AdminShell preview>
+      <AdminSection>
         <main>
           <h1>Administrator preview</h1>
           <AccessRequestList
@@ -307,7 +314,7 @@ describe("administrator workspace", () => {
           <IngestionRequestList requests={snapshot.ingestionRequests} />
           <IngestionRunList runs={snapshot.runs} />
         </main>
-      </AdminShell>,
+      </AdminSection>,
     );
 
     expect(await axe(container)).toHaveNoViolations();

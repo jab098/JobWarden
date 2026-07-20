@@ -21,10 +21,18 @@ export function AppShell({
   children,
   dataMode,
   activePath,
+  adminHref,
 }: Readonly<{
   children: React.ReactNode;
   dataMode: "supabase" | "fixtures";
   activePath?: AppNavPath;
+  /**
+   * Server-decided destination for the Admin rail item, or null for a reader
+   * who is not an administrator. Passed down rather than derived here: whether
+   * somebody is an administrator is not a question a client component may
+   * answer, and `requireAdmin` on the route remains the real boundary.
+   */
+  adminHref?: string | null;
 }>) {
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -35,7 +43,11 @@ export function AppShell({
         >
           JobWarden
         </Link>
-        <MobileNavigation dataMode={dataMode} activePath={activePath} />
+        <MobileNavigation
+          dataMode={dataMode}
+          activePath={activePath}
+          adminHref={adminHref}
+        />
       </header>
       <aside className="fixed inset-y-0 left-0 hidden w-[var(--rail-width)] flex-col bg-sidebar lg:flex">
         <div className="px-3 pt-3 pb-4">
@@ -51,7 +63,7 @@ export function AppShell({
         </div>
         <PrimaryNav activePath={activePath} />
         <div className="mt-auto flex flex-col gap-3 pb-4">
-          <FooterNav activePath={activePath} />
+          <FooterNav activePath={activePath} adminHref={adminHref} />
           <div className="border-t border-sidebar-border px-3 pt-3">
             <form action={signOut}>
               <button
@@ -76,7 +88,12 @@ export function AppShell({
           is visible as a lighter object on the page rather than needing its
           shadow to be found. */}
       <main className="min-w-0 lg:pl-[var(--rail-width)]">
-        <div className="min-h-[100dvh] bg-workspace lg:rounded-tl-xl lg:border-l lg:border-border">
+        {/* Arriving at the hub blurs into focus once. This element belongs to
+            the shell, which the layout renders once and keeps across
+            navigations, so the entrance runs on the first paint of the product
+            and never again while moving between `/home`, `/matches`, `/jobs`
+            and the rest — those get the route-level fade and rise instead. */}
+        <div className="page-enter-blur min-h-[100dvh] bg-workspace lg:rounded-tl-xl lg:border-l lg:border-border">
           {children}
         </div>
       </main>

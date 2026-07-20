@@ -207,6 +207,15 @@
   --duration-fast: 250ms;
   --duration-medium: 350ms;
   --duration-slow: 400ms;
+  /* Entrances have their own scale, deliberately separate from the interaction
+     durations above. Those are shared with hover tilts, progress bars, the
+     disclosure and the dialog, so lengthening them to slow an entrance would
+     make every hover feel sluggish as a side effect. */
+  --duration-entrance: 620ms;
+  --duration-entrance-page: 900ms;
+  /* How long a navigation may take before a skeleton is worth showing. Below
+     this, the previous page holds and the reader never sees a loading state. */
+  --delay-skeleton: 260ms;
   --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);
 }
@@ -337,20 +346,68 @@
     font-family: var(--font-display);
   }
   /* Route content enters with a rise; template.tsx remounts per navigation so
-     the animation replays. `components/ui/enter.tsx` picks between the two:
-     somewhere new in this session arrives with the rise, somewhere already
-     seen just fades, because the movement is what says "this is new" and
-     repeating it on every return is noise. */
-  .page-enter {
-    animation: page-enter var(--duration-medium) var(--ease-smooth-out) both;
+     the animation replays, and an onboarding step advancing through a server
+     action replays it by changing the surface key.
+
+     Owner decision, 2026-07-20: every arrival rises, including a return to a
+     page seen earlier in the session. `enter.tsx` used to fade on a repeat
+     visit; it no longer distinguishes them. */
+  /* The animation is on the *child*, not on this wrapper, and that is the fix
+     for a defect worth remembering. The App Router nests
+     `layout → template → Suspense(loading.tsx) → page`, so `template.tsx` — and
+     therefore `Enter` — sits above the Suspense boundary. On a client-side
+     navigation it mounted with the loading skeleton, spent the entrance on
+     that, and then the real content swapped in underneath without remounting
+     the wrapper, so the page a reader actually waited for arrived with no
+     animation at all. A reload had no skeleton, so it animated, which is why
+     this looked like a navigation bug rather than a Suspense one.
+
+     Every protected route has a `loading.tsx`, so this affected all of them.
+     Animating the child means the skeleton animates in, and the real content
+     animates again when it replaces it, because that swap is a genuinely new
+     DOM node. */
+  .page-enter > *:not([data-skeleton]) {
+    animation: page-enter var(--duration-entrance) var(--ease-smooth-out) both;
   }
+  /* The skeleton is excluded above and handled here, and the two rules together
+     are what stop a loading state interrupting the entrance.
+
+     It does not run the entrance, because animating a skeleton in and then
+     animating the real content in means a reader watches two arrivals for one
+     navigation. And it is held invisible for the first fraction of a second, so
+     a navigation that resolves quickly — which is most of them — never shows a
+     skeleton at all: the previous page simply holds, then the real content
+     arrives with its own entrance.
+
+     The delay is expressed as a backwards fill rather than a visibility toggle
+     so nothing is removed from the accessibility tree. The `role="status"`
+     text still announces immediately for anyone using a screen reader; only
+     the visual flash is suppressed. */
+  .page-enter > [data-skeleton] {
+    animation: skeleton-appear var(--duration-fast) var(--ease-smooth-out)
+      var(--delay-skeleton) both;
+  }
+  /* Now used only by the cross-document view transition below, which wants to
+     stay brief: the browser holds the outgoing page across the gap, and a long
+     cross-fade there reads as a slow navigation rather than as an entrance. */
   .page-fade {
     animation: page-fade var(--duration-fast) var(--ease-smooth-out) both;
+  }
+  /* Arriving at a whole surface for the first time: the same rise, with focus
+     resolving as it lands. Deliberately reserved for page-level entrances —
+     the landing hero and the first paint of the hub shell — and never used on
+     a component or a route change inside the shell. Blur is expensive to
+     composite and, repeated on every card, reads as a page struggling to load
+     rather than as arrival. */
+  .page-enter-blur {
+    animation: page-enter-blur var(--duration-entrance-page)
+      var(--ease-smooth-out) both;
+    will-change: opacity, transform, filter;
   }
   /* First rows of a grid drift in one after another. Capped: children past
      the eighth appear with the last delay, which is below the fold anyway. */
   .stagger-children > * {
-    animation: page-enter var(--duration-medium) var(--ease-smooth-out) both;
+    animation: page-enter var(--duration-entrance) var(--ease-smooth-out) both;
   }
   .stagger-children > :nth-child(1) {
     animation-delay: 0ms;
@@ -389,6 +446,63 @@
   from {
     opacity: 0.6;
     transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Starts further down and further out of focus than `page-enter`, because this
+   one is not covering a gap between two pages — it is the first thing a reader
+   sees, so it can afford to travel. */
+@keyframes page-enter-blur {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* Scroll-triggered reveal, for content that is already on a rendered page and
+   arrives as the reader reaches it. No blur: that is reserved for page-level
+   entrances.
+
+   The resting state is fully visible on purpose. `components/ui/reveal.tsx`
+   adds `data-reveal="pending"` from an effect, so anything that never runs
+   that effect — JavaScript off, an old browser, a hydration failure, the
+   observer never firing — is simply visible rather than permanently invisible.
+   Hiding first and revealing later would make every one of those cases a blank
+   page. */
+[data-reveal="pending"] {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+[data-reveal="shown"] {
+  animation: reveal-in var(--duration-entrance) var(--ease-smooth-out) both;
+}
+
+/* Only opacity: a skeleton that also slid or blurred would be a second
+   entrance competing with the real one. */
+@keyframes skeleton-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
   }
   to {
     opacity: 1;

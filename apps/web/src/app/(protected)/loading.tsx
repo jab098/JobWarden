@@ -7,7 +7,11 @@ import { Skeleton } from "@/components/ui/skeleton";
  */
 export default function ProtectedLoading() {
   return (
-    <div role="status" className="mx-auto max-w-list px-4 py-5 lg:px-6">
+    <div
+      data-skeleton=""
+      role="status"
+      className="mx-auto max-w-list px-4 py-5 lg:px-6"
+    >
       <span className="sr-only">Loading</span>
       <Skeleton className="h-7 w-48 max-w-full" />
       <Skeleton className="mt-2 h-4 w-80 max-w-full" />

@@ -14,7 +14,11 @@ export function JobsLoadingView({
   width?: "max-w-page" | "max-w-list";
 } = {}) {
   return (
+    // `data-skeleton` marks this as a loading state rather than page content:
+    // globals.css uses it to hold the skeleton back for a moment and to keep it
+    // out of the page entrance. See the `.page-enter` rules.
     <section
+      data-skeleton=""
       className={`mx-auto ${width === "max-w-list" ? "max-w-list" : "max-w-page"} px-4 py-5 lg:px-6`}
       aria-labelledby="loading-heading"
     >
