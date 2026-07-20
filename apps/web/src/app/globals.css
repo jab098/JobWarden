@@ -43,6 +43,13 @@
   --color-card: var(--card);
   --color-link: var(--link);
   --color-data: var(--data);
+  --color-data-inbound: var(--data-inbound);
+  --color-data-action: var(--data-action);
+  --color-funnel-1: var(--funnel-1);
+  --color-funnel-2: var(--funnel-2);
+  --color-funnel-3: var(--funnel-3);
+  --color-funnel-4: var(--funnel-4);
+  --color-funnel-5: var(--funnel-5);
   --color-ink-secondary: var(--ink-secondary);
   --color-ink-faint: var(--ink-faint);
   --color-surface-sunken: var(--surface-sunken);
@@ -99,8 +106,27 @@
   --ring: oklch(0.4879 0.1179 258.4);
 
   /* Quantities are drawn in graphite ink, not in an accent hue. That leaves
-     colour free to mean state, and keeps charts from reading as decoration. */
+     colour free to mean state, and keeps charts from reading as decoration.
+     This is still the default for any plain count. */
   --data: oklch(0.2178 0.0126 254.1);
+
+  /* The application funnel's progress ramp, 2026-07-22. A funnel is not five
+     interchangeable quantities: each stage is nearer an offer than the last,
+     and the colour says so. Lightness and chroma rise monotonically from
+     graphite to success green, so it reads as one scale warming up rather than
+     as five decorative hues. Never reuse these for an unordered quantity. */
+  --funnel-1: oklch(0.2178 0.0126 254.1);
+  --funnel-2: oklch(0.37 0.062 215);
+  --funnel-3: oklch(0.45 0.093 192);
+  --funnel-4: oklch(0.51 0.112 172);
+  --funnel-5: oklch(0.5575 0.1301 152);
+
+  /* Two day-charts sit side by side on Home, counting different things. These
+     keep them from reading as the same measurement twice. Cool is what arrives
+     for you, warm is what you did; both are muted, and both stay clear of
+     --link so a column is never mistaken for a control. */
+  --data-inbound: oklch(0.52 0.075 222);
+  --data-action: oklch(0.52 0.09 40);
 
   /* Semantic state. */
   --success: oklch(0.5075 0.1077 155.3);
@@ -184,8 +210,17 @@
   --surface-sunken: oklch(0.21 0.008 254);
   --link: oklch(0.72 0.1 258);
   --ring: oklch(0.72 0.1 258);
-  /* Inverted: on a dark card, graphite ink becomes light graphite. */
+  /* Inverted: on a dark card, graphite ink becomes light graphite, and the
+     funnel ramp runs the other way so later stages still read as "further on"
+     against a dark ground. */
   --data: oklch(0.88 0.006 254);
+  --funnel-1: oklch(0.88 0.006 254);
+  --funnel-2: oklch(0.83 0.055 215);
+  --funnel-3: oklch(0.79 0.085 192);
+  --funnel-4: oklch(0.755 0.1 172);
+  --funnel-5: oklch(0.72 0.115 152);
+  --data-inbound: oklch(0.74 0.09 222);
+  --data-action: oklch(0.75 0.1 45);
   --success: oklch(0.72 0.11 155);
   --success-surface: oklch(0.28 0.03 155);
   --warning: oklch(0.75 0.12 78);

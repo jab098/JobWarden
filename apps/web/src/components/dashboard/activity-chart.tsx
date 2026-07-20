@@ -31,14 +31,27 @@ const BAR_RADIUS = 2;
  * decoration. No charting dependency: recharts 3 renders empty against this
  * React/Next pair, and seventy lines we own beat a black box we do not.
  */
+/**
+ * Two charts sit side by side on Home counting different things, so each names
+ * its own fill. `inbound` is what arrived for you, `action` is what you did;
+ * `data` stays the graphite default for a chart standing on its own.
+ */
+const columnFill = {
+  data: "fill-data",
+  inbound: "fill-data-inbound",
+  action: "fill-data-action",
+} as const;
+
 export function ActivityChart({
   series,
   label,
   unit,
+  tone = "data",
 }: {
   series: readonly DayCount[];
   label: string;
   unit: string;
+  tone?: keyof typeof columnFill;
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
   // A believable default width lets the server render real bars; the
@@ -147,7 +160,9 @@ export function ActivityChart({
                     width={barWidth}
                     height={PLOT_BOTTOM - top}
                     rx={BAR_RADIUS}
-                    className={day.count === 0 ? "fill-border" : "fill-data"}
+                    className={
+                      day.count === 0 ? "fill-border" : columnFill[tone]
+                    }
                   />
                   {index % labelEvery === 0 ? (
                     <text

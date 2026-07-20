@@ -233,15 +233,26 @@ describe("NotificationSettings", () => {
     expect(screen.getByText("Choose at least one day.")).toBeInTheDocument();
   });
 
-  it("cannot change the cadence in the fictional preview", () => {
+  it("lets the fictional preview be worked, but never saved", async () => {
+    // A reviewer who cannot work the control cannot judge it, and ticking
+    // changes nothing outside this component. Only the write is refused.
+    const user = userEvent.setup();
     render(
       <NotificationSettings result={settings({ dataMode: "fixtures" })} />,
     );
 
-    expect(screen.getByRole("checkbox", { name: "Mon" })).toBeDisabled();
+    const monday = screen.getByRole("checkbox", { name: "Mon" });
+    expect(monday).toBeEnabled();
+    await user.click(monday);
+    expect(monday).not.toBeChecked();
+
     expect(
       screen.getByRole("button", { name: "Save schedule" }),
     ).toBeDisabled();
+    expect(
+      screen.getByText(/this preview writes nothing/i),
+    ).toBeInTheDocument();
+    expect(actionMocks.setDigestScheduleAction).not.toHaveBeenCalled();
   });
 
   it("refuses mutation in the fictional preview", () => {

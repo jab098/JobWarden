@@ -247,6 +247,10 @@ function TogglePill({
  * digest at any other time would report on nothing newly indexed, and to three
  * a day; the fourth unticked time disables rather than silently dropping an
  * earlier choice, so the ceiling is visible before it is hit.
+ *
+ * The read-only preview disables saving, not ticking. Ticking changes nothing
+ * outside this component, and a reviewer who cannot work the control cannot
+ * judge it; a dead grey block is not an honest preview of a live one.
  */
 function DigestSchedule({
   hours,
@@ -298,7 +302,7 @@ function DigestSchedule({
               value={day}
               label={label}
               checked={chosenDays.includes(day)}
-              disabled={readOnly || pending}
+              disabled={pending}
               onChange={(checked) =>
                 setChosenDays((current) => toggle(current, day, checked))
               }
@@ -321,7 +325,7 @@ function DigestSchedule({
                 value={hour}
                 label={`${String(hour).padStart(2, "0")}:00`}
                 checked={checked}
-                disabled={readOnly || pending || (!checked && hourLimitReached)}
+                disabled={pending || (!checked && hourLimitReached)}
                 onChange={(next) =>
                   setChosenHours((current) => toggle(current, hour, next))
                 }
@@ -344,6 +348,12 @@ function DigestSchedule({
         </p>
         <ActionFeedback state={state} />
       </div>
+      {readOnly ? (
+        <p className="mt-2 text-xs text-ink-faint">
+          Try the controls freely: this preview writes nothing, so saving is
+          disabled.
+        </p>
+      ) : null}
     </form>
   );
 }
