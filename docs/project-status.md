@@ -39,7 +39,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 - Current integration branch: `main`; the card surface and graphite data revision was delivered by PR #30 at merge commit `58a80fd`
 - Last independently reviewed task implementation commit: Task 18 (delivered by merge `51f8eaf`)
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
-- Active feature branch: none
+- Active feature branch: `task-ui-refinements-round-2`, open as PR #31 and awaiting the independent review that must precede a merge. Five owner-flagged surface fixes; the only one with a data model is the per-owner digest schedule (migration `202607200005_digest_schedule.sql`)
 - Active task: none. Tasks 27-32 are next; Task 21 still needs owner platform setup. Before adding a source (Task 27), read the run record on a real source: `/admin/ingestion` now names the places recognition is missing, and widening the gazetteer is cheaper stock than a new adapter
 - Outstanding on 26a: no independent review pass was run, and two owner-visible calls were deferred rather than settled. The `interviewing` stage dot is still the interactive blue, and no gauge or ring component exists because nothing on the hub has a real ratio to show. Both are recorded in PR #30
 
