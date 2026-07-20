@@ -1,7 +1,15 @@
 import Link from "next/link";
 
 import { ActivityChart } from "@/components/dashboard/activity-chart";
+import {
+  CardHeader,
+  CheckItem,
+  Meter,
+  MeterRow,
+  type Tone,
+} from "@/components/ui/card";
 
+import { funnelStageLabels } from "@/lib/applications/types";
 import type { DashboardResult } from "@/lib/dashboard/types";
 import type { PeriodComparison, ProfileNudge } from "@jobwarden/domain";
 import { cn } from "@/lib/utils";
@@ -48,7 +56,7 @@ function StatCard({
   return (
     <Link
       href={href}
-      className="group block rounded-lg border border-border bg-card p-4 outline-none transition-[border-color,box-shadow,transform] duration-150 ease-(--ease-smooth-out) hover:-translate-y-px hover:border-input hover:shadow-[0_2px_8px_rgba(16,20,28,0.05)] focus-visible:ring-2 focus-visible:ring-ring/60"
+      className="group block card-surface p-4 outline-none card-interactive focus-visible:ring-2 focus-visible:ring-ring/60"
     >
       <span className="block text-xs text-ink-secondary">{label}</span>
       <span
@@ -70,64 +78,22 @@ function StatCard({
 
 function Panel({
   title,
+  status,
   action,
   children,
   className,
 }: {
   title: string;
+  status?: { label: string; tone?: Tone; quiet?: boolean };
   action?: { href: string; label: string };
   children: React.ReactNode;
   className?: string;
 }) {
   return (
-    <section
-      className={cn(
-        "flex flex-col rounded-lg border border-border bg-card p-4",
-        className,
-      )}
-    >
-      <div className="flex items-baseline justify-between gap-4">
-        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-        {action ? (
-          <Link
-            href={action.href}
-            className="rounded-sm text-xs text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
-          >
-            {action.label}
-          </Link>
-        ) : null}
-      </div>
+    <section className={cn("card-surface flex flex-col p-4", className)}>
+      <CardHeader title={title} status={status} action={action} />
       {children}
     </section>
-  );
-}
-
-/** One aligned funnel row: stage, proportional bar, count. */
-function FunnelRow({
-  stage,
-  reached,
-  peak,
-}: {
-  stage: string;
-  reached: number;
-  peak: number;
-}) {
-  const share = peak === 0 ? 0 : reached / peak;
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-24 shrink-0 text-xs text-ink-secondary capitalize">
-        {stage}
-      </span>
-      <span aria-hidden="true" className="h-1.5 min-w-0 flex-1">
-        <span
-          className="block h-full rounded-full bg-link/75 transition-[width] duration-(--duration-slow) ease-(--ease-smooth-out)"
-          style={{ width: `${Math.max(share * 100, reached > 0 ? 4 : 0)}%` }}
-        />
-      </span>
-      <span className="tnum w-6 shrink-0 text-right font-mono text-xs text-foreground">
-        {reached}
-      </span>
-    </div>
   );
 }
 
@@ -159,9 +125,42 @@ export function DashboardView({ result }: { result: DashboardResult }) {
   const { insights } = result.applications;
   const funnelPeak = Math.max(1, ...insights.funnel.map((s) => s.reached));
   const dueNow = insights.followUps.overdue + insights.followUps.dueToday;
+  // Each set-up step reads its own field rather than the absence of a nudge, so
+  // a step is only ticked when the underlying fact is actually true. The DOCX
+  // step only exists once a CV does; before that its copy ("your CV is a PDF")
+  // would be describing a file that is not there.
+  const profileChecks: {
+    key: ProfileNudge;
+    done: boolean;
+    settled: string;
+  }[] = [
+    {
+      key: "add_cv",
+      done: result.profileHealth.hasCv,
+      settled: "CV on file",
+    },
+    {
+      key: "confirm_evidence",
+      done: result.profileHealth.confirmedEvidenceCount > 0,
+      settled: `${result.profileHealth.confirmedEvidenceCount} confirmed evidence items matching can use`,
+    },
+    {
+      key: "enable_search",
+      done: result.profileHealth.enabledSearchCount > 0,
+      settled: `${result.profileHealth.enabledSearchCount} named searches enabled`,
+    },
+  ];
+  if (result.profileHealth.hasCv) {
+    profileChecks.splice(1, 0, {
+      key: "add_docx_for_tailoring",
+      done: result.profileHealth.cvKind === "docx",
+      settled: "DOCX on file, so tailored copies keep your layout",
+    });
+  }
+  const settledChecks = profileChecks.filter((check) => check.done).length;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-5 lg:px-6">
+    <div className="mx-auto max-w-page px-4 py-5 lg:px-6">
       <header>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
@@ -233,16 +232,16 @@ export function DashboardView({ result }: { result: DashboardResult }) {
           title="Applications"
           action={{ href: "/applications", label: "Open tracker" }}
         >
-          <div className="mt-4 flex flex-col gap-2.5">
+          <dl className="mt-4 flex flex-col gap-2.5">
             {insights.funnel.map((step) => (
-              <FunnelRow
+              <MeterRow
                 key={step.stage}
-                stage={step.stage}
-                reached={step.reached}
-                peak={funnelPeak}
+                label={funnelStageLabels[step.stage]}
+                value={step.reached}
+                max={funnelPeak}
               />
             ))}
-          </div>
+          </dl>
           <p className="mt-4">
             <Comparison
               value={result.applications.startedThisPeriod}
@@ -345,8 +344,18 @@ export function DashboardView({ result }: { result: DashboardResult }) {
 
         <Panel
           title="Profile health"
+          status={{
+            label: `${settledChecks} of ${profileChecks.length} set up`,
+            tone: settledChecks === profileChecks.length ? "good" : "neutral",
+          }}
           action={{ href: "/profile", label: "Open career profile" }}
         >
+          <Meter
+            value={settledChecks}
+            max={profileChecks.length}
+            tone={settledChecks === profileChecks.length ? "good" : "attention"}
+            className="mt-3.5"
+          />
           <dl className="mt-4 grid grid-cols-3 gap-3">
             <div>
               <dd className="tnum text-base font-semibold text-foreground">
@@ -373,20 +382,22 @@ export function DashboardView({ result }: { result: DashboardResult }) {
               <dt className="mt-0.5 text-xs text-ink-faint">CV on file</dt>
             </div>
           </dl>
-          {result.profileHealth.nudges.length === 0 ? null : (
-            <ul className="mt-4 flex flex-col gap-1.5 border-t border-border pt-4">
-              {result.profileHealth.nudges.map((nudge) => (
-                <li key={nudge} className="text-sm leading-6">
+          <ul className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
+            {profileChecks.map((check) => (
+              <CheckItem key={check.key} done={check.done}>
+                {check.done ? (
+                  check.settled
+                ) : (
                   <Link
-                    href={nudgeCopy[nudge].href}
-                    className="rounded-sm text-ink-secondary underline decoration-border underline-offset-4 outline-none transition-colors duration-150 hover:text-foreground hover:decoration-ink-faint focus-visible:ring-2 focus-visible:ring-ring/60"
+                    href={nudgeCopy[check.key].href}
+                    className="rounded-sm text-ink-secondary underline decoration-border underline-offset-4 outline-none transition-colors duration-(--duration-quick) hover:text-foreground hover:decoration-ink-faint focus-visible:ring-2 focus-visible:ring-ring/60"
                   >
-                    {nudgeCopy[nudge].text}
+                    {nudgeCopy[check.key].text}
                   </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+                )}
+              </CheckItem>
+            ))}
+          </ul>
         </Panel>
       </div>
 

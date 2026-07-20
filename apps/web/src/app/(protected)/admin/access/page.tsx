@@ -16,7 +16,7 @@ export default async function AccessPage() {
   ]);
 
   return (
-    <main className="mx-auto max-w-6xl px-5 py-7 sm:px-8">
+    <main className="mx-auto max-w-page px-5 py-7 sm:px-8">
       <header className="mb-6 max-w-2xl">
         <h1 className="text-xl font-semibold tracking-[-0.02em]">Access</h1>
         <p className="mt-3 text-sm leading-6 text-ink-secondary">

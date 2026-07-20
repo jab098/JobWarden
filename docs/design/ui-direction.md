@@ -23,7 +23,7 @@ JobWarden is a calm, capable work tool rather than a marketing template. It is l
 - Keep icons small and quiet. Text labels carry meaning; icons support them.
 - Prefer compact but breathable density: consistent 4- and 8-pixel spacing increments, short line lengths for prose, and aligned metadata columns for scanning.
 - Use semantic colour only for state: approved/success, pending/warning, rejected/error, and neutral/unknown.
-- Shadows at most `0 2px 8px rgba(0,0,0,0.04)` on hover only; borders `1px` neutral (`#EAEAEA`-class against white, existing warm neutrals stay); accents appear as text/dot state colour on neutral surfaces, never as tinted panels with accent edges. (Distilled from the taste-skill minimalist variant and the owner's 2026-07-19 direction; calm Openship-like surfaces, transitions.dev-like motion.)
+- Cards carry a soft two-stop shadow and an inset hairline ring, never a drawn border, and sit on a lightly dotted ground; accents appear as text/dot/pill state colour on those white surfaces, never as tinted panels with accent edges. The exact tokens and the `.card-surface` rule live in `docs/design/design-system.md` (2026-07-20 card revision, replacing the earlier hover-only-shadow guidance). (Distilled from the taste-skill minimalist variant, the owner's 2026-07-19 direction, and the owner's 2026-07-20 card reference; calm lifted surfaces, transitions.dev-like motion.)
 
 ## Motion
 
@@ -42,7 +42,7 @@ JobWarden is a calm, capable work tool rather than a marketing template. It is l
 
 ## Product composition
 
-- Desktop uses a persistent, narrow navigation rail and one dominant content column. Mobile uses an accessible sheet/drawer.
+- Desktop uses a persistent navigation rail and one dominant content column. Both scale with the viewport (`--rail-width`, `max-w-page`, `max-w-list`) so a wide monitor gets a wider working area rather than wider empty gutters; a rail that stays 224px on a 2560px display reads as stranded. Mobile uses an accessible sheet/drawer.
 - Page headers pair one clear title with a short status line and at most one primary action.
 - Jobs use one consistent responsive list. Employer, UK location, workplace, employment type, working time, compensation, IR35 status when relevant, and posting age must scan in a stable order.
 - Filters stay URL-backed. Desktop filters can remain visible; mobile filters use a sheet that shows active values and a clear-all action.

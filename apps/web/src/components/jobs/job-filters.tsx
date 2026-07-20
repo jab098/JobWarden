@@ -136,7 +136,7 @@ function FilterToolbar({
       aria-label="Refine job search"
       method="get"
       action="/jobs"
-      className="rounded-lg border border-border bg-card p-3"
+      className="card-surface p-3"
     >
       <input type="hidden" name="sort" value={filters.sort} />
       <div className="flex flex-wrap items-center gap-2">

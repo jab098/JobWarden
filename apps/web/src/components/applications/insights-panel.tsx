@@ -1,17 +1,8 @@
 import type { ApplicationInsights } from "@jobwarden/domain";
 
+import { CardHeader, MeterRow } from "@/components/ui/card";
+import { funnelStageLabels } from "@/lib/applications/types";
 import { cn } from "@/lib/utils";
-
-const funnelLabels: Record<
-  ApplicationInsights["funnel"][number]["stage"],
-  string
-> = {
-  applied: "Applied",
-  screening: "Screening",
-  interviewing: "Interviewing",
-  offer: "Offer",
-  accepted: "Accepted",
-};
 
 function Figure({
   label,
@@ -49,37 +40,31 @@ export function InsightsPanel({ insights }: { insights: ApplicationInsights }) {
       aria-label="Application insights"
       className="stagger-children mt-4 grid gap-2.5 lg:grid-cols-3"
     >
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold text-foreground">
-          Funnel reached
-        </h2>
-        <dl className="mt-3 flex flex-col gap-2">
-          {insights.funnel.map((step) => {
-            const share = step.reached / funnelPeak;
-            return (
-              <div key={step.stage} className="flex items-center gap-3">
-                <dt className="w-24 shrink-0 text-xs text-ink-secondary">
-                  {funnelLabels[step.stage]}
-                </dt>
-                <span aria-hidden="true" className="h-1.5 min-w-0 flex-1">
-                  <span
-                    className="block h-full rounded-full bg-link/75"
-                    style={{
-                      width: `${Math.max(share * 100, step.reached > 0 ? 4 : 0)}%`,
-                    }}
-                  />
-                </span>
-                <dd className="tnum w-6 shrink-0 text-right font-mono text-xs text-foreground">
-                  {step.reached}
-                </dd>
-              </div>
-            );
-          })}
+      <div className="card-surface p-4">
+        <CardHeader title="Funnel reached" />
+        <dl className="mt-3.5 flex flex-col gap-2.5">
+          {insights.funnel.map((step) => (
+            <MeterRow
+              key={step.stage}
+              label={funnelStageLabels[step.stage]}
+              value={step.reached}
+              max={funnelPeak}
+            />
+          ))}
         </dl>
       </div>
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold text-foreground">Follow-ups</h2>
-        <div className="mt-3 grid grid-cols-3 gap-3">
+      <div className="card-surface p-4">
+        <CardHeader
+          title="Follow-ups"
+          status={
+            insights.followUps.overdue > 0
+              ? { label: "Overdue", tone: "danger" }
+              : insights.followUps.dueToday > 0
+                ? { label: "Due today", tone: "attention" }
+                : { label: "Clear", tone: "good" }
+          }
+        />
+        <div className="mt-3.5 grid grid-cols-3 gap-3">
           <Figure
             label="Overdue"
             value={insights.followUps.overdue}
@@ -93,9 +78,9 @@ export function InsightsPanel({ insights }: { insights: ApplicationInsights }) {
           <Figure label="Upcoming" value={insights.followUps.upcoming} />
         </div>
       </div>
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold text-foreground">Outcomes</h2>
-        <div className="mt-3 grid grid-cols-3 gap-3">
+      <div className="card-surface p-4">
+        <CardHeader title="Outcomes" />
+        <div className="mt-3.5 grid grid-cols-3 gap-3">
           <Figure label="Observed outcome" value={insights.outcomes.observed} />
           <Figure label="Still open" value={insights.outcomes.open} />
           <Figure

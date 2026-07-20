@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 
 export function JobsErrorView({ reset }: { reset: () => void }) {
   return (
-    <section className="mx-auto max-w-6xl px-4 py-5 lg:px-6">
-      <div className="rounded-lg border border-border bg-card px-6 py-14 text-center">
+    <section className="mx-auto max-w-page px-4 py-5 lg:px-6">
+      <div className="card-surface px-6 py-14 text-center">
         <h1 className="text-base font-semibold tracking-[-0.01em]">
           Jobs are temporarily unavailable
         </h1>

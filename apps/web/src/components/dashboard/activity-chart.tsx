@@ -14,37 +14,22 @@ function formatDay(date: string): string {
   return dayLabel.format(new Date(`${date}T00:00:00Z`));
 }
 
-const HEIGHT = 144;
-const PLOT_TOP = 6;
+const HEIGHT = 148;
+const PLOT_TOP = 8;
 const PLOT_BOTTOM = HEIGHT - 22;
-const AXIS_WIDTH = 26;
-
-/** A rectangle whose top two corners are rounded; the feet stay square. */
-function roundedTopBar(
-  x: number,
-  y: number,
-  width: number,
-  bottom: number,
-  radius: number,
-): string {
-  const r = Math.min(radius, width / 2, bottom - y);
-  return [
-    `M ${x} ${bottom}`,
-    `L ${x} ${y + r}`,
-    `Q ${x} ${y} ${x + r} ${y}`,
-    `L ${x + width - r} ${y}`,
-    `Q ${x + width} ${y} ${x + width} ${y + r}`,
-    `L ${x + width} ${bottom}`,
-    "Z",
-  ].join(" ");
-}
+const AXIS_WIDTH = 28;
+/** Empty days keep a visible foot so the day still reads as measured. */
+const FOOT = 3;
+/** Flat-topped columns; just enough radius to soften the corner. */
+const BAR_RADIUS = 2;
 
 /**
- * The dashboard's day-by-day bars, drawn by hand: light horizontal grid,
- * quiet mono axes, rounded bars, placeholder-grey feet for empty days, and
- * a hover tooltip. The figure carries the accessible name; the drawing is
+ * The dashboard's day-by-day columns, drawn by hand: three evenly spaced
+ * gridlines with quiet mono ticks, flat-topped columns standing on the
+ * baseline in graphite ink, grey feet for days with nothing, and a hover band
+ * with a tooltip. The figure carries the accessible name; the drawing is
  * decoration. No charting dependency: recharts 3 renders empty against this
- * React/Next pair, and eighty lines we own beat a black box we do not.
+ * React/Next pair, and seventy lines we own beat a black box we do not.
  */
 export function ActivityChart({
   series,
@@ -77,15 +62,20 @@ export function ActivityChart({
   }, []);
 
   const peak = Math.max(1, ...series.map((day) => day.count));
+  // A quiet week should look like a quiet week. Without a floor under the axis
+  // a single event paints a full-height column and overstates itself.
+  // Three evenly spaced ticks, so the top gridline is always a whole number.
+  const tickStep = Math.max(1, Math.ceil(Math.max(3, peak) / 3));
+  const axisTop = tickStep * 3;
+  const ticks = [tickStep, tickStep * 2, axisTop];
   const plotWidth = Math.max(0, width - AXIS_WIDTH);
   const step = series.length > 0 ? plotWidth / series.length : 0;
-  const barWidth = Math.min(26, Math.max(3, step * 0.62));
+  const barWidth = Math.min(18, Math.max(4, step * 0.56));
   const dense = series.length > 10;
   const labelEvery = dense ? Math.ceil(series.length / 6) : 1;
-  const gridValues = peak <= 2 ? [1] : [Math.ceil(peak / 2), peak];
 
   const yFor = (count: number) =>
-    PLOT_BOTTOM - (count / peak) * (PLOT_BOTTOM - PLOT_TOP);
+    PLOT_BOTTOM - (count / axisTop) * (PLOT_BOTTOM - PLOT_TOP);
 
   const hoveredDay = hovered === null ? null : series[hovered];
 
@@ -99,66 +89,66 @@ export function ActivityChart({
             viewBox={`0 0 ${width} ${HEIGHT}`}
             onMouseLeave={() => setHovered(null)}
           >
-            {/* Baseline and value gridlines with mono tick labels. */}
+            {/* Gridlines first, so the columns stand in front of them. */}
+            {ticks.map((tick) => (
+              <g key={tick}>
+                <line
+                  x1={AXIS_WIDTH}
+                  x2={width}
+                  y1={yFor(tick)}
+                  y2={yFor(tick)}
+                  stroke="var(--border)"
+                />
+                <text
+                  x={AXIS_WIDTH - 8}
+                  y={yFor(tick) + 3}
+                  textAnchor="end"
+                  className="fill-ink-faint font-mono text-[9px]"
+                >
+                  {tick}
+                </text>
+              </g>
+            ))}
             <line
               x1={AXIS_WIDTH}
               x2={width}
               y1={PLOT_BOTTOM}
               y2={PLOT_BOTTOM}
-              stroke="var(--border)"
+              stroke="var(--input)"
             />
-            {gridValues.map((value) => (
-              <g key={value}>
-                <line
-                  x1={AXIS_WIDTH}
-                  x2={width}
-                  y1={yFor(value)}
-                  y2={yFor(value)}
-                  stroke="var(--border)"
-                  strokeDasharray="3 3"
-                />
-                <text
-                  x={AXIS_WIDTH - 7}
-                  y={yFor(value) + 3}
-                  textAnchor="end"
-                  className="fill-ink-faint font-mono text-[9px]"
-                >
-                  {value}
-                </text>
-              </g>
-            ))}
+            <text
+              x={AXIS_WIDTH - 8}
+              y={PLOT_BOTTOM + 3}
+              textAnchor="end"
+              className="fill-ink-faint font-mono text-[9px]"
+            >
+              0
+            </text>
             {series.map((day, index) => {
               const centre = AXIS_WIDTH + step * index + step / 2;
               const x = centre - barWidth / 2;
-              const isHovered = hovered === index;
+              const top =
+                day.count === 0 ? PLOT_BOTTOM - FOOT : yFor(day.count);
               return (
                 <g key={day.date}>
-                  {day.count === 0 ? (
-                    <path
-                      d={roundedTopBar(
-                        x,
-                        PLOT_BOTTOM - 3,
-                        barWidth,
-                        PLOT_BOTTOM,
-                        1.5,
-                      )}
-                      className="fill-border"
+                  {hovered === index ? (
+                    <rect
+                      x={AXIS_WIDTH + step * index + 1}
+                      y={PLOT_TOP - 4}
+                      width={Math.max(0, step - 2)}
+                      height={PLOT_BOTTOM - PLOT_TOP + 4}
+                      rx={3}
+                      className="fill-surface-sunken"
                     />
-                  ) : (
-                    <path
-                      d={roundedTopBar(
-                        x,
-                        yFor(day.count),
-                        barWidth,
-                        PLOT_BOTTOM,
-                        3,
-                      )}
-                      className="fill-link transition-opacity duration-(--duration-quick)"
-                      opacity={
-                        hovered === null ? 0.75 : isHovered ? 0.95 : 0.35
-                      }
-                    />
-                  )}
+                  ) : null}
+                  <rect
+                    x={x}
+                    y={top}
+                    width={barWidth}
+                    height={PLOT_BOTTOM - top}
+                    rx={BAR_RADIUS}
+                    className={day.count === 0 ? "fill-border" : "fill-data"}
+                  />
                   {index % labelEvery === 0 ? (
                     <text
                       x={centre}
@@ -187,7 +177,7 @@ export function ActivityChart({
       {hoveredDay ? (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs shadow-lg"
+          className="card-surface pointer-events-none absolute z-10 -translate-x-1/2 px-2.5 py-1.5 text-xs shadow-[var(--shadow-card-raised)]"
           style={{
             left: AXIS_WIDTH + step * hovered! + step / 2,
             top: -8,

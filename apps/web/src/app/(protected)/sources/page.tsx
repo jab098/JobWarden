@@ -30,7 +30,7 @@ export default async function SourcesPage() {
   const { sources } = await (await getSourcesRepository()).listEnabled();
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-5 lg:px-6">
+    <div className="mx-auto max-w-list px-4 py-5 lg:px-6">
       <header>
         <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
           Job sources
@@ -44,7 +44,7 @@ export default async function SourcesPage() {
 
       <section
         aria-labelledby="connected-sources-heading"
-        className="mt-4 rounded-lg border border-border bg-card p-4"
+        className="mt-4 card-surface p-4"
       >
         <h2
           id="connected-sources-heading"
@@ -82,7 +82,7 @@ export default async function SourcesPage() {
 
       <section
         aria-labelledby="available-sources-heading"
-        className="mt-3 rounded-lg border border-border bg-card p-4"
+        className="mt-3 card-surface p-4"
       >
         <h2
           id="available-sources-heading"

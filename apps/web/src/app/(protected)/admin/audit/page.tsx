@@ -15,7 +15,7 @@ export default async function AuditPage() {
   ).listAuditLog({ limit: pageSize, before: null });
 
   return (
-    <main className="mx-auto max-w-6xl px-5 py-7 sm:px-8">
+    <main className="mx-auto max-w-page px-5 py-7 sm:px-8">
       <header className="mb-8 max-w-2xl">
         <h1 className="text-xl font-semibold tracking-[-0.02em]">Audit</h1>
         <p className="mt-3 text-sm leading-6 text-ink-secondary">

@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HomeLoading() {
   return (
-    <div role="status" className="mx-auto max-w-6xl px-4 py-5 lg:px-6">
+    <div role="status" className="mx-auto max-w-page px-4 py-5 lg:px-6">
       <span className="sr-only">Preparing your activity summary</span>
       <Skeleton className="h-7 w-32" />
       <Skeleton className="mt-2 h-4 w-full max-w-prose" />

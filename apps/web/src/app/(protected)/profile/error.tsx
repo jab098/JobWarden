@@ -9,7 +9,7 @@ export default function ProfileError({
   reset: () => void;
 }) {
   return (
-    <div className="mx-auto min-h-screen max-w-6xl bg-white px-5 py-16 sm:px-8 lg:px-10">
+    <div className="mx-auto min-h-screen max-w-page bg-white px-5 py-16 sm:px-8 lg:px-10">
       <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-[#8f3f35]">
         Private data unavailable
       </p>

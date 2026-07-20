@@ -42,6 +42,7 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-link: var(--link);
+  --color-data: var(--data);
   --color-ink-secondary: var(--ink-secondary);
   --color-ink-faint: var(--ink-faint);
   --color-surface-sunken: var(--surface-sunken);
@@ -51,6 +52,12 @@
   --color-warning-surface: var(--warning-surface);
   --color-danger: var(--danger);
   --color-danger-surface: var(--danger-surface);
+  /* Page widths grow with the viewport instead of stopping at a fixed pixel
+     count, so a wide monitor gets a wider working column rather than wider
+     grey gutters. `page` is the dense multi-column surfaces; `list` is the
+     single-column reading surfaces. Prose keeps the fixed narrow scale. */
+  --container-page: clamp(64rem, 80vw, 94rem);
+  --container-list: clamp(48rem, 68vw, 80rem);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -86,9 +93,14 @@
   --ink-faint: oklch(0.52 0.0124 251.7);
   --surface-sunken: oklch(0.9528 0.0052 250.5);
 
-  /* One restrained interactive blue: links, focus, active markers. */
+  /* One restrained interactive blue: links, focus, active markers. Never a
+     chart fill; data and navigation must not compete for the same colour. */
   --link: oklch(0.4879 0.1179 258.4);
   --ring: oklch(0.4879 0.1179 258.4);
+
+  /* Quantities are drawn in graphite ink, not in an accent hue. That leaves
+     colour free to mean state, and keeps charts from reading as decoration. */
+  --data: oklch(0.2178 0.0126 254.1);
 
   /* Semantic state. */
   --success: oklch(0.5075 0.1077 155.3);
@@ -101,12 +113,25 @@
 
   --border: oklch(0.9244 0.0032 247.8);
   --input: oklch(0.8862 0.0043 247.8);
+
+  /* Elevation. Cards are lifted white surfaces held by a hairline ring and a
+     soft two-stop shadow, not by a drawn border. */
+  --card-ring: oklch(0.2178 0.0126 254.1 / 0.07);
+  --card-ring-strong: oklch(0.2178 0.0126 254.1 / 0.12);
+  --shadow-card:
+    0 1px 2px oklch(0.2178 0.0126 254.1 / 0.06),
+    0 8px 20px -6px oklch(0.2178 0.0126 254.1 / 0.1);
+  --shadow-card-raised:
+    0 1px 2px oklch(0.2178 0.0126 254.1 / 0.07),
+    0 14px 28px -8px oklch(0.2178 0.0126 254.1 / 0.16);
+  /* The ground's dot grid: the only texture in the product. */
+  --ground-dot: oklch(0.2178 0.0126 254.1 / 0.09);
   --chart-1: oklch(0.4879 0.1179 258.4);
   --chart-2: oklch(0.5254 0.0138 252.4);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.5rem;
+  --radius: 0.75rem;
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.2178 0.0126 254.1);
   --sidebar-primary: oklch(0.2431 0.0132 254.1);
@@ -115,6 +140,11 @@
   --sidebar-accent-foreground: oklch(0.2178 0.0126 254.1);
   --sidebar-border: oklch(0.9244 0.0032 247.8);
   --sidebar-ring: oklch(0.4879 0.1179 258.4);
+
+  /* The navigation rail grows with the viewport so it never looks stranded on
+     a large monitor. One value; the shell's width and the content column's
+     offset both read it, so they cannot drift apart. */
+  --rail-width: clamp(14rem, 13vw, 17rem);
 
   /* Motion scale (transitions.dev). Match on usage, not raw number. */
   --duration-stagger: 40ms;
@@ -147,6 +177,8 @@
   --surface-sunken: oklch(0.21 0.008 254);
   --link: oklch(0.72 0.1 258);
   --ring: oklch(0.72 0.1 258);
+  /* Inverted: on a dark card, graphite ink becomes light graphite. */
+  --data: oklch(0.88 0.006 254);
   --success: oklch(0.72 0.11 155);
   --success-surface: oklch(0.28 0.03 155);
   --warning: oklch(0.75 0.12 78);
@@ -156,6 +188,13 @@
   --destructive: oklch(0.68 0.16 25);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
+  --card-ring: oklch(1 0 0 / 0.08);
+  --card-ring-strong: oklch(1 0 0 / 0.16);
+  --shadow-card:
+    0 1px 2px oklch(0 0 0 / 0.3), 0 4px 12px -4px oklch(0 0 0 / 0.35);
+  --shadow-card-raised:
+    0 1px 2px oklch(0 0 0 / 0.35), 0 10px 24px -8px oklch(0 0 0 / 0.45);
+  --ground-dot: oklch(1 0 0 / 0.05);
   --chart-1: oklch(0.72 0.1 258);
   --chart-2: oklch(0.71 0.01 252);
   --chart-3: oklch(0.439 0 0);
@@ -178,6 +217,11 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "cv11";
+    /* Faint dot grid on the ground only; every card covers it, so the texture
+       reads as the gaps between panels rather than as page decoration. */
+    background-image: radial-gradient(var(--ground-dot) 1px, transparent 1px);
+    background-size: 16px 16px;
+    background-position: -1px -1px;
   }
   html {
     @apply bg-background font-sans;
@@ -199,6 +243,28 @@
 }
 
 @layer utilities {
+  /* The single card surface for the whole product. A hairline ring instead of
+     a border keeps the edge from darkening at the corners, and the shadow does
+     the lifting. Every panel, list row, well and empty state uses this. */
+  .card-surface {
+    background-color: var(--card);
+    border-radius: var(--radius);
+    box-shadow:
+      inset 0 0 0 1px var(--card-ring),
+      var(--shadow-card);
+  }
+  /* Cards that are themselves a link or a control. */
+  .card-interactive {
+    transition:
+      box-shadow var(--duration-quick) var(--ease-smooth-out),
+      transform var(--duration-quick) var(--ease-smooth-out);
+  }
+  .card-interactive:hover {
+    box-shadow:
+      inset 0 0 0 1px var(--card-ring-strong),
+      var(--shadow-card-raised);
+    transform: translateY(-1px);
+  }
   /* Numbers that sit in columns or counters always align. */
   .tnum {
     font-variant-numeric: tabular-nums;

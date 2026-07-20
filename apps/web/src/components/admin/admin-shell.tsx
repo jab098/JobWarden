@@ -81,7 +81,7 @@ export function AdminShell({
           <AdminNavigation label="Administrator mobile" preview={preview} />
         </div>
       </header>
-      <aside className="fixed inset-y-0 left-0 hidden w-56 border-r border-sidebar-border bg-sidebar lg:flex lg:flex-col">
+      <aside className="fixed inset-y-0 left-0 hidden w-[var(--rail-width)] border-r border-sidebar-border bg-sidebar lg:flex lg:flex-col">
         <div className="px-5 pt-5 pb-4">
           <Link
             href={preview ? "/development/admin-preview" : "/admin/access"}
@@ -111,7 +111,7 @@ export function AdminShell({
           ) : null}
         </div>
       </aside>
-      <div className="w-full min-w-0 max-w-full overflow-x-clip lg:pl-56">
+      <div className="w-full min-w-0 max-w-full overflow-x-clip lg:pl-[var(--rail-width)]">
         {children}
       </div>
     </div>

@@ -31,7 +31,7 @@ export default async function DevelopmentAdminPreview() {
 
   return (
     <AdminShell preview>
-      <main className="mx-auto w-full min-w-0 max-w-6xl px-5 py-7 sm:px-8">
+      <main className="mx-auto w-full min-w-0 max-w-page px-5 py-7 sm:px-8">
         <header className="mb-12 max-w-3xl">
           <h1 className="break-words text-xl font-semibold tracking-[-0.02em]">
             Administrator operations preview

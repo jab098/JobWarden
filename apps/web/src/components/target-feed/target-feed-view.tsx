@@ -26,7 +26,7 @@ export function TargetFeedView({
   const count = result.items.length;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-5 lg:px-6">
+    <div className="mx-auto max-w-list px-4 py-5 lg:px-6">
       <header>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -83,7 +83,7 @@ export function TargetFeedView({
 
       <section aria-label="Target feed results" className="mt-4 min-w-0">
         {!hasProfiles ? (
-          <div className="rounded-lg border border-border bg-card px-6 py-14 text-center">
+          <div className="card-surface px-6 py-14 text-center">
             <h2 className="text-base font-semibold tracking-[-0.01em]">
               No enabled search profile yet
             </h2>
@@ -100,7 +100,7 @@ export function TargetFeedView({
             </Link>
           </div>
         ) : count === 0 ? (
-          <div className="rounded-lg border border-border bg-card px-6 py-14 text-center">
+          <div className="card-surface px-6 py-14 text-center">
             <h2 className="text-base font-semibold tracking-[-0.01em]">
               No jobs match your profile yet
             </h2>

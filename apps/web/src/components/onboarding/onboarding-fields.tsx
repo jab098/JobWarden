@@ -363,7 +363,7 @@ export function ChoiceField({
   defaultChecked: boolean | undefined;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-4 text-sm transition-[border-color,background-color] duration-(--duration-quick) ease-(--ease-smooth-out) hover:border-input has-checked:border-link/50 has-focus-visible:ring-2 has-focus-visible:ring-ring/60">
+    <label className="card-surface card-interactive flex cursor-pointer items-start gap-3 p-4 text-sm has-checked:ring-2 has-checked:ring-link/40 has-checked:ring-inset has-focus-visible:ring-2 has-focus-visible:ring-ring/60">
       <input
         type="checkbox"
         name={name}

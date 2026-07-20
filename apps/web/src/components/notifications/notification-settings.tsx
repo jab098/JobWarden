@@ -70,7 +70,7 @@ export function NotificationSettings({
   return (
     <section
       aria-labelledby="notifications-heading"
-      className="mt-4 rounded-lg border border-border bg-card p-5"
+      className="mt-4 card-surface p-5"
     >
       <h2
         id="notifications-heading"

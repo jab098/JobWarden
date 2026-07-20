@@ -163,7 +163,7 @@ export function SearchProfileForm({
   return (
     <section
       aria-labelledby="named-search-heading"
-      className="mt-3 rounded-lg border border-border bg-card p-5"
+      className="mt-3 card-surface p-5"
     >
       <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.72fr)]">
         <form

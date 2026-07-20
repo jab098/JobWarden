@@ -126,7 +126,7 @@ function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-5 lg:px-6">
+    <div className="mx-auto max-w-list px-4 py-5 lg:px-6">
       <header>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
@@ -150,7 +150,7 @@ function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
 
       <section
         aria-labelledby="career-direction-heading"
-        className="mt-4 rounded-lg border border-border bg-card p-5"
+        className="mt-4 card-surface p-5"
       >
         <h2
           id="career-direction-heading"
@@ -340,7 +340,7 @@ function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
 
       <section
         aria-labelledby="cv-source-heading"
-        className="mt-3 rounded-lg border border-border bg-card p-5"
+        className="mt-3 card-surface p-5"
       >
         <div className="flex items-start gap-3">
           <FileLock2
