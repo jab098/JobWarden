@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: {
     default: "JobWarden",
-    template: "%s — JobWarden",
+    template: "%s · JobWarden",
   },
   description:
     "A private UK job-search workspace with evidence-led job classification.",

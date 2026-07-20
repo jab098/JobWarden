@@ -27,6 +27,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   seniorityLevels,
   type CareerEvidenceItem,
   type CareerProfileDraft,
@@ -98,15 +105,15 @@ function PrivacyControls({
   return (
     <section
       aria-labelledby="profile-privacy-heading"
-      className="border-t border-[#dedbd2] py-8"
+      className="mt-3 rounded-lg border border-border bg-card p-5"
     >
       <h2
         id="profile-privacy-heading"
-        className="text-xl font-semibold tracking-[-0.02em]"
+        className="text-base font-semibold tracking-[-0.01em]"
       >
         Privacy controls
       </h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-[#596173]">
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-secondary">
         Delete private source documents separately, or remove the full career
         profile and every derived record. These controls never affect your beta
         access.
@@ -191,7 +198,7 @@ function PrivacyControls({
           <p
             key={index}
             role={state.kind === "success" ? "status" : "alert"}
-            className="mt-3 text-sm text-[#596173]"
+            className="mt-3 text-sm text-ink-secondary"
           >
             {state.message}
           </p>
@@ -282,44 +289,43 @@ function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-6xl bg-white px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
-      <header className="pb-8">
-        <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-[#697181]">
-          Private career evidence
-        </p>
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-[-0.035em] text-[#172033] sm:text-4xl">
-              Career profile
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#596173]">
-              Tell JobWarden where you have been and where you want to go. You
-              approve every machine suggestion before it can shape a search.
-            </p>
-          </div>
+    <div className="mx-auto max-w-5xl px-5 py-7 lg:px-8">
+      <header>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
+            Career profile
+          </h1>
           {readOnly ? (
-            <span className="font-mono text-[0.68rem] uppercase tracking-[0.12em] text-[#7a5a20]">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[0.68rem] text-ink-faint">
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full bg-warning"
+              />
               Fictional profile preview
             </span>
           ) : null}
         </div>
+        <p className="mt-1.5 max-w-2xl text-sm leading-6 text-ink-secondary">
+          Tell JobWarden where you have been and where you want to go. You
+          approve every machine suggestion before it can shape a search.
+        </p>
       </header>
 
       <section
         aria-labelledby="career-direction-heading"
-        className="border-t border-[#dedbd2] py-8"
+        className="mt-5 rounded-lg border border-border bg-card p-5"
       >
-        <div>
-          <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#697181]">
-            {profile ? "Your direction" : "Start with what you know"}
+        <h2
+          id="career-direction-heading"
+          className="text-base font-semibold tracking-[-0.01em]"
+        >
+          Career direction
+        </h2>
+        {profile ? null : (
+          <p className="mt-1 text-sm text-ink-faint">
+            Start with what you know
           </p>
-          <h2
-            id="career-direction-heading"
-            className="mt-2 text-xl font-semibold tracking-[-0.02em]"
-          >
-            Career direction
-          </h2>
-        </div>
+        )}
         <form action={action} className="mt-6 space-y-6">
           <input
             type="hidden"
@@ -330,44 +336,63 @@ function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="current-seniority">Current seniority</Label>
-              <select
-                id="current-seniority"
+              <Select
                 value={currentSeniority}
-                onChange={(event) =>
+                onValueChange={(value) =>
                   setCurrentSeniority(
-                    event.target
-                      .value as CareerProfileDraft["currentSeniority"],
+                    value as CareerProfileDraft["currentSeniority"],
                   )
                 }
-                disabled={readOnly}
-                className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
+                items={seniorityLevels.map((item) => ({
+                  value: item,
+                  label: labelForSeniority(item),
+                }))}
               >
-                {seniorityLevels.map((item) => (
-                  <option key={item} value={item}>
-                    {labelForSeniority(item)}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger
+                  id="current-seniority"
+                  disabled={readOnly}
+                  className="w-full bg-card"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false} align="start">
+                  {seniorityLevels.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {labelForSeniority(item)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="target-seniority">Target seniority</Label>
-              <select
-                id="target-seniority"
+              <Select
                 value={targetSeniority}
-                onChange={(event) =>
+                onValueChange={(value) =>
                   setTargetSeniority(
-                    event.target.value as CareerProfileDraft["targetSeniority"],
+                    value as CareerProfileDraft["targetSeniority"],
                   )
                 }
-                disabled={readOnly}
-                className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
+                items={seniorityLevels.map((item) => ({
+                  value: item,
+                  label: labelForSeniority(item),
+                }))}
               >
-                {seniorityLevels.map((item) => (
-                  <option key={item} value={item}>
-                    {labelForSeniority(item)}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger
+                  id="target-seniority"
+                  disabled={readOnly}
+                  className="w-full bg-card"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false} align="start">
+                  {seniorityLevels.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {labelForSeniority(item)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="target-roles">Target role families</Label>
@@ -379,7 +404,7 @@ function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
                 disabled={readOnly}
                 className="[overflow-wrap:anywhere]"
               />
-              <p className="text-xs text-[#697181]">
+              <p className="text-xs text-ink-faint">
                 Separate more than one with commas.
               </p>
             </div>
@@ -412,7 +437,7 @@ function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
               />
             </div>
           </div>
-          <div className="rounded-md border border-[#e7e3da] p-4">
+          <div className="rounded-md border border-border p-4">
             <Label htmlFor="add-skill">Add a skill</Label>
             <div className="mt-2 flex max-w-xl gap-2">
               <Input
@@ -435,7 +460,7 @@ function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
                 {userEvidence.map((item) => (
                   <li
                     key={item.id}
-                    className="flex max-w-full items-center gap-1 rounded-sm border border-[#d8d4cb] bg-[#f8f7f3] px-2 py-1 text-sm [overflow-wrap:anywhere]"
+                    className="flex max-w-full items-center gap-1 rounded-sm border border-border bg-surface-sunken px-2 py-1 text-sm [overflow-wrap:anywhere]"
                   >
                     <span>{item.label}</span>
                     <Button
@@ -467,7 +492,7 @@ function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
             {state.kind !== "idle" ? (
               <p
                 role={state.kind === "success" ? "status" : "alert"}
-                className="text-sm text-[#596173]"
+                className="text-sm text-ink-secondary"
               >
                 {state.message}
               </p>
@@ -478,27 +503,28 @@ function ProfileOnboardingEditor({ snapshot }: { snapshot: ProfileSnapshot }) {
 
       <section
         aria-labelledby="cv-source-heading"
-        className="border-t border-[#dedbd2] py-8"
+        className="mt-3 rounded-lg border border-border bg-card p-5"
       >
         <div className="flex items-start gap-3">
           <FileLock2
             aria-hidden="true"
-            className="mt-0.5 size-5 text-[#2458a6]"
+            strokeWidth={1.75}
+            className="mt-0.5 size-4.5 text-ink-faint"
           />
           <div className="min-w-0 flex-1">
             <h2
               id="cv-source-heading"
-              className="text-xl font-semibold tracking-[-0.02em]"
+              className="text-base font-semibold tracking-[-0.01em]"
             >
               Your CV
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#596173]">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-secondary">
               JobWarden reads your CV to find what it can honestly match you on.
               The file is stored privately, is never shared with employers, and
               you can delete it and everything derived from it at any time.
             </p>
             {snapshot.currentCv ? (
-              <p className="mt-3 font-mono text-xs text-[#697181] [overflow-wrap:anywhere]">
+              <p className="mt-3 font-mono text-xs text-ink-faint [overflow-wrap:anywhere]">
                 {readOnly ? "Fictional" : "Current private"} source:{" "}
                 {snapshot.currentCv.fileName}
                 {snapshot.currentCv.lifecycleStatus === "ready"

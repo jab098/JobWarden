@@ -119,7 +119,7 @@ describe("target feed view", () => {
     expect(screen.getByText("Apache Spark pipelines")).toBeInTheDocument();
     expect(screen.getByText("Kubernetes")).toBeInTheDocument();
     expect(screen.getByText(/ETL/)).toBeInTheDocument();
-    expect(screen.getByText(/Advertised salary/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Advertised salary/i).length).toBeGreaterThan(0);
   });
 
   it("has no sparkle or AI-match copy", () => {

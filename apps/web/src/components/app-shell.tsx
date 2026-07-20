@@ -1,6 +1,14 @@
 import Link from "next/link";
 
+import {
+  APP_NAV_ITEMS,
+  DataModeLine,
+  NavLink,
+  type AppNavPath,
+} from "@/components/app-nav";
 import { MobileNavigation } from "@/components/mobile-navigation";
+
+export type { AppNavPath };
 
 export function AppShell({
   children,
@@ -9,76 +17,42 @@ export function AppShell({
 }: Readonly<{
   children: React.ReactNode;
   dataMode: "supabase" | "fixtures";
-  activePath?:
-    "home" | "matches" | "jobs" | "pathways" | "applications" | "profile";
+  activePath?: AppNavPath;
 }>) {
   return (
-    <div className="min-h-screen bg-[#f4f1ea] text-[#172033]">
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[#d8d4cb] bg-[#f4f1ea]/95 px-5 backdrop-blur lg:hidden">
-        <Link href="/home" className="font-semibold tracking-[-0.02em]">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur lg:hidden">
+        <Link
+          href="/home"
+          className="rounded-md text-[0.95rem] font-semibold tracking-[-0.02em] outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+        >
           JobWarden
         </Link>
         <MobileNavigation dataMode={dataMode} activePath={activePath} />
       </header>
-      <aside className="fixed inset-y-0 left-0 hidden w-52 flex-col border-r border-[#d8d4cb] bg-[#f4f1ea] lg:flex">
-        <div className="border-b border-[#d8d4cb] px-6 py-6">
+      <aside className="fixed inset-y-0 left-0 hidden w-56 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
+        <div className="px-5 pt-5 pb-4">
           <Link
             href="/home"
-            className="text-lg font-semibold tracking-[-0.025em]"
+            className="rounded-md text-[0.95rem] font-semibold tracking-[-0.02em] outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
           >
             JobWarden
           </Link>
-          <p className="mt-1 text-xs text-[#596173]">UK jobs workspace</p>
         </div>
-        <nav aria-label="Primary" className="p-3">
-          <Link
-            href="/home"
-            aria-current={activePath === "home" ? "page" : undefined}
-            className={`block rounded-md px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "home" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173] hover:bg-white/70"}`}
-          >
-            Home
-          </Link>
-          <Link
-            href="/matches"
-            aria-current={activePath === "matches" ? "page" : undefined}
-            className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "matches" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173] hover:bg-white/70"}`}
-          >
-            Matches
-          </Link>
-          <Link
-            href="/jobs"
-            aria-current={activePath === "jobs" ? "page" : undefined}
-            className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "jobs" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173] hover:bg-white/70"}`}
-          >
-            Search jobs
-          </Link>
-          <Link
-            href="/pathways"
-            aria-current={activePath === "pathways" ? "page" : undefined}
-            className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "pathways" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173] hover:bg-white/70"}`}
-          >
-            Pathways
-          </Link>
-          <Link
-            href="/applications"
-            aria-current={activePath === "applications" ? "page" : undefined}
-            className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "applications" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173] hover:bg-white/70"}`}
-          >
-            Applications
-          </Link>
-          <Link
-            href="/profile"
-            aria-current={activePath === "profile" ? "page" : undefined}
-            className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "profile" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173] hover:bg-white/70"}`}
-          >
-            Career profile
-          </Link>
+        <nav aria-label="Primary" className="flex flex-col gap-0.5 px-3">
+          {APP_NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.path}
+              item={item}
+              active={activePath === item.path}
+            />
+          ))}
         </nav>
-        <p className="mt-auto border-t border-[#d8d4cb] px-6 py-5 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#596173]">
-          {dataMode === "fixtures" ? "Development data" : "Live UK listings"}
-        </p>
+        <div className="mt-auto border-t border-sidebar-border px-5 py-4">
+          <DataModeLine dataMode={dataMode} />
+        </div>
       </aside>
-      <main className="min-w-0 lg:pl-52">{children}</main>
+      <main className="min-w-0 lg:pl-56">{children}</main>
     </div>
   );
 }

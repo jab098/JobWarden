@@ -46,7 +46,7 @@ function SuggestionDecision({
       {state.kind !== "idle" ? (
         <span
           role={state.kind === "success" ? "status" : "alert"}
-          className="text-xs text-[#596173]"
+          className="text-xs text-ink-secondary"
         >
           {state.message}
         </span>
@@ -65,19 +65,16 @@ export function ProfileSuggestionList({
   return (
     <section
       aria-labelledby="profile-suggestions-heading"
-      className="border-t border-[#dedbd2] py-8"
+      className="mt-3 rounded-lg border border-border bg-card p-5"
     >
-      <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#697181]">
-        Proposed · accepted · rejected
-      </p>
       <h2
         id="profile-suggestions-heading"
-        className="mt-2 text-xl font-semibold tracking-[-0.02em]"
+        className="text-base font-semibold tracking-[-0.01em]"
       >
         Suggested direction
       </h2>
       {suggestions.length === 0 ? (
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-[#596173]">
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-ink-secondary">
           There are no suggestions to review. JobWarden never changes your
           seniority or search direction silently.
         </p>
@@ -86,11 +83,13 @@ export function ProfileSuggestionList({
           {suggestions.map((suggestion) => (
             <li
               key={suggestion.id}
-              className="grid gap-4 rounded-md border border-[#e7e3da] bg-white px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+              className="grid gap-4 rounded-md border border-border bg-white px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
             >
               <div className="min-w-0 [overflow-wrap:anywhere]">
-                <p className="font-medium text-[#263248]">{suggestion.label}</p>
-                <p className="mt-1 text-sm text-[#596173]">
+                <p className="font-medium text-foreground">
+                  {suggestion.label}
+                </p>
+                <p className="mt-1 text-sm text-ink-secondary">
                   Supported by {suggestion.evidenceItemIds.length}{" "}
                   {suggestion.evidenceItemIds.length === 1
                     ? "evidence item"
@@ -109,7 +108,7 @@ export function ProfileSuggestionList({
                   className={
                     suggestion.state === "accepted"
                       ? "rounded-sm border-[#9bc7ad] bg-[#f1f8f3] text-[#205f3b]"
-                      : "rounded-sm border-[#d8aaa4] bg-[#fbf3f1] text-[#8a3328]"
+                      : "rounded-sm border-[#d8aaa4] bg-[#fbf3f1] text-danger"
                   }
                 >
                   {suggestion.state === "accepted" ? "Accepted" : "Rejected"}

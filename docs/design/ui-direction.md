@@ -14,10 +14,10 @@ Use browser verification at desktop and 390-pixel mobile widths before declaring
 
 ## Visual character
 
-JobWarden is a calm, capable work tool rather than a marketing template. It is light-first and editorially structured because users will scan dense job information for long periods.
+JobWarden is a calm, capable work tool rather than a marketing template. It is light-first and editorially structured because users will scan dense job information for long periods. The concrete token values, motion scale, and component rules live in `docs/design/design-system.md` (2026-07-20 redesign); that file wins on specifics.
 
 - Use Geist Sans for interface text and Geist Mono only for identifiers, dates, rates, run IDs, and compact operational metadata.
-- Use warm neutral or white surfaces, dark ink text, quiet borders, and one restrained blue action colour.
+- Use cool near-white ground with white working surfaces, dark cool ink, hairline borders, ink-black primary actions, and one restrained interactive blue for links, focus, and active markers.
 - Let typography, alignment, spacing, and information hierarchy create structure before adding containers.
 - Use modest radii selectively. Panels, inputs, buttons, badges, and every nested element must not all become identical rounded rectangles.
 - Keep icons small and quiet. Text labels carry meaning; icons support them.

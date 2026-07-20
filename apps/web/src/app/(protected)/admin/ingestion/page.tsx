@@ -22,15 +22,10 @@ export default async function IngestionPage() {
   const enabledSources = sources.filter((source) => source.enabled);
 
   return (
-    <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
-      <header className="mb-10 max-w-2xl">
-        <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#2458a6]">
-          Administrator
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em]">
-          Ingestion
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-[#596173]">
+    <main className="mx-auto max-w-6xl px-5 py-7 sm:px-8">
+      <header className="mb-6 max-w-2xl">
+        <h1 className="text-xl font-semibold tracking-[-0.02em]">Ingestion</h1>
+        <p className="mt-3 text-sm leading-6 text-ink-secondary">
           Inspect collection outcomes and request a bounded source refresh
           without fetching inside this page request.
         </p>
@@ -41,17 +36,17 @@ export default async function IngestionPage() {
           <div>
             <h2
               id="request-sync-heading"
-              className="text-xl font-semibold tracking-[-0.025em]"
+              className="text-base font-semibold tracking-[-0.01em]"
             >
               Request source sync
             </h2>
-            <p className="mt-1 text-sm text-[#596173]">
+            <p className="mt-1 text-sm text-ink-secondary">
               Each request is coalesced and respects its configured minimum
               interval.
             </p>
           </div>
           {enabledSources.length === 0 ? (
-            <p className="text-sm text-[#596173]">
+            <p className="text-sm text-ink-secondary">
               No enabled source is available for a manual request.
             </p>
           ) : (
@@ -63,7 +58,7 @@ export default async function IngestionPage() {
                 >
                   <div>
                     <h3 className="font-medium">{source.employerName}</h3>
-                    <p className="mt-1 font-mono text-xs text-[#596173]">
+                    <p className="mt-1 font-mono text-xs text-ink-secondary">
                       Every {source.minimumSyncMinutes} minutes
                     </p>
                   </div>

@@ -22,7 +22,7 @@ export function UnsubscribeForm({ token }: { token: string }) {
 
   if (state.kind === "success") {
     return (
-      <p role="status" className="mt-6 text-sm leading-6 text-[#596173]">
+      <p role="status" className="mt-6 text-sm leading-6 text-ink-secondary">
         {state.message} You can turn them back on from your career profile at
         any time.
       </p>
@@ -36,7 +36,7 @@ export function UnsubscribeForm({ token }: { token: string }) {
         {pending ? "Turning off…" : "Turn off digest emails"}
       </Button>
       {state.kind === "idle" ? null : (
-        <p role="alert" className="text-sm text-[#8a3328]">
+        <p role="alert" className="text-sm text-danger">
           {state.message}
         </p>
       )}

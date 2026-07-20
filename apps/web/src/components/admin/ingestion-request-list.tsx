@@ -12,17 +12,17 @@ export function IngestionRequestList({
       <div>
         <h2
           id="queued-requests-heading"
-          className="text-xl font-semibold tracking-[-0.025em]"
+          className="text-base font-semibold tracking-[-0.01em]"
         >
           Manual requests
         </h2>
-        <p className="mt-1 text-sm text-[#596173]">
+        <p className="mt-1 text-sm text-ink-secondary">
           Requests are coalesced per source and consumed by the shared ingestion
           runtime.
         </p>
       </div>
       {requests.length === 0 ? (
-        <p className="text-sm text-[#596173]">
+        <p className="text-sm text-ink-secondary">
           No manual ingestion requests have been recorded.
         </p>
       ) : (
@@ -42,7 +42,7 @@ export function IngestionRequestList({
                       : `${request.status} request`}
                   </span>
                 </div>
-                <p className="mt-1 font-mono text-xs text-[#596173]">
+                <p className="mt-1 font-mono text-xs text-ink-secondary">
                   {shortId(request.correlationId)} ·{" "}
                   {formatAdminDate(request.requestedAt)}
                 </p>

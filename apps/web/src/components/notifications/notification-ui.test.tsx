@@ -125,7 +125,7 @@ describe("NotificationSettings", () => {
     render(<NotificationSettings result={settings()} />);
 
     expect(
-      screen.getByText("Delivery failed — retried at the next slot"),
+      screen.getByText("Delivery failed, retried at the next slot"),
     ).toBeInTheDocument();
   });
 

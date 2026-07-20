@@ -29,7 +29,7 @@ export function AccessSettingForm({
       {state.kind !== "idle" ? (
         <p
           role={state.kind === "success" ? "status" : "alert"}
-          className="text-sm text-[#596173]"
+          className="text-sm text-ink-secondary"
         >
           {state.message}
         </p>

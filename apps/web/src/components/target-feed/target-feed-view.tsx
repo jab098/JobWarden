@@ -26,34 +26,37 @@ export function TargetFeedView({
   const count = result.items.length;
 
   return (
-    <div className="mx-auto min-h-screen max-w-[92rem] bg-white">
-      <header className="border-b border-[#dedbd2] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
-        <div className="flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-[#697181]">
-              United Kingdom only
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-[#172033] sm:text-4xl">
-              Your matches
-            </h1>
-          </div>
+    <div className="mx-auto max-w-4xl px-5 py-7 lg:px-8">
+      <header>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
+            Your matches
+          </h1>
           <Link
             href="/jobs"
-            className="rounded-sm text-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+            className="rounded-sm text-sm font-medium text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
           >
             Search all UK jobs
           </Link>
         </div>
-        <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-[#ece9e2] pt-4 text-sm text-[#596173]">
-          <span className="font-medium text-[#263248]">
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-secondary">
+          <span className="tnum font-medium text-foreground">
             {count} {count === 1 ? "match" : "matches"}
           </span>
           {hasProfiles ? (
-            <span>Matched to {result.enabledProfileNames.join(", ")}</span>
+            <span className="text-xs">
+              Matched to {result.enabledProfileNames.join(", ")}
+            </span>
           ) : null}
-          <span>{formatFreshness(latestListingUpdate)}</span>
+          <span className="text-xs text-ink-faint">
+            {formatFreshness(latestListingUpdate)}
+          </span>
           {result.dataMode === "fixtures" ? (
-            <span className="font-mono text-[0.7rem] uppercase tracking-[0.12em] text-[#7a5a20]">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[0.68rem] text-ink-faint">
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full bg-warning"
+              />
               Development data
             </span>
           ) : null}
@@ -64,7 +67,7 @@ export function TargetFeedView({
                   ? matchesHref({})
                   : matchesHref({ includeDismissed: true })
               }
-              className="rounded-sm font-medium text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+              className="ml-auto rounded-sm text-xs font-medium text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
             >
               {includeDismissed ? "Hide dismissed" : "Include dismissed"}
             </Link>
@@ -72,30 +75,30 @@ export function TargetFeedView({
         </div>
       </header>
 
-      <section aria-label="Target feed results" className="min-w-0">
+      <section aria-label="Target feed results" className="mt-5 min-w-0">
         {!hasProfiles ? (
-          <div className="px-5 py-16 sm:px-8">
-            <h2 className="text-2xl font-semibold tracking-[-0.025em]">
+          <div className="rounded-lg border border-border bg-card px-6 py-14 text-center">
+            <h2 className="text-base font-semibold tracking-[-0.01em]">
               No enabled search profile yet
             </h2>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-[#596173]">
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-ink-secondary">
               Matches score UK listings against your enabled search profiles.
               Set one up and enable it to see scored matches with the evidence
               behind each score. You can search every UK listing without one.
             </p>
             <Link
               href="/profile"
-              className="mt-6 inline-flex rounded-sm text-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+              className="mt-5 inline-flex rounded-sm text-sm font-medium text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
             >
               Set up your career profile
             </Link>
           </div>
         ) : count === 0 ? (
-          <div className="px-5 py-16 sm:px-8">
-            <h2 className="text-2xl font-semibold tracking-[-0.025em]">
+          <div className="rounded-lg border border-border bg-card px-6 py-14 text-center">
+            <h2 className="text-base font-semibold tracking-[-0.01em]">
               No jobs match your profile yet
             </h2>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-[#596173]">
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-ink-secondary">
               Every indexed UK listing was excluded by your eligibility gates or
               no listings are available yet. This is the honest result, not a
               hidden filter. Check back after the next listing update or widen
@@ -105,7 +108,7 @@ export function TargetFeedView({
             {!includeDismissed ? (
               <Link
                 href={matchesHref({ includeDismissed: true })}
-                className="mt-6 inline-flex rounded-sm text-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+                className="mt-5 inline-flex rounded-sm text-sm font-medium text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
               >
                 Include dismissed jobs
               </Link>

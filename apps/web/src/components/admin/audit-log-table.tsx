@@ -17,7 +17,7 @@ export function AuditLogTable({
 }) {
   if (entries.length === 0) {
     return (
-      <p className="mt-4 max-w-prose text-sm text-[#596173]">
+      <p className="mt-4 max-w-prose text-sm text-ink-secondary">
         No audited actions yet. Entries appear here as administrators approve
         access, change sources, or request ingestion runs.
       </p>
@@ -31,7 +31,7 @@ export function AuditLogTable({
           Audited administrator actions, most recent first
         </caption>
         <thead>
-          <tr className="border-b border-[#dedbd2] text-xs uppercase tracking-[0.08em] text-[#697181]">
+          <tr className="border-b border-border text-xs font-medium text-ink-faint">
             <th scope="col" className="py-2 pr-4 font-medium">
               When
             </th>
@@ -48,28 +48,28 @@ export function AuditLogTable({
         </thead>
         <tbody>
           {entries.map((entry) => (
-            <tr key={entry.id} className="border-b border-[#ece9e2] align-top">
-              <td className="py-3 pr-4 font-mono text-xs text-[#697181]">
+            <tr key={entry.id} className="border-b border-border align-top">
+              <td className="py-3 pr-4 font-mono text-xs text-ink-faint">
                 {dateFormatter.format(new Date(entry.createdAt))}
               </td>
-              <td className="py-3 pr-4 text-[#263248]">{entry.action}</td>
-              <td className="py-3 pr-4 text-[#596173] [overflow-wrap:anywhere]">
+              <td className="py-3 pr-4 text-foreground">{entry.action}</td>
+              <td className="py-3 pr-4 text-ink-secondary [overflow-wrap:anywhere]">
                 {entry.resourceType}
                 {entry.resourceId ? (
-                  <span className="block font-mono text-xs text-[#697181]">
+                  <span className="block font-mono text-xs text-ink-faint">
                     {entry.resourceId}
                   </span>
                 ) : null}
               </td>
-              <td className="py-3 text-[#596173] [overflow-wrap:anywhere]">
+              <td className="py-3 text-ink-secondary [overflow-wrap:anywhere]">
                 {Object.entries(entry.metadata).length === 0 ? (
-                  <span className="text-[#697181]">—</span>
+                  <span className="text-ink-faint">-</span>
                 ) : (
                   <dl className="space-y-0.5 text-xs">
                     {Object.entries(entry.metadata).map(([key, value]) => (
                       <div key={key} className="flex gap-2">
-                        <dt className="text-[#697181]">{key}</dt>
-                        <dd className="text-[#263248]">{String(value)}</dd>
+                        <dt className="text-ink-faint">{key}</dt>
+                        <dd className="text-foreground">{String(value)}</dd>
                       </div>
                     ))}
                   </dl>

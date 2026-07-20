@@ -31,15 +31,12 @@ export default async function DevelopmentAdminPreview() {
 
   return (
     <AdminShell preview>
-      <main className="mx-auto w-full min-w-0 max-w-6xl px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+      <main className="mx-auto w-full min-w-0 max-w-6xl px-5 py-7 sm:px-8">
         <header className="mb-12 max-w-3xl">
-          <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#2458a6]">
-            Fictional local data
-          </p>
-          <h1 className="mt-3 break-words text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
+          <h1 className="break-words text-xl font-semibold tracking-[-0.02em]">
             Administrator operations preview
           </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-[#596173]">
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-ink-secondary">
             A visual review surface for access decisions, lawful source
             controls, and ingestion outcomes. It has no production identity and
             cannot change stored data.
@@ -67,11 +64,11 @@ export default async function DevelopmentAdminPreview() {
             <div>
               <h2
                 id="preview-sync-heading"
-                className="text-xl font-semibold tracking-[-0.025em]"
+                className="text-base font-semibold tracking-[-0.01em]"
               >
                 Request source sync
               </h2>
-              <p className="mt-1 text-sm text-[#596173]">
+              <p className="mt-1 text-sm text-ink-secondary">
                 Preview controls are intentionally inert.
               </p>
             </div>
@@ -83,7 +80,7 @@ export default async function DevelopmentAdminPreview() {
                 >
                   <div>
                     <h3 className="font-medium">{source.employerName}</h3>
-                    <p className="mt-1 font-mono text-xs text-[#596173]">
+                    <p className="mt-1 font-mono text-xs text-ink-secondary">
                       Every {source.minimumSyncMinutes} minutes
                     </p>
                   </div>
@@ -99,12 +96,12 @@ export default async function DevelopmentAdminPreview() {
           <SourceHealthList sources={snapshot.sourceHealth} />
           <IngestionRunList runs={snapshot.runs} />
 
-          <h2 className="mt-12 text-2xl font-semibold tracking-[-0.03em]">
+          <h2 className="mt-12 text-lg font-semibold tracking-[-0.02em]">
             Health
           </h2>
           <OperationalHealthPanel health={snapshot.health} />
 
-          <h2 className="mt-12 text-2xl font-semibold tracking-[-0.03em]">
+          <h2 className="mt-12 text-lg font-semibold tracking-[-0.02em]">
             Audit
           </h2>
           <AuditLogTable entries={snapshot.auditLog} />

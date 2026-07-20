@@ -88,7 +88,7 @@ describe("CV upload card", () => {
     await waitFor(() =>
       expect(
         screen.getByText(
-          "CV uploaded. We are reading it now — this usually takes under a minute.",
+          "CV uploaded. We are reading it now; this usually takes under a minute.",
         ),
       ).toBeInTheDocument(),
     );

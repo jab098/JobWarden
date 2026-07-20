@@ -18,7 +18,7 @@ export default function ProfileError({
         <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em]">
           Career profile is unavailable
         </h1>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-[#596173]">
+        <p className="mt-3 max-w-xl text-sm leading-6 text-ink-secondary">
           Your profile details were not included in this error. Try loading the
           private workspace again.
         </p>

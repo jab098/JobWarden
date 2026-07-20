@@ -54,12 +54,12 @@ export function JobSaveButton({
         {saved ? "Saved" : "Save"}
       </Button>
       {current !== null && !saved ? (
-        <span className="text-xs text-[#596173]">
+        <span className="text-xs text-ink-faint">
           {current === "considering" ? "Considering" : "Dismissed in matches"}
         </span>
       ) : null}
       {state.kind !== "idle" && state.kind !== "success" ? (
-        <span role="alert" className="text-xs text-[#8a3328]">
+        <span role="alert" className="text-xs text-danger">
           {state.message}
         </span>
       ) : null}
