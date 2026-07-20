@@ -66,8 +66,33 @@ for (const place of places) {
   else byNormalisedName.set(key, [place]);
 }
 
+/**
+ * The administrative areas the dataset already names, for recognising the
+ * second half of "Town, County".
+ *
+ * Some values carry more than one name — "Caerdydd - Cardiff" gives both
+ * languages, "Bournemouth, Christchurch and Poole" names three towns — so each
+ * part is indexed as well as the whole, because an advert writes one of them.
+ */
+const administrativeAreas = new Set<string>();
+for (const place of dataset.places) {
+  for (const value of [place.county, place.region]) {
+    if (!value) continue;
+    administrativeAreas.add(normalisePlaceName(value));
+    for (const part of value.split(/,| - /)) {
+      const normalised = normalisePlaceName(part);
+      if (normalised) administrativeAreas.add(normalised);
+    }
+  }
+}
+
 export function allUkPlaces(): readonly UkPlace[] {
   return places;
+}
+
+/** Whether the text names an administrative area the dataset carries. */
+export function isUkAdministrativeArea(text: string): boolean {
+  return administrativeAreas.has(normalisePlaceName(text));
 }
 
 /**

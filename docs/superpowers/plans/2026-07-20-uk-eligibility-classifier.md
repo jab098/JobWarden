@@ -35,29 +35,38 @@ The existing suite already pins those cases (`London, Ontario`, `London, Kentuck
 
 ## Design
 
-`assessLocation` becomes three ordered questions:
+**What changes is the consequence of an unrecognised label, not the test for one.**
 
-1. **Positive foreign signal → `non_uk`.** Checked first, so it beats UK evidence. This is what keeps `London, Ontario` out.
-2. **UK signal → `eligible`.**
-3. **Neither → `ambiguous`.** An unrecognised label is unknown, not foreign. `ambiguous` already routes to `quarantined` in `normalise.ts`, so these become reviewable rather than discarded.
+The first attempt at this made unrecognised labels neutral and moved the whole burden onto a denylist of foreign places. Independent review took it apart, and was right to: publication then depended on the *absence* of a denylist entry, which is the wrong direction for this invariant. Three ways through it, all verified:
 
-Exclusion now requires naming a real foreign place. Absence of recognition no longer excludes anything.
+- `London, Ont.` published. `isForeignLabel` matched on trim-and-lowercase while the UK side stripped punctuation, so every abbreviation written with a full stop evaded the denylist while the UK city still matched — 25 of 28 punctuated forms published, including `Manchester, N.H.` and `Bath, U.S.A.`
+- `Bangor, ME`, `Newport, OR`, `Brighton, Victoria` published — four subdivisions were simply missing.
+- `Hamilton, Bermuda` and `Newport, County Mayo` published, along with 135 of 136 probed qualifiers. All New Zealand regions, all Irish counties, and some sixty countries were absent, and always would be: a denylist of foreign places cannot be enumerated.
+
+So `assessLocation` keeps the original allowlist test and changes only what happens when it fails:
+
+1. **A UK nation anchor present → skip the foreign check.** Washington in Tyne and Wear is a town of 67,000, and `Washington, England` says which one it means.
+2. **A named foreign qualifier → `non_uk`.** Defence in depth, not the barrier.
+3. **UK evidence and *every* label recognised → `eligible`.** This is the barrier. `London, Ont.` fails it because `ont.` is not recognised, no matter what any denylist holds.
+4. **Otherwise → `ambiguous`.** This is the fix: `ambiguous` routes to `quarantined` in `normalise.ts`, so these are reviewable rather than discarded.
+
+The denylist survives only to answer honestly where the answer is known — `London, Ontario` is `non_uk` rather than clogging a review queue. Because it is no longer load-bearing, entries are omitted rather than risked: no bare abbreviations, since fifteen UK postcode areas are two letters and `Derby, DE` would be discarded, and no name shared with a UK place, which removed `washington` and kept out `victoria`, `boston`, `perth` and `hamilton`.
+
+### Known limit
+
+A location whose every label is a real UK place name cannot be told from a UK one by name alone — `Christchurch, Canterbury` in New Zealand is the honest example, since Canterbury is a city in Kent. The test suite documents this rather than asserting it away.
 
 ### Widening UK recognition
 
-The 230-place gazetteer from Task 25 supplements the 27-city allowlist, matched **exactly** per label rather than through `resolveUkPlaces`. That function matches *contained* names, which is right for search and wrong here: `resolveUkPlaces("New York City")` returns York. Exact lookup also loses nothing measurable, because `splitLocation` has already reduced `"Leeds, West Yorkshire (hybrid)"` to clean labels and the town label is exact.
+Because publication now requires *every* label to be recognised, recognition has to cover the county half of "Town, County" or the fix does nothing.
 
-`uk-places.ts` gains `isUkPlaceName`, three lines over the index it already builds.
+- **Towns** come from the 230-place Task 25 gazetteer, matched **exactly** per label rather than through `resolveUkPlaces`. That function matches *contained* names, which is right for search and wrong here: `resolveUkPlaces("New York City")` returns York.
+- **Administrative areas** are derived from the dataset's own `county` and `region` fields — 146 and 14 distinct values, free. Multi-name values are indexed part-wise as well as whole, because `Caerdydd - Cardiff` and `Bournemouth, Christchurch and Poole` each name several places and an advert writes one of them.
+- **Ceremonial counties** need a hand list of 47. The dataset stores the *unitary authority* — Leeds's county is "Leeds" — so it cannot supply `West Yorkshire`, and that is how adverts are written. The other 47 checked were already covered.
 
-The 27-city allowlist stays: `Derry` and `Newcastle` are in it but not in the gazetteer, which carries `Londonderry` and `Newcastle upon Tyne`. Deleting it would regress both.
+`uk-places.ts` gains `isUkPlaceName` and `isUkAdministrativeArea` over the index it already builds.
 
-### The foreign set
-
-Countries and first-level subdivisions of the main English-speaking countries — US states and their two-letter abbreviations, Canadian provinces, Australian states — not foreign *cities*.
-
-The collision that matters is a UK-named city beside a foreign region (`Birmingham, Alabama`, `London, KY`), and region-level entries are what disambiguate it. Foreign city names would add homonym risk against real UK towns (`Boston`, `Washington`) while adding no cover: a bare `Paris` label matches no UK name, falls to `ambiguous`, and is quarantined rather than published. Every candidate entry was checked against the 230-place dataset for collisions; there are none.
-
-Two-letter state abbreviations are required, not optional: `Boston, MA` and `Manchester, NH` are the realistic false-publish cases, and `manchester` is UK-recognised.
+Of the 27-city allowlist, 25 are now redundant and were deleted. `Derry` and `Newcastle` remain: the gazetteer spells them `Londonderry` and `Newcastle upon Tyne`.
 
 ## Scope
 
@@ -65,9 +74,11 @@ This change is the classifier only. The observability gap — that `excluded` an
 
 ## Verification
 
-The pinned foreign cases are the regression guard and must stay green. New coverage:
+The pinned foreign cases are the regression guard and stay green. New coverage:
 
-- `Salford, England`, `Leeds, West Yorkshire`, `Salford, Greater Manchester, England` are eligible.
-- `London, Ontario`, `Birmingham, Alabama`, `Manchester, New Hampshire`, `Boston, MA`, `New York City` are excluded.
-- An unrecognised location is `ambiguous`, not `non_uk`.
-- The measured exclusion rate over the 230-place dataset falls to zero for all four advert formats.
+- All 230 bundled places publish in all four advert formats — 230/230, against 26 and 10 before.
+- Thirteen "Town, ceremonial county" cases publish. These cannot pass by construction the way a sweep over the dataset's own county field can, which is the flaw review found in the first sweep: `isUkPlaceName(place.name)` is true for all 230 places by definition, so that test passed even with the foreign check deleted.
+- **The inverse sweep**: all 230 place names crossed with thirteen foreign qualifiers — including `Ont.`, `N.H.`, `ME`, `Victoria`, `Bermuda`, `Otago`, `County Mayo` — never publish. This is the test that fails if the barrier is ever weakened back to a denylist, and it is the one that would have caught the first attempt.
+- `Washington, England` and `Washington, Tyne and Wear` are `ambiguous`, not `non_uk`.
+
+One behaviour changed that is worth recording: because `non_uk` from a location is now strictly rarer, a location like `Amsterdam` or `Dubai` paired with a description saying "Applicants must be based in the UK" now publishes where it was previously excluded on the location alone. That follows the specification — explicit UK eligibility evidence in the advert body is exactly what the description rules exist to read — but it was not an intended part of this change.
