@@ -47,12 +47,25 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 28   | Repair the history secret scan                                             | reviewed | Proven by a planted secret on a scratch branch, since deleted                         |
 | 29   | Early access list operations                                               | pending  | None for the surface; the list itself needs `202607220001` applied                    |
 | 30a  | Lever adapter (TypeScript only)                                            | reviewed | None; documented public board endpoint, no credential                                 |
-| 30b  | Provider vocabulary widening (850 lines of definer SQL)                    | pending  | None — Docker is installed; blocked behind Task 35 so the SQL lands on a green gate   |
-| 35   | Make the live database gate pass                                           | pending  | None; Docker installed 2026-07-20 and the gate now runs                               |
+| 30b  | Provider vocabulary widening (850 lines of definer SQL)                    | pending  | None — Docker is installed; sequenced after Task 35 so the SQL lands on a green gate  |
 | 31   | Ashby adapter                                                              | pending  | None; documented public board endpoint, no credential                                 |
 | 32   | Workable adapter                                                           | pending  | None; documented public board endpoint, no credential                                 |
 | 33   | Emit `JobPosting` structured data                                          | blocked  | Owner decision: public job content, plus a redistribution grant per source            |
 | 34   | Read `JobPosting` schema from allowlisted career pages                     | pending  | None; per-employer compliance record before each page is allowlisted                  |
+| 35   | Make the live database gate pass                                           | pending  | None; Docker installed 2026-07-20 and the gate now runs                               |
+
+## Remaining work, in the order it should be done
+
+Task numbers record when work was _specified_, not when it should be _built_. This is the build order, and the reasons are load-bearing.
+
+1. **Task 35 — make the live database gate pass.** First, and before anything else that touches SQL. The gate now runs and returns `Result: FAIL`; until it is green there is no check on any migration, and 24 of them have never been verified against a real database. Its first job is the `service_role` privilege question, which may be a live ingestion defect rather than a test artefact.
+2. **Task 30b — provider vocabulary widening.** 850 lines of security-definer SQL. It must land on a green gate, or it inherits a red one and nobody can tell which failures it caused. Unblocks 31 and 32, which then only add a value, an adapter and fixtures.
+3. **Task 31 — Ashby adapter**, then **Task 32 — Workable adapter.** Cheap once 30b exists. Confirm each endpoint against the provider's own documentation at slice start; do not carry one forward from this file.
+4. **Task 29 — early access list operations.** Needs a new migration with two security-definer functions, so it also wants a green gate first. Independent of the source work, so it can move ahead of 31/32 if the owner wants the signup list sooner.
+5. **Task 34 — read `JobPosting` schema.** The last source path, and the strictest, since it reads a page rather than an API.
+6. **Task 21 — authentication activation.** Owner platform setup; can happen at any point once the owner is ready.
+
+Not in the order because they are not buildable: **Task 33** is blocked on two owner decisions, not engineering. See its section.
 
 **Numbering note, 2026-07-20.** Tasks 24, 25 and 26 in an earlier revision of this file described the ATS adapters, Google Jobs schema and early-access operations. Those numbers were already taken by shipped work recorded in `docs/project-status.md`, so that outstanding work was renumbered 29–34 and the sections below match. No section in this file now shares a number with another.
 
