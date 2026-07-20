@@ -5,6 +5,15 @@ import {
   classifyIr35,
   classifyUkEligibility,
 } from "./index";
+import dataset from "./uk-places.generated.json" with { type: "json" };
+
+type DatasetPlace = { name: string; county: string | null; nation: string };
+
+const datasetPlaces: readonly DatasetPlace[] = dataset.places;
+
+/** Joins the parts an advert would actually carry, dropping any the dataset lacks. */
+const locationOf = (...parts: (string | null)[]) =>
+  parts.filter((part): part is string => Boolean(part)).join(", ");
 
 describe("UK eligibility", () => {
   it.each([
@@ -215,6 +224,199 @@ describe("UK eligibility", () => {
       expect(classifyUkEligibility(location, description).eligible).toBe(false);
     },
   );
+
+  // The allowlist this replaced held 27 cities and 9 regions, so a county label
+  // it did not know counted as evidence against the UK and the advert was
+  // dropped. "Salford, England" says England outright and was still excluded.
+  it.each([
+    ["Salford, England"],
+    ["Leeds, West Yorkshire"],
+    ["Salford, Greater Manchester, England"],
+    ["Aberystwyth, Sir Ceredigion - Ceredigion, Wales"],
+    ["Abingdon-on-Thames, Oxfordshire"],
+    ["Stoke-on-Trent, Staffordshire"],
+    ["Bangor, County Down, Northern Ireland"],
+    ["Leeds, West Yorkshire (hybrid)"],
+  ])("publishes a genuine UK advert written as %s", (location) => {
+    expect(classifyUkEligibility(location, "Office based")).toMatchObject({
+      eligible: true,
+      reason: "explicit_uk_location",
+    });
+  });
+
+  // Named foreign qualifiers are answered honestly rather than quarantined.
+  it.each([
+    ["London, Ontario"],
+    ["Birmingham, Alabama"],
+    ["Manchester, New Hampshire"],
+    ["Newport, Rhode Island"],
+    ["York, Pennsylvania"],
+    ["Perth, Western Australia"],
+    ["Hamilton, Ontario, Canada"],
+  ])("refuses a foreign location that shares a UK name: %s", (location) => {
+    expect(classifyUkEligibility(location, "Office based")).toEqual({
+      eligible: false,
+      evidence: [],
+      reason: "non_uk",
+    });
+  });
+
+  // These are the forms that defeat a denylist: an abbreviation, a full stop, a
+  // state nobody listed, a country nobody listed. None may publish. Which of
+  // `non_uk` and `ambiguous` they land on is not the point and is not asserted —
+  // that they never reach a UK jobseeker is.
+  it.each([
+    ["Boston, MA"],
+    ["London, KY"],
+    ["London, Ont."],
+    ["Manchester, N.H."],
+    ["Richmond, Va."],
+    ["Bath, U.S.A."],
+    ["Bangor, ME"],
+    ["Newport, OR"],
+    ["Brighton, Victoria"],
+    ["Hamilton, Bermuda"],
+    ["Christchurch, Canterbury"],
+    ["Newport, County Mayo"],
+    ["New York City"],
+    ["Cambridge, Mass."],
+    ["Halifax, N.S."],
+  ])("never publishes an unrecognised foreign qualifier: %s", (location) => {
+    expect(classifyUkEligibility(location, "Office based").eligible).toBe(
+      false,
+    );
+  });
+
+  // A UK nation outranks a homonym. Washington in Tyne and Wear is a real town
+  // of 67,000 people, and excluding it is unrecoverable where quarantine is not.
+  // The third case is what pins the nation-anchor branch itself: a location
+  // naming both a UK nation and a foreign country is quarantined for a person
+  // rather than hard-excluded on the foreign half alone.
+  it.each([
+    ["Washington, England"],
+    ["Washington, Tyne and Wear"],
+    ["London, England, USA"],
+  ])("does not spend a hard exclusion on a UK homonym: %s", (location) => {
+    expect(classifyUkEligibility(location, "Office based")).toMatchObject({
+      reason: "ambiguous",
+    });
+  });
+
+  // An unrecognised place is unknown, not foreign. Excluding on absence of
+  // recognition is what discarded the stock; quarantine keeps it reviewable.
+  // The first two are real UK towns the 230-place gazetteer does not carry,
+  // which is exactly the case this fallback exists for.
+  it.each([
+    ["Ashby-de-la-Zouch, Leicestershire"],
+    ["Hebden Bridge, West Yorkshire"],
+    ["Somewhere, Nowhere"],
+  ])(
+    "quarantines rather than excludes an unrecognised location: %s",
+    (location) => {
+      expect(classifyUkEligibility(location, "Office based")).toEqual({
+        eligible: false,
+        evidence: [],
+        reason: "ambiguous",
+      });
+    },
+  );
+
+  // The sweep that would have caught the original defect. Every bundled place,
+  // in the shapes UK adverts are actually written in, must publish.
+  //
+  // Note the dataset's own `county` is the unitary authority, so this pair is
+  // close to a tautology on the UK side; `ceremonialCounty` below is the honest
+  // half, and the inverse sweep is what guards the direction that matters.
+  it.each([
+    ["Town", (place: DatasetPlace) => place.name],
+    [
+      "Town, Nation",
+      (place: DatasetPlace) => locationOf(place.name, place.nation),
+    ],
+    [
+      "Town, County",
+      (place: DatasetPlace) => locationOf(place.name, place.county),
+    ],
+    [
+      "Town, County, Nation",
+      (place: DatasetPlace) =>
+        locationOf(place.name, place.county, place.nation),
+    ],
+  ] as const)("publishes every bundled place written as %s", (_, format) => {
+    const refused = datasetPlaces
+      .filter(
+        (place) =>
+          !classifyUkEligibility(format(place), "Office based").eligible,
+      )
+      .map(format);
+
+    expect(refused).toEqual([]);
+  });
+
+  // Real adverts use the ceremonial county, which is not what the dataset
+  // stores, so these cannot pass by construction the way the sweep above can.
+  it.each([
+    ["Leeds, West Yorkshire"],
+    ["Sheffield, South Yorkshire"],
+    ["Salford, Greater Manchester"],
+    ["Liverpool, Merseyside"],
+    ["Sunderland, Tyne and Wear"],
+    ["Chester, Cheshire"],
+    ["Carlisle, Cumbria"],
+    ["Reading, Berkshire"],
+    ["Bangor, Gwynedd"],
+    ["Newport, Isle of Wight"],
+    ["Paisley, Renfrewshire"],
+    ["Ayr, Ayrshire"],
+    ["Armagh, County Armagh"],
+  ])("publishes a UK advert written with its ceremonial county: %s", (l) => {
+    expect(classifyUkEligibility(l, "Office based")).toMatchObject({
+      eligible: true,
+    });
+  });
+
+  // The inverse sweep, and the one that fails if the barrier is ever weakened
+  // back to a denylist: every bundled UK place name, beside a qualifier that is
+  // not British, must never publish — whether or not anyone listed it.
+  //
+  // Canterbury is deliberately not among these, and the reason is worth stating
+  // exactly, because a location whose every label is a real UK place name cannot
+  // be told from a UK one by name alone. `Lincoln, Canterbury` and
+  // `Oxford, Canterbury` — both real New Zealand towns — DO publish, because
+  // Canterbury is also a city in Kent. So does `Newport, Manchester`, a parish
+  // in Jamaica. Adding a country closes it (`Lincoln, Canterbury, New Zealand`
+  // is non_uk); the exposure is a two-label advert naming no country.
+  //
+  // The fix would be to require qualifier positions to be administrative areas
+  // rather than any UK place name, which costs `London, Canary Wharf` and
+  // `Manchester, Salford Quays`. Documented rather than asserted away.
+  it("never publishes a bundled UK place beside a foreign qualifier", () => {
+    const foreignQualifiers = [
+      "Ontario",
+      "Ont.",
+      "Alabama",
+      "N.H.",
+      "ME",
+      "OR",
+      "Victoria",
+      "Bermuda",
+      "Otago",
+      "Waikato",
+      "County Mayo",
+      "Gauteng",
+      "Punjab",
+    ];
+    const published = datasetPlaces.flatMap((place) =>
+      foreignQualifiers
+        .map((qualifier) => `${place.name}, ${qualifier}`)
+        .filter(
+          (location) =>
+            classifyUkEligibility(location, "Office based").eligible,
+        ),
+    );
+
+    expect(published).toEqual([]);
+  });
 });
 
 describe("employment classification", () => {

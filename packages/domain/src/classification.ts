@@ -1,4 +1,5 @@
 import type { EmploymentType } from "./job.ts";
+import { isUkAdministrativeArea, isUkPlaceName } from "./uk-places.ts";
 
 export type UkEligibilityReason =
   "explicit_uk_location" | "explicit_uk_remote" | "non_uk" | "ambiguous";
@@ -30,35 +31,14 @@ const ukOfficialRegions = new Set([
   "yorkshire and the humber",
 ]);
 
-const knownUkCities = new Set([
-  "aberdeen",
-  "belfast",
-  "birmingham",
-  "brighton",
-  "bristol",
-  "cambridge",
-  "cardiff",
-  "coventry",
-  "derry",
-  "dundee",
-  "edinburgh",
-  "glasgow",
-  "leeds",
-  "leicester",
-  "liverpool",
-  "londonderry",
-  "manchester",
-  "newcastle",
-  "newcastle upon tyne",
-  "newport",
-  "nottingham",
-  "oxford",
-  "portsmouth",
-  "sheffield",
-  "southampton",
-  "swansea",
-  "york",
-]);
+/**
+ * The remainder of a 27-city allowlist the gazetteer has otherwise absorbed.
+ *
+ * These two are the only ones it does not carry under the name an advert would
+ * use: it spells them Londonderry and Newcastle upon Tyne. The other 25 were
+ * removed rather than left to drift out of step with the dataset.
+ */
+const knownUkCities = new Set(["derry", "newcastle"]);
 
 const nonLocationLabels = new Set([
   "hybrid",
@@ -67,6 +47,295 @@ const nonLocationLabels = new Set([
   "onsite",
   "remote",
   "remote role",
+]);
+
+/**
+ * Ceremonial and historic counties the gazetteer does not carry.
+ *
+ * The bundled dataset records the *unitary authority* a place sits in — Leeds's
+ * county is "Leeds" — but adverts are written with the ceremonial county, so
+ * "Leeds, West Yorkshire" needs this list and the dataset cannot supply it.
+ * Only the 47 the dataset lacks are here; `isUkAdministrativeArea` covers the
+ * other 47 already.
+ */
+const ukCeremonialCounties = new Set([
+  "west yorkshire",
+  "south yorkshire",
+  "east yorkshire",
+  "east riding of yorkshire",
+  "greater manchester",
+  "merseyside",
+  "tyne and wear",
+  "cheshire",
+  "cumbria",
+  "northumberland",
+  "rutland",
+  "herefordshire",
+  "northamptonshire",
+  "bedfordshire",
+  "berkshire",
+  "sussex",
+  "isle of wight",
+  "middlesex",
+  "avon",
+  "powys",
+  "dyfed",
+  "clwyd",
+  "gwent",
+  "glamorgan",
+  "south glamorgan",
+  "west glamorgan",
+  "mid glamorgan",
+  "pembrokeshire",
+  "monmouthshire",
+  "flintshire",
+  "anglesey",
+  "isle of anglesey",
+  "aberdeenshire",
+  "angus",
+  "argyll and bute",
+  "ayrshire",
+  "lanarkshire",
+  "midlothian",
+  "east lothian",
+  "perthshire",
+  "stirlingshire",
+  "scottish borders",
+  "armagh",
+  "fermanagh",
+  "tyrone",
+  "county fermanagh",
+  "county tyrone",
+]);
+
+/**
+ * Foreign countries and the first-level subdivisions of the English-speaking
+ * ones.
+ *
+ * This list is not what keeps a foreign job out — `assessLocation` refuses to
+ * publish anything carrying a label it does not positively recognise, so
+ * "Bangor, ME" and "Hamilton, Bermuda" are already safe without appearing here.
+ * A denylist of foreign places cannot be enumerated, and one relied upon as the
+ * barrier fails open: an entry merely written with a full stop ("London, Ont.")
+ * or a country nobody listed would publish.
+ *
+ * What it buys is precision. Naming the obvious cases returns the honest
+ * `non_uk` instead of sending "London, Ontario" to a review queue.
+ *
+ * Because it is optional, entries are omitted rather than risked wherever a
+ * name is shared with a UK place: there is a Washington in Tyne and Wear, a
+ * Boston in Lincolnshire, a Perth in Scotland and a Hamilton in Lanarkshire, and
+ * none of them appear below. Subdivision codes are included only where they are
+ * not also UK postcode areas, for the same reason. Every entry was checked
+ * against the bundled 230-place dataset; none names a UK place.
+ */
+const foreignRegionAnchors = new Set([
+  // United States
+  "alabama",
+  "alaska",
+  "arizona",
+  "arkansas",
+  "california",
+  "colorado",
+  "connecticut",
+  "delaware",
+  "florida",
+  "georgia",
+  "hawaii",
+  "idaho",
+  "illinois",
+  "indiana",
+  "iowa",
+  "kansas",
+  "kentucky",
+  "louisiana",
+  "maine",
+  "maryland",
+  "massachusetts",
+  "michigan",
+  "minnesota",
+  "mississippi",
+  "missouri",
+  "montana",
+  "nebraska",
+  "nevada",
+  "new hampshire",
+  "new jersey",
+  "new mexico",
+  "new york",
+  "north carolina",
+  "north dakota",
+  "ohio",
+  "oklahoma",
+  "oregon",
+  "pennsylvania",
+  "rhode island",
+  "south carolina",
+  "south dakota",
+  "tennessee",
+  "texas",
+  "utah",
+  "vermont",
+  "virginia",
+  "west virginia",
+  "wisconsin",
+  "wyoming",
+  "district of columbia",
+  // Subdivision codes, because "City, ST" is how foreign adverts are actually
+  // written and quarantine is a queue a person has to read. Only the codes that
+  // are not also UK postcode areas are here: AL CA CO CT DE KY LA ME NE PA TN WA
+  // WV AB SK PE are omitted, so "Derby, DE" and "Bangor, ME" quarantine as
+  // unrecognised rather than being discarded as foreign.
+  "ak",
+  "az",
+  "ar",
+  "dc",
+  "fl",
+  "ga",
+  "hi",
+  "id",
+  "il",
+  "ia",
+  "ks",
+  "md",
+  "ma",
+  "mi",
+  "mn",
+  "ms",
+  "mo",
+  "mt",
+  "nv",
+  "nh",
+  "nj",
+  "nm",
+  "ny",
+  "nc",
+  "nd",
+  "oh",
+  "ok",
+  "ri",
+  "sc",
+  "sd",
+  "tx",
+  "ut",
+  "vt",
+  "va",
+  "wi",
+  "wy",
+  "on",
+  "qc",
+  "bc",
+  "mb",
+  "ns",
+  "nb",
+  "nl",
+  "yt",
+  "nt",
+  "nu",
+  "nsw",
+  "qld",
+  "vic",
+  "tas",
+  "act",
+  // Canada
+  "ontario",
+  "quebec",
+  "british columbia",
+  "alberta",
+  "manitoba",
+  "saskatchewan",
+  "nova scotia",
+  "new brunswick",
+  "newfoundland",
+  "newfoundland and labrador",
+  "prince edward island",
+  "yukon",
+  "northwest territories",
+  "nunavut",
+  // Australia and New Zealand
+  "new south wales",
+  "queensland",
+  "western australia",
+  "south australia",
+  "tasmania",
+  "northern territory",
+  "australian capital territory",
+  // Victoria is absent on purpose — it names a district of London as well as an
+  // Australian state, and "Brighton, Victoria" is already refused as
+  // unrecognised. The "vic" code above carries no such ambiguity.
+  // Countries
+  "usa",
+  "u s a",
+  "united states",
+  "united states of america",
+  "america",
+  "canada",
+  "australia",
+  "new zealand",
+  "ireland",
+  "republic of ireland",
+  "france",
+  "germany",
+  "spain",
+  "italy",
+  "netherlands",
+  "the netherlands",
+  "belgium",
+  "luxembourg",
+  "switzerland",
+  "austria",
+  "poland",
+  "portugal",
+  "sweden",
+  "norway",
+  "denmark",
+  "finland",
+  "iceland",
+  "estonia",
+  "latvia",
+  "lithuania",
+  "czechia",
+  "czech republic",
+  "slovakia",
+  "hungary",
+  "romania",
+  "bulgaria",
+  "greece",
+  "croatia",
+  "slovenia",
+  "serbia",
+  "ukraine",
+  "turkey",
+  "russia",
+  "india",
+  "pakistan",
+  "bangladesh",
+  "china",
+  "hong kong",
+  "japan",
+  "south korea",
+  "singapore",
+  "malaysia",
+  "indonesia",
+  "thailand",
+  "vietnam",
+  "philippines",
+  "israel",
+  "united arab emirates",
+  "uae",
+  "saudi arabia",
+  "qatar",
+  "south africa",
+  "nigeria",
+  "kenya",
+  "egypt",
+  "morocco",
+  "brazil",
+  "argentina",
+  "chile",
+  "colombia",
+  "mexico",
+  "peru",
 ]);
 
 const ukAnchorSource = String.raw`(?:United Kingdom|UK|Northern Ireland|Scotland|Wales|England)`;
@@ -218,8 +487,26 @@ function isQualifiedUkLabel(label: string): boolean {
   return (
     ukNationAnchors.has(label) ||
     ukOfficialRegions.has(label) ||
-    knownUkCities.has(label)
+    // Derry and Newcastle are in this allowlist but not in the gazetteer, which
+    // carries Londonderry and Newcastle upon Tyne, so it still earns its place.
+    knownUkCities.has(label) ||
+    ukCeremonialCounties.has(label) ||
+    isUkPlaceName(label) ||
+    isUkAdministrativeArea(label)
   );
+}
+
+/**
+ * Whether the label names a real foreign place.
+ *
+ * Defence in depth rather than the barrier: an unrecognised label already fails
+ * to publish, so this exists to say `non_uk` where the honest answer is known,
+ * instead of sending "London, Ontario" to a review queue it does not belong in.
+ * It is deliberately not load-bearing, because a denylist of foreign places
+ * cannot be enumerated and anything missing from it would publish.
+ */
+function isForeignLabel(label: string): boolean {
+  return foreignRegionAnchors.has(label);
 }
 
 function assessLocation(location: string): LocationAssessment {
@@ -231,19 +518,32 @@ function assessLocation(location: string): LocationAssessment {
     return { outcome: "ambiguous" };
   }
 
-  const hasUkEvidence = labels.some(isQualifiedUkLabel);
-  const hasContradictoryQualifier = labels.some(
+  // An explicit nation outranks a homonym: Washington in Tyne and Wear is not
+  // Washington State, and "Washington, England" says so. Quarantine it for a
+  // human rather than spending the one outcome that cannot be recovered from.
+  const namesUkNation = labels.some((label) => ukNationAnchors.has(label));
+  if (!namesUkNation && labels.some(isForeignLabel)) {
+    return { outcome: "non_uk" };
+  }
+
+  // Publication requires every label to be recognised, not merely one. This is
+  // the barrier: "London, Ont." carries a real UK city beside a qualifier no
+  // denylist happens to hold, and only an allowlist refuses it.
+  const hasUnknownQualifier = labels.some(
     (label) => !isQualifiedUkLabel(label) && !nonLocationLabels.has(label),
   );
-
-  if (hasUkEvidence && !hasContradictoryQualifier) {
+  if (labels.some(isQualifiedUkLabel) && !hasUnknownQualifier) {
     return {
       outcome: "eligible",
       evidence: formatEvidence("Location", location.trim()),
     };
   }
 
-  return { outcome: "non_uk" };
+  // What changed is the consequence, not this test. Treating an unrecognised
+  // qualifier as evidence *against* the UK excluded 95.7% of adverts written
+  // "Town, County", silently, because `excluded` is dropped where `ambiguous`
+  // is quarantined and reviewable.
+  return { outcome: "ambiguous" };
 }
 
 function clausesFrom(description: string): string[] {
