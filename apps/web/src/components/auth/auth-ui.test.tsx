@@ -12,7 +12,7 @@ describe("public private-beta entry", () => {
     render(<PublicHome />);
 
     expect(
-      screen.getByRole("heading", { name: /one place to watch uk work/i }),
+      screen.getByRole("heading", { name: "JobWarden" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /request access/i }),
@@ -22,7 +22,7 @@ describe("public private-beta entry", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText("Every request is reviewed by the owner."),
-    ).toHaveClass("text-[#596173]");
+    ).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(
       /premium|upgrade|subscription/i,
     );
@@ -37,7 +37,7 @@ describe("public private-beta entry", () => {
     expect(screen.getByText(/development data/i)).toBeInTheDocument();
     expect(
       screen.getByText("Explicitly fictional fixtures are enabled locally."),
-    ).toHaveClass("text-[#596173]");
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: /request access/i }),
     ).not.toBeInTheDocument();

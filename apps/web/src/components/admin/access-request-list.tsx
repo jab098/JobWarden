@@ -20,15 +20,15 @@ export function AccessRequestList({
 }) {
   return (
     <section aria-labelledby="access-requests-heading" className="space-y-5">
-      <div className="grid min-w-0 gap-4 border-b border-[#d8d4cb] pb-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+      <div className="grid min-w-0 gap-4 border-b border-border pb-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <div>
           <h2
             id="access-requests-heading"
-            className="text-xl font-semibold tracking-[-0.025em]"
+            className="text-base font-semibold tracking-[-0.01em]"
           >
             Access requests
           </h2>
-          <p className="mt-1 text-sm text-[#596173]">
+          <p className="mt-1 text-sm text-ink-secondary">
             {requestsEnabled
               ? "New requests are open."
               : "New requests are paused."}{" "}
@@ -49,7 +49,7 @@ export function AccessRequestList({
         ) : null}
       </div>
       {requests.length === 0 ? (
-        <p className="text-sm text-[#596173]">
+        <p className="text-sm text-ink-secondary">
           No access requests have been recorded.
         </p>
       ) : (
@@ -66,19 +66,23 @@ export function AccessRequestList({
                 </div>
                 <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 xl:grid-cols-3">
                   <div>
-                    <dt className="text-xs text-[#596173]">Requested</dt>
+                    <dt className="text-xs text-ink-secondary">Requested</dt>
                     <dd className="mt-0.5 font-mono text-xs">
                       {formatAdminDate(request.requestedAt)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-[#596173]">Member reference</dt>
+                    <dt className="text-xs text-ink-secondary">
+                      Member reference
+                    </dt>
                     <dd className="mt-0.5 font-mono text-xs">
                       {shortId(request.userId)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-[#596173]">Last decision</dt>
+                    <dt className="text-xs text-ink-secondary">
+                      Last decision
+                    </dt>
                     <dd className="mt-0.5 text-sm">
                       {request.decisionReason ?? "Awaiting review"}
                     </dd>

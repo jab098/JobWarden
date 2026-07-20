@@ -1,8 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { Menu } from "lucide-react";
 
+import {
+  APP_NAV_ITEMS,
+  DataModeLine,
+  NavLink,
+  type AppNavPath,
+} from "@/components/app-nav";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -18,84 +23,43 @@ export function MobileNavigation({
   activePath,
 }: {
   dataMode: "supabase" | "fixtures";
-  activePath:
-    "home" | "matches" | "jobs" | "pathways" | "applications" | "profile";
+  activePath: AppNavPath;
 }) {
   return (
     <div className="lg:hidden">
       <Sheet>
         <SheetTrigger
           render={
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Open navigation"
-              className="focus-visible:ring-2 focus-visible:ring-[#2458a6]"
-            />
+            <Button variant="ghost" size="icon" aria-label="Open navigation" />
           }
         >
-          <Menu aria-hidden="true" />
+          <Menu aria-hidden="true" strokeWidth={1.75} />
         </SheetTrigger>
         <SheetContent
           side="left"
           aria-label="JobWarden navigation"
-          className="w-[min(21rem,88vw)] border-[#d8d4cb] bg-[#f4f1ea] p-0"
+          className="flex w-[min(19rem,85vw)] flex-col border-border bg-sidebar p-0"
         >
-          <SheetHeader className="border-b border-[#d8d4cb] px-6 py-5">
-            <SheetTitle className="text-lg font-semibold text-[#172033]">
+          <SheetHeader className="px-5 pt-5 pb-4">
+            <SheetTitle className="text-[0.95rem] font-semibold tracking-[-0.02em] text-foreground">
               JobWarden navigation
             </SheetTitle>
-            <SheetDescription className="text-[#596173]">
+            <SheetDescription className="sr-only">
               UK jobs workspace
             </SheetDescription>
           </SheetHeader>
-          <nav aria-label="Primary" className="p-4">
-            <Link
-              href="/home"
-              aria-current={activePath === "home" ? "page" : undefined}
-              className={`block rounded-md px-4 py-3 text-sm font-medium text-[#172033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "home" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173]"}`}
-            >
-              Home
-            </Link>
-            <Link
-              href="/matches"
-              aria-current={activePath === "matches" ? "page" : undefined}
-              className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium text-[#172033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "matches" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173]"}`}
-            >
-              Matches
-            </Link>
-            <Link
-              href="/jobs"
-              aria-current={activePath === "jobs" ? "page" : undefined}
-              className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium text-[#172033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "jobs" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173]"}`}
-            >
-              Search jobs
-            </Link>
-            <Link
-              href="/pathways"
-              aria-current={activePath === "pathways" ? "page" : undefined}
-              className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium text-[#172033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "pathways" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173]"}`}
-            >
-              Pathways
-            </Link>
-            <Link
-              href="/applications"
-              aria-current={activePath === "applications" ? "page" : undefined}
-              className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium text-[#172033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "applications" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173]"}`}
-            >
-              Applications
-            </Link>
-            <Link
-              href="/profile"
-              aria-current={activePath === "profile" ? "page" : undefined}
-              className={`mt-1 block rounded-md px-4 py-3 text-sm font-medium text-[#172033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${activePath === "profile" ? "bg-white shadow-[inset_3px_0_0_#2458a6]" : "text-[#596173]"}`}
-            >
-              Career profile
-            </Link>
+          <nav aria-label="Primary" className="flex flex-col gap-0.5 px-3">
+            {APP_NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.path}
+                item={item}
+                active={activePath === item.path}
+              />
+            ))}
           </nav>
-          <p className="mt-auto border-t border-[#d8d4cb] px-6 py-5 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#596173]">
-            {dataMode === "fixtures" ? "Development data" : "Live UK listings"}
-          </p>
+          <div className="mt-auto border-t border-border px-5 py-4">
+            <DataModeLine dataMode={dataMode} />
+          </div>
         </SheetContent>
       </Sheet>
     </div>

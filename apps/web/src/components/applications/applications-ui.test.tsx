@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "vitest-axe";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -109,10 +109,13 @@ describe("applications experience", () => {
     expect(screen.getAllByText("Screening").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Overdue").length).toBeGreaterThan(0);
 
-    const moveSelect = screen.getByLabelText("Move to");
-    const options = [...moveSelect.querySelectorAll("option")].map(
-      (option) => option.textContent,
-    );
+    // The stage mover is a custom dropdown: open it and read the listbox.
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText("Move to"));
+    const listbox = await screen.findByRole("listbox");
+    const options = within(listbox)
+      .getAllByRole("option")
+      .map((option) => option.textContent);
     expect(options).toEqual([
       "Interviewing",
       "Offer",
@@ -121,6 +124,7 @@ describe("applications experience", () => {
       "Archived",
     ]);
     expect(options).not.toContain("Accepted");
+    await user.keyboard("{Escape}");
     expect(await axe(container)).toHaveNoViolations();
   });
 
@@ -144,7 +148,7 @@ describe("applications experience", () => {
     expect(screen.getByLabelText("Move to")).toBeInTheDocument();
   });
 
-  it("offers the audited re-open as the only move out of archived", () => {
+  it("offers the audited re-open as the only move out of archived", async () => {
     render(
       <ApplicationsViewPage
         result={result({
@@ -161,10 +165,12 @@ describe("applications experience", () => {
       />,
     );
 
-    const moveSelect = screen.getByLabelText("Move to");
-    const options = [...moveSelect.querySelectorAll("option")].map(
-      (option) => option.textContent,
-    );
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText("Move to"));
+    const listbox = await screen.findByRole("listbox");
+    const options = within(listbox)
+      .getAllByRole("option")
+      .map((option) => option.textContent);
     expect(options).toEqual(["Applied"]);
   });
 
@@ -226,7 +232,10 @@ describe("applications experience", () => {
     const user = userEvent.setup();
     render(<ApplicationsViewPage result={result()} view="list" />);
 
-    await user.selectOptions(screen.getByLabelText("Move to"), "interviewing");
+    await user.click(screen.getByLabelText("Move to"));
+    await user.click(
+      await screen.findByRole("option", { name: "Interviewing" }),
+    );
     await user.click(screen.getByRole("button", { name: "Move" }));
 
     expect(transitionApplicationAction).toHaveBeenCalled();

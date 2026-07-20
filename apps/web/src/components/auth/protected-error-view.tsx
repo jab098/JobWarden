@@ -10,7 +10,7 @@ type ProtectedErrorViewProps = {
 
 export function ProtectedErrorView({ reset }: ProtectedErrorViewProps) {
   return (
-    <main className="grid min-h-screen place-items-center bg-[#f4f1ea] px-5 py-12 text-[#172033]">
+    <main className="grid min-h-screen place-items-center bg-background px-5 py-12 text-foreground">
       <section
         role="alert"
         className="w-full max-w-xl border-t-2 border-[#b4473d] pt-8"
@@ -28,7 +28,7 @@ export function ProtectedErrorView({ reset }: ProtectedErrorViewProps) {
         <Button
           type="button"
           onClick={reset}
-          className="mt-7 rounded-md bg-[#2458a6] text-white hover:bg-[#1d477f]"
+          className="mt-7 rounded-md bg-primary text-white hover:bg-primary/85"
         >
           <RotateCcw aria-hidden="true" />
           Try again

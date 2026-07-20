@@ -14,19 +14,19 @@ export function SourceList({
 }) {
   return (
     <section aria-labelledby="sources-heading" className="space-y-5">
-      <div className="border-b border-[#d8d4cb] pb-5">
+      <div className="border-b border-border pb-5">
         <h2
           id="sources-heading"
-          className="text-xl font-semibold tracking-[-0.025em]"
+          className="text-base font-semibold tracking-[-0.01em]"
         >
           Permitted sources
         </h2>
-        <p className="mt-1 text-sm text-[#596173]">
+        <p className="mt-1 text-sm text-ink-secondary">
           Only reviewed, allowlisted public interfaces belong here.
         </p>
       </div>
       {!readOnly && saveAction ? (
-        <details className="rounded-md border border-[#e2ddd3] bg-white px-5 py-4">
+        <details className="rounded-md border border-border bg-white px-5 py-4">
           <summary className="cursor-pointer text-sm font-semibold">
             Add a Greenhouse source
           </summary>
@@ -36,7 +36,7 @@ export function SourceList({
         </details>
       ) : null}
       {sources.length === 0 ? (
-        <p className="text-sm text-[#596173]">
+        <p className="text-sm text-ink-secondary">
           No permitted job sources have been configured.
         </p>
       ) : (
@@ -54,7 +54,7 @@ export function SourceList({
                       state={source.enabled ? "enabled" : "disabled"}
                     />
                   </div>
-                  <p className="mt-1 font-mono text-xs text-[#596173]">
+                  <p className="mt-1 font-mono text-xs text-ink-secondary">
                     {source.provider} / {source.boardToken} ·{" "}
                     {source.coverageMode === "complete"
                       ? "complete snapshot source"
@@ -68,13 +68,13 @@ export function SourceList({
               </div>
               <dl className="mt-4 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
                 <div>
-                  <dt className="text-xs text-[#596173]">Cadence</dt>
+                  <dt className="text-xs text-ink-secondary">Cadence</dt>
                   <dd className="mt-0.5">
                     Every {source.minimumSyncMinutes} minutes
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-[#596173]">
+                  <dt className="text-xs text-ink-secondary">
                     Last successful sync
                   </dt>
                   <dd className="mt-0.5 font-mono text-xs">
@@ -82,7 +82,7 @@ export function SourceList({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-[#596173]">
+                  <dt className="text-xs text-ink-secondary">
                     Terms / robots review
                   </dt>
                   <dd className="mt-0.5 font-mono text-xs">
@@ -90,7 +90,7 @@ export function SourceList({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-[#596173]">Allowed hosts</dt>
+                  <dt className="text-xs text-ink-secondary">Allowed hosts</dt>
                   <dd className="mt-0.5 font-mono text-xs">
                     {source.allowedHosts.join(", ")}
                   </dd>
@@ -101,7 +101,7 @@ export function SourceList({
               </p>
               {!readOnly && saveAction && source.provider === "greenhouse" ? (
                 <details className="mt-4 border-t border-[#e3dfd7] pt-4">
-                  <summary className="cursor-pointer text-sm font-medium text-[#2458a6]">
+                  <summary className="cursor-pointer text-sm font-medium text-link">
                     Edit source configuration
                   </summary>
                   <div className="mt-5">
@@ -109,7 +109,7 @@ export function SourceList({
                   </div>
                 </details>
               ) : source.provider === "reed" ? (
-                <p className="mt-4 border-t border-[#e3dfd7] pt-4 text-xs text-[#596173]">
+                <p className="mt-4 border-t border-[#e3dfd7] pt-4 text-xs text-ink-secondary">
                   Reed discovery settings are environment-managed and read-only
                   here.
                 </p>

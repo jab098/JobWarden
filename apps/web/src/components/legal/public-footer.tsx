@@ -8,19 +8,19 @@ import Link from "next/link";
  */
 export function PublicFooter() {
   return (
-    <footer className="border-t border-[#d8d2c7] pt-5 pb-1">
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-xs text-[#596173]">
+    <footer className="border-t border-border pt-5 pb-1">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-xs text-ink-secondary">
         <p>JobWarden · UK private beta</p>
         <nav aria-label="Legal" className="flex items-center gap-5">
           <Link
             href="/privacy"
-            className="rounded-sm underline-offset-4 hover:text-[#2458a6] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+            className="rounded-sm underline-offset-4 hover:text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
           >
             Privacy
           </Link>
           <Link
             href="/terms"
-            className="rounded-sm underline-offset-4 hover:text-[#2458a6] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+            className="rounded-sm underline-offset-4 hover:text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
           >
             Terms
           </Link>

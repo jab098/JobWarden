@@ -4,19 +4,18 @@ import { Button } from "@/components/ui/button";
 
 export function JobsErrorView({ reset }: { reset: () => void }) {
   return (
-    <section className="mx-auto max-w-3xl bg-white px-5 py-16">
-      <h1 className="text-3xl font-semibold">
-        Jobs are temporarily unavailable
-      </h1>
-      <p className="mt-3 text-sm leading-6 text-[#596173]">
-        The feed could not be loaded. Please try again in a moment.
-      </p>
-      <Button
-        onClick={reset}
-        className="mt-6 h-10 rounded-md bg-[#2458a6] text-white focus-visible:ring-2 focus-visible:ring-[#2458a6]"
-      >
-        Try again
-      </Button>
+    <section className="mx-auto max-w-6xl px-5 py-7 lg:px-8">
+      <div className="rounded-lg border border-border bg-card px-6 py-14 text-center">
+        <h1 className="text-base font-semibold tracking-[-0.01em]">
+          Jobs are temporarily unavailable
+        </h1>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-ink-secondary">
+          The feed could not be loaded. Please try again in a moment.
+        </p>
+        <Button onClick={reset} className="mt-5">
+          Try again
+        </Button>
+      </div>
     </section>
   );
 }

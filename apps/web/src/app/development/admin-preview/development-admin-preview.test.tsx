@@ -48,7 +48,7 @@ describe("development administrator preview", () => {
     ).toBeGreaterThan(0);
     expect(
       screen.getByText(
-        "Read-only fictional administrator preview — no administrator access granted",
+        "Read-only fictional administrator preview; no administrator access granted",
       ),
     ).toBeInTheDocument();
     expect(container.querySelector("form")).toBeNull();

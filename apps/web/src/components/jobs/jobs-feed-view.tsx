@@ -6,6 +6,7 @@ import { JobList } from "@/components/jobs/job-list";
 import { activeJobFilters, jobsHref } from "@/lib/jobs/filters";
 import type { JobFilters as Filters, JobsPageResult } from "@/lib/jobs/types";
 import type { JobDecision } from "@/lib/target-feed/types";
+import { cn } from "@/lib/utils";
 
 const sortLabels: Record<Filters["sort"], string> = {
   newest: "Newest first",
@@ -32,32 +33,27 @@ export function JobsFeedView({
   const pageHref = (page: number) => jobsHref({ ...filters, page });
 
   return (
-    <div className="mx-auto min-h-screen max-w-[92rem] bg-white">
-      <header className="border-b border-[#dedbd2] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
-        <div className="flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-[#697181]">
-              United Kingdom only
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-[#172033] sm:text-4xl">
-              Search jobs
-            </h1>
-          </div>
+    <div className="mx-auto max-w-6xl px-5 py-7 lg:px-8">
+      <header>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
+            Search jobs
+          </h1>
           <div className="flex items-center gap-4">
             <Link
               href="/matches"
-              className="rounded-sm text-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+              className="rounded-sm text-sm font-medium text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
             >
               My matches
             </Link>
             <JobFilters filters={filters} variant="mobile" />
           </div>
         </div>
-        <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-[#ece9e2] pt-4 text-sm text-[#596173]">
-          <span className="font-medium text-[#263248]">
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-secondary">
+          <span className="tnum font-medium text-foreground">
             {result.total} {result.total === 1 ? "job" : "jobs"}
           </span>
-          <span>
+          <span className="text-xs text-ink-faint">
             Latest listing update:{" "}
             {result.latestListingUpdate
               ? new Intl.DateTimeFormat("en-GB", {
@@ -68,26 +64,31 @@ export function JobsFeedView({
               : "Not available"}
           </span>
           {result.dataMode === "fixtures" && (
-            <span className="font-mono text-[0.7rem] uppercase tracking-[0.12em] text-[#7a5a20]">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[0.68rem] text-ink-faint">
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full bg-warning"
+              />
               Development data
             </span>
           )}
-          {/* Sort is a link rather than a control so the whole surface keeps
-              working without JavaScript, exactly like the filters. */}
+          {/* Sort is a set of links rather than a control so the whole surface
+              keeps working without JavaScript, exactly like the filters. */}
           <nav
             aria-label="Sort results"
-            className="flex flex-wrap items-center gap-3"
+            className="ml-auto flex items-center rounded-lg border border-border bg-surface-sunken p-0.5"
           >
             {(Object.keys(sortLabels) as Filters["sort"][]).map((order) => (
               <Link
                 key={order}
                 href={jobsHref({ ...filters, sort: order, page: 1 })}
                 aria-current={filters.sort === order ? "true" : undefined}
-                className={`rounded-sm underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] ${
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-xs outline-none transition-[background-color,color,box-shadow] duration-(--duration-quick) ease-(--ease-smooth-out) focus-visible:ring-2 focus-visible:ring-ring/60",
                   filters.sort === order
-                    ? "font-semibold text-[#263248]"
-                    : "text-[#2458a6] hover:underline"
-                }`}
+                    ? "bg-card font-medium text-foreground shadow-[0_1px_2px_rgba(16,20,28,0.08)]"
+                    : "text-ink-secondary hover:text-foreground",
+                )}
               >
                 {sortLabels[order]}
               </Link>
@@ -97,7 +98,7 @@ export function JobsFeedView({
         {active.length > 0 && (
           <ul
             aria-label="Active filters"
-            className="mt-4 flex flex-wrap items-center gap-2"
+            className="mt-3 flex flex-wrap items-center gap-1.5"
           >
             {active.map((filter) => (
               <li key={filter.key}>
@@ -105,10 +106,14 @@ export function JobsFeedView({
                   href={jobsHref(filter.clearedFilters)}
                   // first-letter, not capitalize: "£500+ per day" should not
                   // become "£500+ Per Day".
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[#d8dde6] bg-[#faf9f6] px-3 py-1 text-xs font-medium text-[#40495a] first-letter:uppercase hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+                  className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card py-1 pr-2 pl-2.5 text-xs font-medium text-ink-secondary outline-none transition-[border-color,color] duration-150 first-letter:uppercase hover:border-danger/40 hover:text-danger focus-visible:ring-2 focus-visible:ring-ring/60"
                 >
                   {filter.label}
-                  <X aria-hidden="true" className="size-3" />
+                  <X
+                    aria-hidden="true"
+                    strokeWidth={2}
+                    className="size-3 text-ink-faint transition-colors duration-150 group-hover:text-danger"
+                  />
                   <span className="sr-only">Remove this filter</span>
                 </Link>
               </li>
@@ -116,7 +121,7 @@ export function JobsFeedView({
             <li>
               <Link
                 href="/jobs"
-                className="rounded-sm px-1 text-xs font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+                className="rounded-sm px-1 text-xs font-medium text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
               >
                 Clear all
               </Link>
@@ -124,23 +129,25 @@ export function JobsFeedView({
           </ul>
         )}
       </header>
-      <div className="grid md:grid-cols-[18rem_minmax(0,1fr)]">
+      <div className="mt-5 grid md:grid-cols-[17rem_minmax(0,1fr)] md:gap-5">
         <div className="hidden md:block">
-          <JobFilters filters={filters} variant="desktop" />
+          <div className="sticky top-4 rounded-lg border border-border bg-card">
+            <JobFilters filters={filters} variant="desktop" />
+          </div>
         </div>
         <section aria-label="Job results" className="min-w-0">
           {result.items.length > 0 ? (
             <JobList jobs={result.items} decisions={decisions} />
           ) : (
-            <div className="px-5 py-16 sm:px-8">
-              <h2 className="text-2xl font-semibold tracking-[-0.025em]">
+            <div className="rounded-lg border border-border bg-card px-6 py-14 text-center">
+              <h2 className="text-base font-semibold tracking-[-0.01em]">
                 {isOutOfRange
                   ? "No jobs on this page"
                   : active.length > 0
                     ? "No jobs match this search"
                     : "Listings are not available yet"}
               </h2>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[#596173]">
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-ink-secondary">
                 {isOutOfRange
                   ? "Go to the last available page to continue browsing these UK roles."
                   : active.length > 0
@@ -150,7 +157,7 @@ export function JobsFeedView({
               {active.length > 0 && (
                 <Link
                   href="/jobs"
-                  className="mt-6 inline-flex rounded-sm text-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+                  className="mt-5 inline-flex rounded-sm text-sm font-medium text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
                 >
                   Clear all filters
                 </Link>
@@ -160,25 +167,27 @@ export function JobsFeedView({
           {(hasPreviousPage || hasNextPage) && (
             <nav
               aria-label="Job result pages"
-              className="flex items-center justify-between border-t border-[#dedbd2] px-5 py-5 text-sm sm:px-7"
+              className="mt-4 flex items-center justify-between text-sm"
             >
               {hasPreviousPage ? (
                 <Link
                   href={pageHref(
                     isOutOfRange ? lastAvailablePage : result.page - 1,
                   )}
-                  className="rounded-sm font-semibold text-[#2458a6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+                  className="rounded-sm font-medium text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
                 >
                   {isOutOfRange ? "← Last available page" : "← Previous"}
                 </Link>
               ) : (
                 <span />
               )}
-              <span className="text-[#697181]">Page {result.page}</span>
+              <span className="tnum text-xs text-ink-faint">
+                Page {result.page}
+              </span>
               {hasNextPage ? (
                 <Link
                   href={pageHref(result.page + 1)}
-                  className="rounded-sm font-semibold text-[#2458a6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+                  className="rounded-sm font-medium text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
                 >
                   Next →
                 </Link>

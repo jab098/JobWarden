@@ -55,7 +55,7 @@ function EvidenceDecision({
       {state.kind !== "idle" ? (
         <span
           role={state.kind === "success" ? "status" : "alert"}
-          className="basis-full text-right text-xs text-[#596173]"
+          className="basis-full text-right text-xs text-ink-secondary"
         >
           {state.message}
         </span>
@@ -74,32 +74,29 @@ export function ProfileEvidenceList({
   return (
     <section
       aria-labelledby="profile-evidence-heading"
-      className="border-t border-[#dedbd2] py-8"
+      className="mt-3 rounded-lg border border-border bg-card p-5"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#697181]">
-            Evidence, not inference
-          </p>
           <h2
             id="profile-evidence-heading"
-            className="mt-2 text-xl font-semibold tracking-[-0.02em]"
+            className="text-base font-semibold tracking-[-0.01em]"
           >
             Evidence to review
           </h2>
         </div>
-        <span className="text-sm text-[#596173]">
+        <span className="text-sm text-ink-secondary">
           {evidence.length} {evidence.length === 1 ? "item" : "items"}
         </span>
       </div>
       {evidence.length === 0 ? (
-        <p className="mt-5 max-w-2xl text-sm leading-6 text-[#596173]">
+        <p className="mt-5 max-w-2xl text-sm leading-6 text-ink-secondary">
           Add a skill or career direction to begin. Extracted CV evidence will
           appear here only after the private upload path is activated and you
           review it.
         </p>
       ) : (
-        <ul className="mt-5 divide-y divide-[#ece9e2] border-y border-[#ece9e2]">
+        <ul className="mt-4 divide-y divide-border border-t border-border">
           {evidence.map((item) => (
             <li
               key={item.id}
@@ -107,7 +104,7 @@ export function ProfileEvidenceList({
             >
               <div className="min-w-0 [overflow-wrap:anywhere]">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-[#263248]">
+                  <span className="font-medium text-foreground">
                     {item.label}
                   </span>
                   <Badge variant="outline" className="rounded-sm font-normal">
@@ -115,11 +112,11 @@ export function ProfileEvidenceList({
                   </Badge>
                 </div>
                 {item.evidenceExcerpt ? (
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-[#596173]">
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-secondary">
                     {item.evidenceExcerpt}
                   </p>
                 ) : null}
-                <p className="mt-2 font-mono text-[0.68rem] uppercase tracking-[0.1em] text-[#697181]">
+                <p className="mt-2 font-mono text-[0.7rem] text-ink-faint">
                   {item.origin === "cv" ? "CV evidence" : "Added by you"} ·{" "}
                   {item.proficiencySignal}
                 </p>

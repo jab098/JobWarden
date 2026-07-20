@@ -4,6 +4,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { radiusOptions } from "@jobwarden/domain";
 
 import { Button } from "@/components/ui/button";
+import { FilterSelect } from "@/components/jobs/filter-select";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -77,11 +78,10 @@ const salaryPeriodLabels: Record<(typeof salaryPeriods)[number], string> = {
 // valid one cannot drift apart.
 const salaryPeriodOptions = [
   ["all", "Not set"],
-  ...salaryPeriods.map((period) => [period, salaryPeriodLabels[period]]),
+  ...salaryPeriods.map(
+    (period) => [period, salaryPeriodLabels[period]] as const,
+  ),
 ] as const;
-
-const selectClass =
-  "h-10 w-full rounded-md border border-[#cbc7bd] bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]";
 
 function FilterForm({ filters }: { filters: JobFilters }) {
   return (
@@ -96,46 +96,42 @@ function FilterForm({ filters }: { filters: JobFilters }) {
       <input type="hidden" name="sort" value={filters.sort} />
       {/* The hint sits outside the label so the field's accessible name stays
           "Keywords" rather than absorbing the whole sentence. */}
-      <div className="space-y-2">
-        <label className="block space-y-2 text-sm font-medium">
+      <div className="space-y-1.5">
+        <label className="block space-y-1.5 text-sm font-medium">
           <span>Keywords</span>
           <Input
             name="q"
             defaultValue={filters.q}
             placeholder="Role, employer, or skill"
-            className="h-10 rounded-md bg-white"
+            className="bg-card"
           />
         </label>
-        <p className="text-xs text-[#697181]">
+        <p className="text-xs leading-5 text-ink-faint">
           Searches the job title, the employer, and the advert itself.
         </p>
       </div>
-      <div className="space-y-2">
-        <label className="block space-y-2 text-sm font-medium">
+      <div className="space-y-3">
+        <label className="block space-y-1.5 text-sm font-medium">
           <span>Location</span>
           <Input
             name="location"
             defaultValue={filters.location}
             placeholder="Manchester"
-            className="h-10 rounded-md bg-white"
+            className="bg-card"
           />
         </label>
-        <label className="block space-y-2 text-sm font-medium">
-          <span>Distance</span>
-          <select
-            name="radius"
-            defaultValue={filters.radius === null ? "" : String(filters.radius)}
-            className={selectClass}
-          >
-            <option value="">This place only</option>
-            {radiusOptions.map((miles) => (
-              <option key={miles} value={miles}>
-                Within {miles} miles
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="text-xs text-[#697181]">
+        <FilterSelect
+          name="radius"
+          label="Distance"
+          defaultValue={filters.radius === null ? "" : String(filters.radius)}
+          options={[
+            ["", "This place only"],
+            ...radiusOptions.map(
+              (miles) => [String(miles), `Within ${miles} miles`] as const,
+            ),
+          ]}
+        />
+        <p className="text-xs leading-5 text-ink-faint">
           A distance also finds nearby towns. Within 10 miles of Manchester
           includes Salford and Trafford Park.
         </p>
@@ -150,22 +146,15 @@ function FilterForm({ filters }: { filters: JobFilters }) {
           ["compensation", "Salary information"],
         ] as const
       ).map(([name, label]) => (
-        <label key={name} className="block space-y-2 text-sm font-medium">
-          <span>{label}</span>
-          <select
-            name={name}
-            defaultValue={filters[name]}
-            className={selectClass}
-          >
-            {options[name].map(([value, copy]) => (
-              <option key={value} value={value}>
-                {copy}
-              </option>
-            ))}
-          </select>
-        </label>
+        <FilterSelect
+          key={name}
+          name={name}
+          label={label}
+          defaultValue={filters[name]}
+          options={options[name]}
+        />
       ))}
-      <fieldset className="space-y-2">
+      <fieldset className="space-y-1.5">
         <legend className="text-sm font-medium">Minimum salary</legend>
         <div className="grid grid-cols-2 gap-2">
           <Input
@@ -178,37 +167,27 @@ function FilterForm({ filters }: { filters: JobFilters }) {
             aria-label="Minimum salary in pounds"
             defaultValue={filters.salaryMin ?? ""}
             placeholder="30000"
-            className="h-10 rounded-md bg-white"
+            className="bg-card"
           />
-          <select
+          <FilterSelect
             name="salaryPeriod"
-            aria-label="Salary period"
+            label="Salary period"
             defaultValue={filters.salaryPeriod}
-            className={selectClass}
-          >
-            {salaryPeriodOptions.map(([value, copy]) => (
-              <option key={value} value={value}>
-                {copy}
-              </option>
-            ))}
-          </select>
+            options={salaryPeriodOptions}
+            hideLabel
+          />
         </div>
-        <p className="text-xs text-[#697181]">
+        <p className="text-xs leading-5 text-ink-faint">
           Needs both an amount and a period, so a day rate is never compared
           against a yearly salary. Setting one hides listings with no stated
           salary, because they cannot be shown to meet it.
         </p>
       </fieldset>
       <div className="flex items-center gap-3 pt-1">
-        <Button
-          type="submit"
-          className="h-10 rounded-md bg-[#2458a6] px-4 text-white hover:bg-[#1d477f] focus-visible:ring-2 focus-visible:ring-[#2458a6]"
-        >
-          Search
-        </Button>
+        <Button type="submit">Search</Button>
         <Link
           href="/jobs"
-          className="rounded-sm text-sm text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+          className="rounded-sm text-sm text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
         >
           Clear all
         </Link>
@@ -226,10 +205,8 @@ export function JobFilters({
 }) {
   if (variant === "desktop") {
     return (
-      <aside className="h-full border-r border-[#e1ded6] bg-[#faf9f6] p-6">
-        <h2 className="mb-6 text-sm font-semibold uppercase tracking-[0.12em] text-[#596173]">
-          Refine results
-        </h2>
+      <aside className="h-full p-5 lg:p-6">
+        <h2 className="mb-5 text-sm font-semibold text-foreground">Filters</h2>
         <FilterForm filters={filters} />
       </aside>
     );
@@ -239,22 +216,16 @@ export function JobFilters({
     <div className="md:hidden">
       <Sheet>
         <SheetTrigger
-          render={
-            <Button
-              variant="outline"
-              className="h-10 rounded-md border-[#cbc7bd] bg-white focus-visible:ring-2 focus-visible:ring-[#2458a6]"
-              aria-label="Open job filters"
-            />
-          }
+          render={<Button variant="outline" aria-label="Open job filters" />}
         >
-          <SlidersHorizontal aria-hidden="true" /> Filters
+          <SlidersHorizontal aria-hidden="true" strokeWidth={1.75} /> Filters
         </SheetTrigger>
-        <SheetContent className="w-[min(24rem,92vw)] overflow-y-auto bg-[#faf9f6] p-0">
-          <SheetHeader className="border-b border-[#dedbd2] px-6 py-5">
+        <SheetContent className="w-[min(24rem,92vw)] overflow-y-auto bg-background p-0">
+          <SheetHeader className="border-b border-border px-5 py-4">
             <SheetTitle>Job search filters</SheetTitle>
             <SheetDescription>Narrow the UK listings shown.</SheetDescription>
           </SheetHeader>
-          <div className="p-6">
+          <div className="p-5">
             <FilterForm filters={filters} />
           </div>
         </SheetContent>

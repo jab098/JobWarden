@@ -25,7 +25,7 @@ export function IngestionRequestForm({
       {state.kind !== "idle" ? (
         <p
           role={state.kind === "success" ? "status" : "alert"}
-          className="text-xs text-[#596173]"
+          className="text-xs text-ink-secondary"
         >
           {state.message}
           {state.kind === "success" && state.correlationId ? (

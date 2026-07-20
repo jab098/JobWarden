@@ -6,17 +6,20 @@ import type {
   PeriodComparison,
   ProfileNudge,
 } from "@jobwarden/domain";
+import { cn } from "@/lib/utils";
 
 /**
  * A sparkline drawn as inline SVG. A charting dependency would be a lot of
- * bytes for four bars, and the roadmap requires separate approval for one.
+ * bytes for a few bars, and the roadmap requires separate approval for one.
  */
 function Sparkline({
   series,
   label,
+  className,
 }: {
   series: readonly DayCount[];
   label: string;
+  className?: string;
 }) {
   const peak = Math.max(1, ...series.map((day) => day.count));
   const width = Math.max(1, series.length) * 12;
@@ -25,20 +28,21 @@ function Sparkline({
     <svg
       role="img"
       aria-label={label}
-      viewBox={`0 0 ${width} 24`}
-      className="h-6 w-full max-w-[10rem]"
+      viewBox={`0 0 ${width} 32`}
+      className={cn("h-8 w-full max-w-[9rem]", className)}
       preserveAspectRatio="none"
     >
       {series.map((day, index) => {
-        const height = day.count === 0 ? 1 : (day.count / peak) * 22;
+        const height = day.count === 0 ? 1.5 : (day.count / peak) * 30;
         return (
           <rect
             key={day.date}
             x={index * 12 + 2}
-            y={24 - height}
+            y={32 - height}
             width={8}
             height={height}
-            className={day.count === 0 ? "fill-[#d8d4cb]" : "fill-[#2458a6]"}
+            rx={1}
+            className={day.count === 0 ? "fill-border" : "fill-link/80"}
           />
         );
       })}
@@ -55,7 +59,7 @@ function Comparison({
 }) {
   if (value.direction === "no_baseline") {
     return (
-      <span className="text-xs text-[#697181]">
+      <span className="text-xs text-ink-faint">
         {value.current} {unit} · not enough history to compare
       </span>
     );
@@ -65,46 +69,109 @@ function Comparison({
       ? "the same as the period before"
       : `${value.change} ${value.direction === "up" ? "more" : "fewer"} than the period before`;
   return (
-    <span className="text-xs text-[#697181]">
+    <span className="text-xs text-ink-faint">
       {value.current} {unit} · {wording}
     </span>
   );
 }
 
-function Figure({
-  value,
+/** A key figure at the top of the page. Renders as a card; links whole-card. */
+function StatCard({
   label,
+  value,
+  context,
   href,
+  tone = "neutral",
 }: {
-  value: number | string;
   label: string;
-  href?: string;
+  value: number | string;
+  context?: React.ReactNode;
+  href: string;
+  tone?: "neutral" | "good" | "attention";
 }) {
-  // A name is not a statistic; typesetting it at figure size would give it a
-  // visual weight the number slots have earned and it has not.
-  const isCount = typeof value === "number";
-  const body = (
-    <>
+  return (
+    <Link
+      href={href}
+      className="group block rounded-lg border border-border bg-card p-4 outline-none transition-[border-color,box-shadow,transform] duration-150 ease-(--ease-smooth-out) hover:-translate-y-px hover:border-input hover:shadow-[0_2px_8px_rgba(16,20,28,0.05)] focus-visible:ring-2 focus-visible:ring-ring/60"
+    >
+      <span className="block text-xs text-ink-secondary">{label}</span>
       <span
-        className={`block font-semibold tracking-[-0.02em] text-[#172033] [overflow-wrap:anywhere] ${
-          isCount ? "text-2xl" : "text-base"
-        }`}
+        className={cn(
+          "tnum mt-1.5 block text-2xl font-semibold tracking-[-0.02em]",
+          tone === "good" && "text-success",
+          tone === "attention" && "text-warning",
+          tone === "neutral" && "text-foreground",
+        )}
       >
         {value}
       </span>
-      <span className="mt-1 block text-xs text-[#697181]">{label}</span>
-    </>
-  );
-
-  return href ? (
-    <Link
-      href={href}
-      className="block rounded-md px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
-    >
-      {body}
+      {context ? (
+        <span className="mt-1 block text-xs text-ink-faint">{context}</span>
+      ) : null}
     </Link>
-  ) : (
-    <div className="px-1 py-1">{body}</div>
+  );
+}
+
+function Panel({
+  title,
+  action,
+  children,
+  className,
+}: {
+  title: string;
+  action?: { href: string; label: string };
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        "flex flex-col rounded-lg border border-border bg-card p-5",
+        className,
+      )}
+    >
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        {action ? (
+          <Link
+            href={action.href}
+            className="rounded-sm text-xs text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
+          >
+            {action.label}
+          </Link>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** One aligned funnel row: stage, proportional bar, count. */
+function FunnelRow({
+  stage,
+  reached,
+  peak,
+}: {
+  stage: string;
+  reached: number;
+  peak: number;
+}) {
+  const share = peak === 0 ? 0 : reached / peak;
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-24 shrink-0 text-xs text-ink-secondary capitalize">
+        {stage}
+      </span>
+      <span aria-hidden="true" className="h-1.5 min-w-0 flex-1">
+        <span
+          className="block h-full rounded-full bg-link/75 transition-[width] duration-(--duration-slow) ease-(--ease-smooth-out)"
+          style={{ width: `${Math.max(share * 100, reached > 0 ? 4 : 0)}%` }}
+        />
+      </span>
+      <span className="tnum w-6 shrink-0 text-right font-mono text-xs text-foreground">
+        {reached}
+      </span>
+    </div>
   );
 }
 
@@ -127,226 +194,272 @@ const nudgeCopy: Record<ProfileNudge, { text: string; href: string }> = {
   },
 };
 
-function Section({
-  title,
-  href,
-  linkLabel,
-  children,
-}: {
-  title: string;
-  href: string;
-  linkLabel: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="border-t border-[#ece9e2] py-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="text-sm font-semibold text-[#263248]">{title}</h2>
-        <Link
-          href={href}
-          className="text-xs underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
-        >
-          {linkLabel}
-        </Link>
-      </div>
-      {children}
-    </section>
-  );
-}
-
 export function DashboardView({ result }: { result: DashboardResult }) {
   const { insights } = result.applications;
+  const funnelPeak = Math.max(1, ...insights.funnel.map((s) => s.reached));
+  const dueNow = insights.followUps.overdue + insights.followUps.dueToday;
 
   return (
-    <div className="px-5 py-8 lg:px-8">
-      <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#697181]">
-        Your activity
-      </p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-[-0.025em] text-[#172033]">
-        Home
-      </h1>
-      <p className="mt-2 max-w-prose text-sm leading-6 text-[#596173]">
-        Everything here is counted from your own records over the last{" "}
-        {result.windowDays} days. Nothing is estimated, and silence from an
-        employer is never reported as a rejection.
-      </p>
-
-      <Section
-        title="Applications"
-        href="/applications"
-        linkLabel="Open tracker"
-      >
-        <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Figure value={insights.totalTracked} label="tracked in total" />
-          <Figure value={insights.outcomes.open} label="still open" />
-          <Figure
-            value={insights.outcomes.observed}
-            label="with an observed outcome"
-          />
-          <Figure
-            value={insights.outcomes.quietFourteenPlusDays}
-            label="no response observed in 14+ days"
-          />
-        </div>
-        <p className="mt-3">
-          <Comparison
-            value={result.applications.startedThisPeriod}
-            unit="started this period"
-          />
+    <div className="mx-auto max-w-6xl px-5 py-7 lg:px-8">
+      <header>
+        <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
+          Home
+        </h1>
+        <p className="mt-1.5 max-w-[62ch] text-sm leading-6 text-ink-secondary">
+          Everything here is counted from your own records over the last{" "}
+          {result.windowDays} days. Nothing is estimated, and silence from an
+          employer is never reported as a rejection.
         </p>
-        <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-[#697181]">
-          {insights.funnel.map((step) => (
-            <div key={step.stage} className="flex gap-2">
-              <dt className="capitalize">{step.stage}</dt>
-              <dd className="font-medium text-[#263248]">{step.reached}</dd>
-            </div>
-          ))}
-        </dl>
-      </Section>
+      </header>
 
-      <Section
-        title="Follow-ups"
-        href="/applications"
-        linkLabel="Plan next actions"
-      >
-        <div className="mt-3 grid grid-cols-3 gap-4">
-          <Figure value={insights.followUps.overdue} label="overdue" />
-          <Figure value={insights.followUps.dueToday} label="due today" />
-          <Figure value={insights.followUps.upcoming} label="upcoming" />
-        </div>
-      </Section>
+      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard
+          label="Matches right now"
+          value={result.targetFeed.currentMatchCount}
+          context={result.targetFeed.topProfileName ?? undefined}
+          href="/matches"
+          tone={result.targetFeed.currentMatchCount > 0 ? "good" : "neutral"}
+        />
+        <StatCard
+          label="Applications tracked"
+          value={insights.totalTracked}
+          context={`${insights.outcomes.open} still open`}
+          href="/applications"
+        />
+        <StatCard
+          label="Follow-ups due"
+          value={dueNow}
+          context={
+            insights.followUps.overdue > 0
+              ? `${insights.followUps.overdue} overdue · ${insights.followUps.dueToday} due today`
+              : `${insights.followUps.dueToday} due today · ${insights.followUps.upcoming} upcoming`
+          }
+          href="/applications"
+          tone={insights.followUps.overdue > 0 ? "attention" : "neutral"}
+        />
+        <StatCard
+          label="Saved roles"
+          value={result.decisions.counts.saved}
+          context={`${result.decisions.counts.considering} considering`}
+          href="/matches"
+        />
+      </div>
 
-      <Section title="Matches" href="/matches" linkLabel="Open matches">
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Figure
-              value={result.targetFeed.currentMatchCount}
-              label="matches right now"
-            />
-            <Figure
-              value={result.targetFeed.topProfileName ?? "No single leader"}
-              label="profile producing most matches"
-            />
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <Panel
+          title="Applications"
+          action={{ href: "/applications", label: "Open tracker" }}
+        >
+          <div className="mt-4 flex flex-col gap-2.5">
+            {insights.funnel.map((step) => (
+              <FunnelRow
+                key={step.stage}
+                stage={step.stage}
+                reached={step.reached}
+                peak={funnelPeak}
+              />
+            ))}
           </div>
-          <div className="min-w-0">
+          <p className="mt-4">
+            <Comparison
+              value={result.applications.startedThisPeriod}
+              unit="started this period"
+            />
+          </p>
+          <dl className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4">
+            <div>
+              <dd className="tnum text-base font-semibold text-foreground">
+                {insights.outcomes.open}
+              </dd>
+              <dt className="mt-0.5 text-xs text-ink-faint">still open</dt>
+            </div>
+            <div>
+              <dd className="tnum text-base font-semibold text-foreground">
+                {insights.outcomes.observed}
+              </dd>
+              <dt className="mt-0.5 text-xs text-ink-faint">
+                with an observed outcome
+              </dt>
+            </div>
+            <div>
+              <dd className="tnum text-base font-semibold text-foreground">
+                {insights.outcomes.quietFourteenPlusDays}
+              </dd>
+              <dt className="mt-0.5 text-xs text-ink-faint">
+                no response observed in 14+ days
+              </dt>
+            </div>
+          </dl>
+        </Panel>
+
+        <Panel
+          title="Matches"
+          action={{ href: "/matches", label: "Open matches" }}
+        >
+          <div className="mt-4 mb-4 flex items-start justify-between gap-6">
+            <div>
+              <p className="tnum text-2xl font-semibold tracking-[-0.02em] text-foreground">
+                {result.targetFeed.currentMatchCount}
+              </p>
+              <p className="mt-0.5 text-xs text-ink-faint">matches right now</p>
+            </div>
+            <div className="min-w-0 text-right">
+              <p className="truncate text-sm font-medium text-foreground">
+                {result.targetFeed.topProfileName ?? "No single leader"}
+              </p>
+              <p className="mt-0.5 text-xs text-ink-faint">
+                profile producing most matches
+              </p>
+            </div>
+          </div>
+          <div className="mt-auto border-t border-border pt-4">
             <Sparkline
               series={result.targetFeed.byDay}
               label={`Matching jobs by the day JobWarden first saw them, over ${result.windowDays} days`}
+              className="h-10 max-w-[14rem]"
             />
-            <p className="mt-1 text-xs text-[#697181]">
+            <p className="mt-1.5 text-xs text-ink-faint">
               By the day JobWarden first saw each job
             </p>
           </div>
-        </div>
-      </Section>
+        </Panel>
 
-      <Section
-        title="Your decisions"
-        href="/matches"
-        linkLabel="Review saved roles"
-      >
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-          <div className="grid grid-cols-3 gap-4">
-            <Figure value={result.decisions.counts.saved} label="saved" />
-            <Figure
-              value={result.decisions.counts.considering}
-              label="considering"
-            />
-            <Figure
-              value={result.decisions.counts.dismissed}
-              label="dismissed"
-            />
-          </div>
-          <div className="min-w-0">
+        <Panel
+          title="Your decisions"
+          action={{ href: "/matches", label: "Review saved roles" }}
+        >
+          <dl className="mt-4 mb-4 grid grid-cols-3 gap-3">
+            <div>
+              <dd className="tnum text-base font-semibold text-foreground">
+                {result.decisions.counts.saved}
+              </dd>
+              <dt className="mt-0.5 text-xs text-ink-faint">saved</dt>
+            </div>
+            <div>
+              <dd className="tnum text-base font-semibold text-foreground">
+                {result.decisions.counts.considering}
+              </dd>
+              <dt className="mt-0.5 text-xs text-ink-faint">considering</dt>
+            </div>
+            <div>
+              <dd className="tnum text-base font-semibold text-foreground">
+                {result.decisions.counts.dismissed}
+              </dd>
+              <dt className="mt-0.5 text-xs text-ink-faint">dismissed</dt>
+            </div>
+          </dl>
+          <div className="mt-auto border-t border-border pt-4">
             <Sparkline
               series={result.decisions.byDay}
               label={`Decisions per day over ${result.windowDays} days`}
+              className="h-10 max-w-[14rem]"
             />
-            <p className="mt-1 text-xs text-[#697181]">
+            <p className="mt-1.5 text-xs text-ink-faint">
               {result.decisions.inPeriod} in this period
             </p>
           </div>
-        </div>
-      </Section>
+        </Panel>
 
-      <Section title="Pathways" href="/pathways" linkLabel="Open pathways">
-        {result.explore.enabled ? (
-          <div className="mt-3 grid grid-cols-3 gap-4">
-            <Figure
-              value={result.explore.qualifyingCount}
-              label="pathways qualifying"
-            />
-            <Figure value={result.explore.promotedCount} label="promoted" />
-            <Figure value={result.explore.dismissedCount} label="dismissed" />
-          </div>
-        ) : (
-          <p className="mt-3 max-w-prose text-sm text-[#596173]">
-            Pathways is off. Turn it on to see adjacent careers built from your
-            confirmed evidence.
+        <Panel
+          title="Profile health"
+          action={{ href: "/profile", label: "Open career profile" }}
+        >
+          <dl className="mt-4 grid grid-cols-3 gap-3">
+            <div>
+              <dd className="tnum text-base font-semibold text-foreground">
+                {result.profileHealth.confirmedEvidenceCount}
+              </dd>
+              <dt className="mt-0.5 text-xs text-ink-faint">
+                confirmed evidence items
+              </dt>
+            </div>
+            <div>
+              <dd className="tnum text-base font-semibold text-foreground">
+                {result.profileHealth.enabledSearchCount}
+              </dd>
+              <dt className="mt-0.5 text-xs text-ink-faint">
+                enabled searches
+              </dt>
+            </div>
+            <div>
+              <dd className="text-base font-semibold text-foreground">
+                {result.profileHealth.hasCv
+                  ? (result.profileHealth.cvKind ?? "yes").toUpperCase()
+                  : "None"}
+              </dd>
+              <dt className="mt-0.5 text-xs text-ink-faint">CV on file</dt>
+            </div>
+          </dl>
+          {result.profileHealth.nudges.length === 0 ? null : (
+            <ul className="mt-4 flex flex-col gap-1.5 border-t border-border pt-4">
+              {result.profileHealth.nudges.map((nudge) => (
+                <li key={nudge} className="text-sm leading-6">
+                  <Link
+                    href={nudgeCopy[nudge].href}
+                    className="rounded-sm text-ink-secondary underline decoration-border underline-offset-4 outline-none transition-colors duration-150 hover:text-foreground hover:decoration-ink-faint focus-visible:ring-2 focus-visible:ring-ring/60"
+                  >
+                    {nudgeCopy[nudge].text}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <Panel
+          title="Pathways"
+          action={{ href: "/pathways", label: "Open pathways" }}
+        >
+          {result.explore.enabled ? (
+            <dl className="mt-4 grid grid-cols-3 gap-3">
+              <div>
+                <dd className="tnum text-base font-semibold text-foreground">
+                  {result.explore.qualifyingCount}
+                </dd>
+                <dt className="mt-0.5 text-xs text-ink-faint">
+                  pathways qualifying
+                </dt>
+              </div>
+              <div>
+                <dd className="tnum text-base font-semibold text-foreground">
+                  {result.explore.promotedCount}
+                </dd>
+                <dt className="mt-0.5 text-xs text-ink-faint">promoted</dt>
+              </div>
+              <div>
+                <dd className="tnum text-base font-semibold text-foreground">
+                  {result.explore.dismissedCount}
+                </dd>
+                <dt className="mt-0.5 text-xs text-ink-faint">dismissed</dt>
+              </div>
+            </dl>
+          ) : (
+            <p className="mt-4 max-w-prose text-sm leading-6 text-ink-secondary">
+              Pathways is off. Turn it on to see adjacent careers built from
+              your confirmed evidence.
+            </p>
+          )}
+        </Panel>
+
+        <Panel
+          title="Digest emails"
+          action={{ href: "/profile", label: "Notification settings" }}
+        >
+          <p className="mt-4 text-sm leading-6 text-ink-secondary">
+            <span className="tnum font-medium text-foreground">
+              {result.digests.sent}
+            </span>{" "}
+            sent · {result.digests.noMatchSlots} slots with no new matches ·{" "}
+            {result.digests.heldBack} held back by a limit ·{" "}
+            {result.digests.failed} failed and retried
           </p>
-        )}
-      </Section>
-
-      <Section
-        title="Digest emails"
-        href="/profile"
-        linkLabel="Notification settings"
-      >
-        <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Figure value={result.digests.sent} label="sent" />
-          <Figure
-            value={result.digests.noMatchSlots}
-            label="slots with no new matches"
-          />
-          <Figure
-            value={result.digests.heldBack}
-            label="held back by a limit"
-          />
-          <Figure value={result.digests.failed} label="failed and retried" />
-        </div>
-      </Section>
-
-      <Section
-        title="Profile health"
-        href="/profile"
-        linkLabel="Open career profile"
-      >
-        <div className="mt-3 grid grid-cols-3 gap-4">
-          <Figure
-            value={result.profileHealth.confirmedEvidenceCount}
-            label="confirmed evidence items"
-          />
-          <Figure
-            value={result.profileHealth.enabledSearchCount}
-            label="enabled searches"
-          />
-          <Figure
-            value={
-              result.profileHealth.hasCv
-                ? (result.profileHealth.cvKind ?? "yes").toUpperCase()
-                : "None"
-            }
-            label="CV on file"
-          />
-        </div>
-        {result.profileHealth.nudges.length === 0 ? null : (
-          <ul className="mt-3 space-y-1">
-            {result.profileHealth.nudges.map((nudge) => (
-              <li key={nudge} className="text-sm text-[#596173]">
-                <Link
-                  href={nudgeCopy[nudge].href}
-                  className="underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
-                >
-                  {nudgeCopy[nudge].text}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+        </Panel>
+      </div>
 
       {result.dataMode === "fixtures" ? (
-        <p className="mt-6 text-sm text-[#596173]">
+        <p className="mt-5 text-xs text-ink-faint">
           This preview shows frozen fictional statistics.
         </p>
       ) : null}

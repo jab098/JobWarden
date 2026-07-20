@@ -13,13 +13,8 @@ export function AdminStateView({
 }) {
   return (
     <main className="mx-auto max-w-3xl px-5 py-16 sm:px-8 lg:px-12">
-      <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#2458a6]">
-        Administrator
-      </p>
-      <h1 className="mt-4 text-3xl font-semibold tracking-[-0.035em]">
-        {title}
-      </h1>
-      <p className="mt-4 max-w-xl text-sm leading-6 text-[#596173]">
+      <h1 className="text-xl font-semibold tracking-[-0.02em]">{title}</h1>
+      <p className="mt-4 max-w-xl text-sm leading-6 text-ink-secondary">
         {description}
       </p>
       {onRetry ? (

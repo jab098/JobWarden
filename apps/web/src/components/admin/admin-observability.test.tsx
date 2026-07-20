@@ -52,7 +52,7 @@ describe("AuditLogTable", () => {
     };
     render(<AuditLogTable entries={[bare]} />);
 
-    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.getByText("-")).toBeInTheDocument();
   });
 
   it("scrolls inside its own container rather than the page", () => {

@@ -6,37 +6,45 @@ export function ExploreView({ result }: { result: ExploreResult }) {
   const count = result.items.length;
 
   return (
-    <div className="mx-auto min-h-screen max-w-[92rem] bg-white">
-      <header className="border-b border-[#dedbd2] px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
-        <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-[#697181]">
-          United Kingdom only
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-[#172033] sm:text-4xl">
+    <div className="mx-auto max-w-4xl px-5 py-7 lg:px-8">
+      <header>
+        <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
           Career pathways
         </h1>
-        <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-[#ece9e2] pt-4 text-sm text-[#596173]">
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-secondary">
           {result.enabled ? (
-            <span className="font-medium text-[#263248]">
+            <span className="tnum font-medium text-foreground">
               {count} {count === 1 ? "credible pathway" : "credible pathways"}
             </span>
           ) : (
-            <span className="font-medium text-[#263248]">Pathways are off</span>
+            <span className="font-medium text-foreground">
+              Pathways are off
+            </span>
           )}
           {result.dataMode === "fixtures" ? (
-            <span className="font-mono text-[0.7rem] uppercase tracking-[0.12em] text-[#7a5a20]">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[0.68rem] text-ink-faint">
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full bg-warning"
+              />
               Development data
             </span>
           ) : null}
-          <ExploreToggle enabled={result.enabled} />
+          <div className="ml-auto">
+            <ExploreToggle enabled={result.enabled} />
+          </div>
         </div>
       </header>
 
       {!result.enabled ? (
-        <section aria-label="About pathways" className="px-5 py-16 sm:px-8">
-          <h2 className="text-2xl font-semibold tracking-[-0.025em]">
+        <section
+          aria-label="About pathways"
+          className="mt-5 rounded-lg border border-border bg-card px-6 py-14 text-center"
+        >
+          <h2 className="text-base font-semibold tracking-[-0.01em]">
             Adjacent careers your confirmed skills already cover
           </h2>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-[#596173]">
+          <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-ink-secondary">
             Pathways is opt-in and off by default. When you turn it on,
             JobWarden deterministically compares your confirmed evidence with a
             curated UK pathway taxonomy. A pathway is suggested only when it
@@ -48,13 +56,13 @@ export function ExploreView({ result }: { result: ExploreResult }) {
         </section>
       ) : (
         <>
-          <section aria-label="Suggested pathways" className="min-w-0">
+          <section aria-label="Suggested pathways" className="mt-5 min-w-0">
             {count === 0 ? (
-              <div className="px-5 py-16 sm:px-8">
-                <h2 className="text-2xl font-semibold tracking-[-0.025em]">
+              <div className="rounded-lg border border-border bg-card px-6 py-14 text-center">
+                <h2 className="text-base font-semibold tracking-[-0.01em]">
                   No pathway clears the bar right now
                 </h2>
-                <p className="mt-3 max-w-xl text-sm leading-6 text-[#596173]">
+                <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-ink-secondary">
                   A pathway is suggested only when it reaches at least 70%
                   weighted overlap with your confirmed core skills and carries
                   no more than two significant gaps, outside your active target
@@ -76,14 +84,11 @@ export function ExploreView({ result }: { result: ExploreResult }) {
           </section>
 
           {result.dismissed.length > 0 ? (
-            <section
-              aria-label="Dismissed pathways"
-              className="border-t border-[#dedbd2] px-0 pb-10"
-            >
-              <h2 className="px-5 pt-8 text-sm font-semibold uppercase tracking-[0.1em] text-[#697181] sm:px-7">
+            <section aria-label="Dismissed pathways" className="mt-8">
+              <h2 className="text-sm font-semibold text-foreground">
                 Dismissed pathways
               </h2>
-              <ul>
+              <ul className="mt-3">
                 {result.dismissed.map((item) => (
                   <ExploreItem
                     key={item.suggestion.pathway.normalizedConcept}

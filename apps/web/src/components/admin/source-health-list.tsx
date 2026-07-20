@@ -30,16 +30,16 @@ export function SourceHealthList({
       <div>
         <h2
           id="source-health-heading"
-          className="text-xl font-semibold tracking-[-0.025em]"
+          className="text-base font-semibold tracking-[-0.01em]"
         >
           Source health
         </h2>
-        <p className="mt-1 text-sm text-[#596173]">
+        <p className="mt-1 text-sm text-ink-secondary">
           Freshness and active UK-role coverage by permitted source.
         </p>
       </div>
       {sources.length === 0 ? (
-        <p className="text-sm text-[#596173]">
+        <p className="text-sm text-ink-secondary">
           No source health is available yet.
         </p>
       ) : (
@@ -52,21 +52,21 @@ export function SourceHealthList({
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div>
                   <h3 className="font-semibold">{source.employerName}</h3>
-                  <p className="mt-1 font-mono text-xs uppercase tracking-[0.08em] text-[#596173]">
+                  <p className="mt-1 font-mono text-xs text-ink-secondary">
                     {source.provider} ·{" "}
                     {source.coverageMode === "complete"
                       ? "complete snapshot source"
                       : "incremental indexed coverage"}
                   </p>
                 </div>
-                <p className="text-sm text-[#596173]">
-                  <span className="font-mono text-[#263248]">
+                <p className="text-sm text-ink-secondary">
+                  <span className="font-mono text-foreground">
                     {source.activeOccurrences}
                   </span>{" "}
                   active occurrences
                 </p>
               </div>
-              <p className="mt-3 text-xs text-[#596173]">
+              <p className="mt-3 text-xs text-ink-secondary">
                 {freshnessLabel[source.freshnessState]} · Last successful sync:{" "}
                 {source.lastSuccessfulSyncAt
                   ? formatAdminDate(source.lastSuccessfulSyncAt)
@@ -79,7 +79,7 @@ export function SourceHealthList({
               <dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-3 text-sm sm:grid-cols-4 xl:grid-cols-8">
                 {metrics.map(([label, field]) => (
                   <div key={field}>
-                    <dt className="text-xs text-[#596173]">{label}</dt>
+                    <dt className="text-xs text-ink-secondary">{label}</dt>
                     <dd className="mt-0.5 font-mono">{source[field]}</dd>
                   </div>
                 ))}

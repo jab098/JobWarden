@@ -198,10 +198,10 @@ describe("OnboardingFlow", () => {
       screen.getByRole("textbox", { name: /Skills you already have/ }),
       "SQL, Excel",
     );
-    await user.selectOptions(
+    await user.click(
       screen.getByRole("combobox", { name: /level you are aiming for/ }),
-      "mid",
     );
+    await user.click(await screen.findByRole("option", { name: "Mid level" }));
     await user.click(screen.getByRole("button", { name: "Save and continue" }));
 
     const [, formData] = actionMocks.advanceOnboardingAction.mock.calls[0];

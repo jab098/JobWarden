@@ -19,7 +19,7 @@ export default function PrivacyPage() {
         <li>
           Your CV file, the text extracted from it, and the skills,
           responsibilities, tools, industries, and role history derived from it
-          — together with your own corrections and confirmations.
+          together with your own corrections and confirmations.
         </li>
         <li>
           Your named searches, seniority, locations, work patterns, compensation
@@ -67,7 +67,7 @@ export default function PrivacyPage() {
       <ul>
         {subprocessors.map((entry) => (
           <li key={entry.name}>
-            <strong>{entry.name}</strong> — {entry.purpose}
+            <strong>{entry.name}</strong>: {entry.purpose}
           </li>
         ))}
       </ul>

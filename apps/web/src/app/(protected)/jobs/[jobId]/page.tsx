@@ -34,11 +34,11 @@ export default async function JobDetailPage({
   );
   return (
     <AppShell dataMode={dataMode}>
-      <div className="mx-auto flex max-w-[92rem] flex-wrap items-center gap-x-5 gap-y-2 border-b border-[#dedbd2] bg-white px-5 py-3 sm:px-8">
+      <div className="mx-auto flex max-w-[92rem] flex-wrap items-center gap-x-5 gap-y-2 border-b border-border bg-white px-5 py-3 sm:px-8">
         <TrackApplicationButton jobId={job.id} tracked={tracked} />
         <Link
           href={`/tailor/${job.id}`}
-          className="text-sm underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+          className="text-sm underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
         >
           Tailor my CV for this role
         </Link>

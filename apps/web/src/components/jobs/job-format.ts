@@ -31,7 +31,15 @@ function formatPence(value: number): string {
   }).format(value / 100);
 }
 
-export function formatCompensation(job: JobListItem): string | null {
+type CompensationSource = Pick<
+  JobListItem,
+  | "compensationCurrency"
+  | "compensationPeriod"
+  | "compensationMinimum"
+  | "compensationMaximum"
+>;
+
+export function formatCompensation(job: CompensationSource): string | null {
   if (
     job.compensationCurrency !== "GBP" ||
     job.compensationPeriod === "unknown" ||
@@ -53,7 +61,9 @@ export function formatCompensation(job: JobListItem): string | null {
   return `${amount} per ${job.compensationPeriod}`;
 }
 
-export function formatCompensationProvenance(job: JobListItem): string {
+export function formatCompensationProvenance(
+  job: Pick<JobListItem, "compensationProvenance">,
+): string {
   switch (job.compensationProvenance) {
     case "advertised":
       return "Advertised salary";
@@ -64,7 +74,9 @@ export function formatCompensationProvenance(job: JobListItem): string {
   }
 }
 
-export function formatIr35(job: JobListItem): string | null {
+export function formatIr35(
+  job: Pick<JobListItem, "employmentType" | "ir35Status">,
+): string | null {
   if (job.employmentType !== "contract") return null;
   switch (job.ir35Status) {
     case "inside":

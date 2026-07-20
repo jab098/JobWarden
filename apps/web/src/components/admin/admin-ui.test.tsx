@@ -32,7 +32,7 @@ describe("administrator workspace", () => {
 
     expect(
       screen.getByText(
-        "Read-only fictional administrator preview — no administrator access granted",
+        "Read-only fictional administrator preview; no administrator access granted",
       ),
     ).toBeInTheDocument();
     const primaryNavigation = screen.getByRole("navigation", {

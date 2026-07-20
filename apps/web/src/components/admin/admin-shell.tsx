@@ -1,14 +1,26 @@
 import Link from "next/link";
+import {
+  FileClock,
+  HeartPulse,
+  Import,
+  Rss,
+  UserCheck,
+  type LucideIcon,
+} from "lucide-react";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
 
-const links = [
-  { href: "/admin/access", label: "Access" },
-  { href: "/admin/sources", label: "Sources" },
-  { href: "/admin/ingestion", label: "Ingestion" },
-  { href: "/admin/health", label: "Health" },
-  { href: "/admin/audit", label: "Audit" },
-] as const;
+const links: ReadonlyArray<{
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}> = [
+  { href: "/admin/access", label: "Access", icon: UserCheck },
+  { href: "/admin/sources", label: "Sources", icon: Rss },
+  { href: "/admin/ingestion", label: "Ingestion", icon: Import },
+  { href: "/admin/health", label: "Health", icon: HeartPulse },
+  { href: "/admin/audit", label: "Audit", icon: FileClock },
+];
 
 function AdminNavigation({
   label,
@@ -18,16 +30,24 @@ function AdminNavigation({
   preview: boolean;
 }) {
   return (
-    <nav aria-label={label} className="flex gap-1 lg:block lg:space-y-1">
-      {links.map((link) => (
-        <Link
-          key={link.href}
-          href={preview ? `#${link.label.toLowerCase()}` : link.href}
-          className="block rounded-md px-3 py-2 text-sm font-medium text-[#384256] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6] lg:px-4"
-        >
-          {link.label}
-        </Link>
-      ))}
+    <nav aria-label={label} className="flex gap-0.5 lg:block lg:space-y-0.5">
+      {links.map((link) => {
+        const Icon = link.icon;
+        return (
+          <Link
+            key={link.href}
+            href={preview ? `#${link.label.toLowerCase()}` : link.href}
+            className="group flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-ink-secondary transition-colors duration-150 outline-none hover:bg-sidebar-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
+          >
+            <Icon
+              aria-hidden="true"
+              strokeWidth={1.75}
+              className="size-4 shrink-0 text-ink-faint transition-colors duration-150 group-hover:text-ink-secondary"
+            />
+            {link.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }
@@ -40,18 +60,18 @@ export function AdminShell({
   preview?: boolean;
 }>) {
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-clip bg-[#f4f1ea] text-[#172033]">
+    <div className="min-h-screen w-full max-w-full overflow-x-clip bg-background text-foreground">
       {preview ? (
-        <p className="sticky top-0 z-40 break-words border-b border-[#b9c9df] bg-[#eaf0f8] px-5 py-2 text-center text-xs font-medium text-[#244873]">
-          Read-only fictional administrator preview — no administrator access
+        <p className="sticky top-0 z-40 border-b border-border bg-surface-sunken px-5 py-2 text-center text-xs font-medium break-words text-ink-secondary">
+          Read-only fictional administrator preview; no administrator access
           granted
         </p>
       ) : null}
-      <header className="border-b border-[#d8d4cb] px-5 py-4 lg:hidden">
+      <header className="border-b border-border px-5 py-4 lg:hidden">
         <div className="flex items-center justify-between gap-4">
           <Link
             href={preview ? "/development/admin-preview" : "/admin/access"}
-            className="font-semibold tracking-[-0.02em]"
+            className="rounded-md text-sm font-semibold tracking-[-0.02em] outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
           >
             JobWarden administration
           </Link>
@@ -61,21 +81,27 @@ export function AdminShell({
           <AdminNavigation label="Administrator mobile" preview={preview} />
         </div>
       </header>
-      <aside className="fixed inset-y-0 left-0 hidden w-56 border-r border-[#d8d4cb] bg-[#f4f1ea] lg:flex lg:flex-col">
-        <div className="border-b border-[#d8d4cb] px-6 py-6">
+      <aside className="fixed inset-y-0 left-0 hidden w-56 border-r border-sidebar-border bg-sidebar lg:flex lg:flex-col">
+        <div className="px-5 pt-5 pb-4">
           <Link
             href={preview ? "/development/admin-preview" : "/admin/access"}
-            className="font-semibold tracking-[-0.02em]"
+            className="rounded-md text-[0.95rem] font-semibold tracking-[-0.02em] outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
           >
             JobWarden
           </Link>
-          <p className="mt-1 text-xs text-[#596173]">Private beta operations</p>
+          <p className="mt-0.5 text-xs text-ink-faint">
+            Private beta operations
+          </p>
         </div>
-        <div className="p-3">
+        <div className="px-3">
           <AdminNavigation label="Administrator primary" preview={preview} />
         </div>
-        <div className="mt-auto border-t border-[#d8d4cb] px-6 py-5">
-          <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#596173]">
+        <div className="mt-auto border-t border-sidebar-border px-5 py-4">
+          <p className="flex items-center gap-1.5 font-mono text-[0.68rem] text-ink-faint">
+            <span
+              aria-hidden="true"
+              className={`size-1.5 rounded-full ${preview ? "bg-warning" : "bg-success"}`}
+            />
             {preview ? "Fictional preview" : "Administrator"}
           </p>
           {!preview ? (

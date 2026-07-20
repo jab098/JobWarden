@@ -165,7 +165,7 @@ describe("TailoringWorkspaceView", () => {
       <TailoringWorkspaceView workspace={workspace()} />,
     );
     expect(
-      screen.getByText(/deleted automatically 24 hours/),
+      screen.getByText(/Deleted automatically 24 hours/),
     ).toBeInTheDocument();
 
     rerender(
@@ -175,7 +175,7 @@ describe("TailoringWorkspaceView", () => {
         })}
       />,
     );
-    expect(screen.getByText(/kept until you delete it/)).toBeInTheDocument();
+    expect(screen.getByText(/Kept until you delete it/)).toBeInTheDocument();
   });
 
   it("offers a download link for an existing variant", () => {

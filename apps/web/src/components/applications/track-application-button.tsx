@@ -28,11 +28,11 @@ export function TrackApplicationButton({
 
   if (tracked && state.kind === "idle") {
     return (
-      <p className="text-sm text-[#40495a]">
+      <p className="text-sm text-ink-secondary">
         You are tracking an application for this job.{" "}
         <Link
           href="/applications"
-          className="rounded-sm font-semibold text-[#2458a6] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+          className="rounded-sm font-semibold text-link underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
         >
           Manage it under Applications
         </Link>
@@ -47,7 +47,7 @@ export function TrackApplicationButton({
       <Button type="submit" size="sm" variant="outline" disabled={pending}>
         Track my application
       </Button>
-      <span className="text-xs text-[#596173]">
+      <span className="text-xs text-ink-secondary">
         Applied on the employer&apos;s site? Track it here.
       </span>
       <ActionFeedback state={state} />

@@ -3,10 +3,10 @@ import type { OperationalHealth } from "@/lib/admin/types";
 function Figure({ value, label }: { value: number | string; label: string }) {
   return (
     <div>
-      <span className="block text-2xl font-semibold tracking-[-0.02em] text-[#172033]">
+      <span className="block text-2xl font-semibold tracking-[-0.02em] text-foreground">
         {value}
       </span>
-      <span className="mt-1 block text-xs text-[#697181]">{label}</span>
+      <span className="mt-1 block text-xs text-ink-faint">{label}</span>
     </div>
   );
 }
@@ -24,13 +24,13 @@ export function OperationalHealthPanel({
       <section aria-labelledby="delivery-health">
         <h2
           id="delivery-health"
-          className="text-sm font-semibold text-[#263248]"
+          className="text-sm font-semibold text-foreground"
         >
           Digest delivery
         </h2>
-        <p className="mt-1 max-w-prose text-sm text-[#596173]">
+        <p className="mt-1 max-w-prose text-sm text-ink-secondary">
           Counted from the delivery records the runtime writes, including
-          in-flight rows — so this is the headroom the send path will actually
+          in-flight rows, so this is the headroom the send path will actually
           apply, not an estimate.
         </p>
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -69,7 +69,7 @@ export function OperationalHealthPanel({
       </section>
 
       <section aria-labelledby="ai-health">
-        <h2 id="ai-health" className="text-sm font-semibold text-[#263248]">
+        <h2 id="ai-health" className="text-sm font-semibold text-foreground">
           Optional AI allowance
         </h2>
         <div className="mt-4 grid grid-cols-2 gap-4">
@@ -77,7 +77,7 @@ export function OperationalHealthPanel({
           <Figure value={ai.dailyAllowance} label="daily allowance" />
         </div>
         {ai.dailyAllowance === 0 ? (
-          <p className="mt-3 max-w-prose text-sm text-[#596173]">
+          <p className="mt-3 max-w-prose text-sm text-ink-secondary">
             The allowance is zero, which is the default. Optional AI is off and
             extraction runs deterministically; raise it deliberately if you want
             machine-proposed suggestions.

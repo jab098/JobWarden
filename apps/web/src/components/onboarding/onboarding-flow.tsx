@@ -50,7 +50,7 @@ const outcomeCopy: Record<string, { heading: string; body: string }> = {
   },
   rich_pdf_only: {
     heading: "We read your PDF",
-    body: "That is enough to build your profile. A DOCX would also let you download tailored copies that keep your own layout — you can add one later.",
+    body: "That is enough to build your profile. A DOCX would also let you download tailored copies that keep your own layout. You can add one later.",
   },
   thin: {
     heading: "We could not get much from that file",
@@ -62,7 +62,7 @@ const outcomeCopy: Record<string, { heading: string; body: string }> = {
   },
   none: {
     heading: "No CV for now",
-    body: "That is fine — plenty of people start here. We will ask about the direction you want and the skills you have or want to build.",
+    body: "That is fine; plenty of people start here. We will ask about the direction you want and the skills you have or want to build.",
   },
 };
 
@@ -82,47 +82,59 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
   const position = step === null ? steps.length : steps.indexOf(step) + 1;
 
   return (
-    <main className="mx-auto max-w-2xl px-5 py-12">
-      <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#697181]">
-        Setting up JobWarden
-      </p>
-      <h1 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-[#172033]">
-        {step === null ? "Ready to finish" : stepTitles[step]}
-      </h1>
-
-      <p className="mt-1 text-xs text-[#697181]">
-        Step {Math.max(1, position)} of {steps.length}
+    <main className="mx-auto max-w-2xl px-5 py-10">
+      <p className="text-sm font-semibold tracking-[-0.02em] text-foreground">
+        JobWarden
       </p>
       <ol
-        className="mt-3 flex flex-wrap gap-2"
+        className="mt-6 flex flex-wrap gap-x-4 gap-y-2"
         aria-label="Onboarding progress"
       >
-        {steps.map((item) => {
+        {steps.map((item, index) => {
           const done = view.state?.completedSteps.includes(item) ?? false;
+          const active = item === step;
           return (
             <li
               key={item}
-              aria-current={item === step ? "step" : undefined}
-              className={`rounded-md border px-2 py-1 text-xs ${
-                item === step
-                  ? "border-[#2458a6] text-[#172033]"
+              aria-current={active ? "step" : undefined}
+              className={`flex items-center gap-1.5 text-xs transition-colors duration-150 ${
+                active
+                  ? "font-medium text-foreground"
                   : done
-                    ? "border-[#ece9e2] text-[#2f6f4f]"
-                    : "border-[#ece9e2] text-[#697181]"
+                    ? "text-success"
+                    : "text-ink-faint"
               }`}
             >
+              <span
+                aria-hidden="true"
+                className={`tnum flex size-4.5 items-center justify-center rounded-full font-mono text-[0.62rem] transition-colors duration-150 ${
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : done
+                      ? "bg-success-surface text-success"
+                      : "bg-muted text-ink-faint"
+                }`}
+              >
+                {index + 1}
+              </span>
               {stepTitles[item]}
             </li>
           );
         })}
       </ol>
+      <h1 className="mt-6 text-xl font-semibold tracking-[-0.02em] text-foreground">
+        {step === null ? "Ready to finish" : stepTitles[step]}
+      </h1>
+      <p className="mt-1 text-xs text-ink-faint">
+        Step {Math.max(1, position)} of {steps.length}
+      </p>
 
       {view.cvOutcome && outcomeCopy[view.cvOutcome] ? (
-        <div className="mt-6 border-t border-[#ece9e2] pt-5">
-          <h2 className="text-sm font-semibold text-[#263248]">
+        <div className="mt-6 border-t border-border pt-5">
+          <h2 className="text-sm font-semibold text-foreground">
             {outcomeCopy[view.cvOutcome]!.heading}
           </h2>
-          <p className="mt-1 max-w-prose text-sm leading-6 text-[#596173]">
+          <p className="mt-1 max-w-prose text-sm leading-6 text-ink-secondary">
             {outcomeCopy[view.cvOutcome]!.body}
           </p>
         </div>
@@ -130,7 +142,7 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
 
       {step === "cv" ? (
         <div className="mt-6 space-y-4">
-          <p className="max-w-prose text-sm leading-6 text-[#596173]">
+          <p className="max-w-prose text-sm leading-6 text-ink-secondary">
             A CV is the fastest way to get useful matches, because JobWarden can
             read your real experience instead of asking you to type it out. It
             stays private to you and is never shared with employers.
@@ -142,7 +154,7 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
               hasCurrentCv={view.cv.present}
             />
           </div>
-          <p className="max-w-prose text-sm leading-6 text-[#596173]">
+          <p className="max-w-prose text-sm leading-6 text-ink-secondary">
             You can also skip this and tell us what you are looking for instead.
             A CV can be added from your profile at any time.
           </p>
@@ -154,11 +166,11 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
           the inner form — turning Confirm into "advance past this step". */}
       {step === "confirm_evidence" ? (
         <div className="mt-6 space-y-4">
-          <p className="max-w-prose text-sm leading-6 text-[#596173]">
+          <p className="max-w-prose text-sm leading-6 text-ink-secondary">
             We found {view.cv.conceptCount} things we could match you on.
-            Confirm the ones you actually want to be matched on — nothing
-            becomes active until you say so, and anything you leave unconfirmed
-            is simply not used.
+            Confirm the ones you actually want to be matched on. Nothing becomes
+            active until you say so, and anything you leave unconfirmed is
+            simply not used.
           </p>
           <ProfileEvidenceList evidence={view.evidence} readOnly={readOnly} />
         </div>
@@ -174,7 +186,7 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
 
           {step === "aspirations" ? (
             <>
-              <p className="max-w-prose text-sm leading-6 text-[#596173]">
+              <p className="max-w-prose text-sm leading-6 text-ink-secondary">
                 Tell us the kind of work you want and the skills you have or
                 want to build. No experience is required: this is how JobWarden
                 helps people starting out or changing direction.
@@ -206,7 +218,7 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
 
           {step === "preferences" ? (
             <>
-              <p className="max-w-prose text-sm leading-6 text-[#596173]">
+              <p className="max-w-prose text-sm leading-6 text-ink-secondary">
                 Set what you will and will not take. These become filters on
                 your feed, shown in the address bar, that you can lift at any
                 time.
@@ -247,7 +259,7 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
 
           {step === "notifications" ? (
             <>
-              <p className="max-w-prose text-sm leading-6 text-[#596173]">
+              <p className="max-w-prose text-sm leading-6 text-ink-secondary">
                 Two things you can turn on now or later. Both are off unless you
                 choose them.
               </p>
@@ -274,7 +286,7 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
 
       {step === null ? (
         view.hasSignal ? (
-          <p className="mt-6 max-w-prose text-sm leading-6 text-[#596173]">
+          <p className="mt-6 max-w-prose text-sm leading-6 text-ink-secondary">
             That is everything. Finishing opens your hub, with the preferences
             you chose already shaping what JobWarden matches you to. Every one
             of them stays editable from your career profile.
@@ -282,9 +294,9 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
         ) : (
           <p
             role="alert"
-            className="mt-6 max-w-prose text-sm leading-6 text-[#8a3328]"
+            className="mt-6 max-w-prose text-sm leading-6 text-danger"
           >
-            We still need something to match you on — a role you are aiming for,
+            We still need something to match you on: a role you are aiming for,
             or a skill you want to be found for. Without one your feed would be
             empty, so go back and add at least one.
           </p>
@@ -343,18 +355,18 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
       </div>
 
       {readOnly ? (
-        <p className="mt-6 text-sm text-[#596173]">
+        <p className="mt-6 text-sm text-ink-secondary">
           This preview shows the onboarding flow with fictional data and cannot
           save progress.
         </p>
       ) : null}
 
-      <p className="mt-10 text-xs text-[#697181]">
+      <p className="mt-10 text-xs text-ink-faint">
         Everything you choose here can be changed later from your career
         profile.{" "}
         <Link
           href="/privacy"
-          className="underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+          className="underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
         >
           How JobWarden handles your data
         </Link>

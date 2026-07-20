@@ -33,17 +33,17 @@ export function IngestionRunList({
       <div>
         <h2
           id="ingestion-runs-heading"
-          className="text-xl font-semibold tracking-[-0.025em]"
+          className="text-base font-semibold tracking-[-0.01em]"
         >
           Recent source runs
         </h2>
-        <p className="mt-1 text-sm text-[#596173]">
+        <p className="mt-1 text-sm text-ink-secondary">
           Counts, sanitised failure codes, and the location text of adverts
           whose place could not be recognised. Advert content is never shown.
         </p>
       </div>
       {runs.length === 0 ? (
-        <p className="text-sm text-[#596173]">
+        <p className="text-sm text-ink-secondary">
           No ingestion runs have been recorded.
         </p>
       ) : (
@@ -56,19 +56,19 @@ export function IngestionRunList({
                     <h3 className="font-semibold">{run.employerName}</h3>
                     <AdminStatus state={run.status} />
                   </div>
-                  <p className="mt-1 font-mono text-xs text-[#596173]">
+                  <p className="mt-1 font-mono text-xs text-ink-secondary">
                     {run.triggerType} · {shortId(run.id)} ·{" "}
                     {formatAdminDate(run.startedAt)}
                   </p>
                 </div>
-                <p className="font-mono text-xs text-[#596173]">
+                <p className="font-mono text-xs text-ink-secondary">
                   {formatDuration(run.durationMs)} · {run.retryCount} retries
                 </p>
               </div>
               <dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-3 text-sm sm:grid-cols-5">
                 {countFields.map(([label, field]) => (
                   <div key={field}>
-                    <dt className="text-xs text-[#596173]">{label}</dt>
+                    <dt className="text-xs text-ink-secondary">{label}</dt>
                     <dd className="mt-0.5 font-mono">{run[field]}</dd>
                   </div>
                 ))}
@@ -76,17 +76,17 @@ export function IngestionRunList({
               <dl className="mt-3 grid grid-cols-2 gap-x-5 gap-y-3 text-sm sm:grid-cols-5">
                 {dropFields.map(([label, field]) => (
                   <div key={field}>
-                    <dt className="text-xs text-[#596173]">{label}</dt>
+                    <dt className="text-xs text-ink-secondary">{label}</dt>
                     <dd className="mt-0.5 font-mono">{run[field]}</dd>
                   </div>
                 ))}
               </dl>
               {run.unrecognisedLocations.length > 0 ? (
                 <div className="mt-4 rounded border border-[#dedad1] bg-white px-3 py-2">
-                  <h4 className="text-xs text-[#596173]">
+                  <h4 className="text-xs text-ink-secondary">
                     Locations not recognised
                   </h4>
-                  <p className="mt-1 text-xs text-[#596173]">
+                  <p className="mt-1 text-xs text-ink-secondary">
                     Adding these places to the location dataset republishes
                     their adverts on the next run.
                   </p>
@@ -94,7 +94,7 @@ export function IngestionRunList({
                     {run.unrecognisedLocations.map((location) => (
                       <li
                         key={location}
-                        className="rounded bg-[#f4f1ea] px-2 py-0.5 font-mono text-xs"
+                        className="rounded bg-background px-2 py-0.5 font-mono text-xs"
                       >
                         {location}
                       </li>

@@ -163,7 +163,7 @@ export function SearchProfileForm({
   return (
     <section
       aria-labelledby="named-search-heading"
-      className="border-t border-[#dedbd2] py-8"
+      className="mt-3 rounded-lg border border-border bg-card p-5"
     >
       <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.72fr)]">
         <form
@@ -175,16 +175,13 @@ export function SearchProfileForm({
           <input type="hidden" name="profileGeneration" value={generation} />
           <input type="hidden" name="search" value={JSON.stringify(search)} />
           <div>
-            <p className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[#697181]">
-              Reusable filters
-            </p>
             <h2
               id="named-search-heading"
-              className="mt-2 text-xl font-semibold tracking-[-0.02em]"
+              className="text-base font-semibold tracking-[-0.01em]"
             >
               Named search
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#596173]">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-secondary">
               Turn your confirmed direction into a saved UK search, and choose
               whether its new matches reach you by email.
             </p>
@@ -236,7 +233,7 @@ export function SearchProfileForm({
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="flex items-start gap-3 text-sm text-[#263248]">
+              <label className="flex items-start gap-3 text-sm text-foreground">
                 <input
                   type="checkbox"
                   checked={notify}
@@ -247,11 +244,11 @@ export function SearchProfileForm({
                     }))
                   }
                   disabled={readOnly || pending || blocked}
-                  className="mt-0.5 size-4 accent-[#2458a6]"
+                  className="mt-0.5 size-4 accent-(--link)"
                 />
                 <span>
                   Email me this search&rsquo;s new matches
-                  <span className="mt-1 block text-[#596173]">
+                  <span className="mt-1 block text-ink-secondary">
                     At most one digest per weekday slot, only when there is
                     something new. Digest emails must also be on in the
                     scheduled updates section below.
@@ -267,16 +264,16 @@ export function SearchProfileForm({
             {state.kind !== "idle" ? (
               <p
                 role={state.kind === "success" ? "status" : "alert"}
-                className="text-sm text-[#596173]"
+                className="text-sm text-ink-secondary"
               >
                 {state.message}
               </p>
             ) : null}
           </div>
         </form>
-        <div className="border-l border-[#ece9e2] pl-0 lg:pl-6">
+        <div className="border-l border-border pl-0 lg:pl-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-[#263248]">
+            <h3 className="text-sm font-semibold text-foreground">
               Saved searches
             </h3>
             <Button
@@ -290,11 +287,11 @@ export function SearchProfileForm({
             </Button>
           </div>
           {searches.length === 0 ? (
-            <p className="mt-3 text-sm leading-6 text-[#596173]">
+            <p className="mt-3 text-sm leading-6 text-ink-secondary">
               No named searches yet.
             </p>
           ) : (
-            <ul className="mt-3 divide-y divide-[#ece9e2] border-y border-[#ece9e2]">
+            <ul className="mt-3 divide-y divide-border border-y border-border">
               {searches.map((item) => (
                 <li key={item.id} className="py-3 [overflow-wrap:anywhere]">
                   <Button
@@ -307,10 +304,10 @@ export function SearchProfileForm({
                     className="h-auto w-full justify-start px-1 py-1 text-left"
                   >
                     <span className="min-w-0">
-                      <span className="block font-medium text-[#263248]">
+                      <span className="block font-medium text-foreground">
                         {item.name}
                       </span>
-                      <span className="mt-1 block text-xs font-normal text-[#697181]">
+                      <span className="mt-1 block text-xs font-normal text-ink-faint">
                         {item.roleFamilies.length} role families ·{" "}
                         {item.ukLocations.length} locations ·{" "}
                         {item.notificationsEnabled

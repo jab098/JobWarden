@@ -37,7 +37,7 @@ const resultCopy: Record<
   string
 > = {
   uploaded:
-    "CV uploaded. We are reading it now — this usually takes under a minute.",
+    "CV uploaded. We are reading it now; this usually takes under a minute.",
   stale:
     "Your profile changed while this was uploading. Refresh and try again.",
   forbidden: "CV uploads are not open on this account.",
@@ -71,11 +71,11 @@ export function CvUploadCard({
 }) {
   if (!capability.enabled) {
     return (
-      <div className="rounded-md border border-[#ece9e2] p-4">
-        <h3 className="text-sm font-semibold text-[#263248]">
+      <div className="rounded-md border border-border p-4">
+        <h3 className="text-sm font-semibold text-foreground">
           {heading(hasCurrentCv)}
         </h3>
-        <p className="mt-1 max-w-prose text-sm leading-6 text-[#596173]">
+        <p className="mt-1 max-w-prose text-sm leading-6 text-ink-secondary">
           {closedCopy[capability.reason]}
         </p>
       </div>
@@ -134,14 +134,11 @@ function CvUploadForm({
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="rounded-md border border-[#ece9e2] p-4"
-    >
-      <h3 className="text-sm font-semibold text-[#263248]">
+    <form onSubmit={onSubmit} className="rounded-md border border-border p-4">
+      <h3 className="text-sm font-semibold text-foreground">
         {heading(hasCurrentCv)}
       </h3>
-      <p className="mt-1 max-w-prose text-sm leading-6 text-[#596173]">
+      <p className="mt-1 max-w-prose text-sm leading-6 text-ink-secondary">
         {hasCurrentCv
           ? "Uploading a new CV replaces the current one. Evidence you have already confirmed stays confirmed."
           : "DOCX or PDF, up to 5 MB. It stays private to you and is never shared with employers."}
@@ -162,7 +159,7 @@ function CvUploadForm({
             setChosen((event.target.files?.length ?? 0) > 0);
             setOutcome(null);
           }}
-          className="max-w-full text-sm text-[#596173] file:mr-3 file:rounded-md file:border file:border-[#d9d4c9] file:bg-white file:px-3 file:py-1.5 file:text-sm file:text-[#263248] hover:file:bg-[#faf9f6]"
+          className="max-w-full text-sm text-ink-secondary file:mr-3 file:rounded-md file:border file:border-[#d9d4c9] file:bg-white file:px-3 file:py-1.5 file:text-sm file:text-foreground hover:file:bg-surface-sunken"
         />
         <Button type="submit" size="sm" disabled={busy || !chosen}>
           {busy ? "Uploading…" : "Upload"}
@@ -173,7 +170,7 @@ function CvUploadForm({
         <p
           role={outcome.kind === "uploaded" ? "status" : "alert"}
           className={`mt-3 text-sm ${
-            outcome.kind === "uploaded" ? "text-[#235b3b]" : "text-[#8a2b2b]"
+            outcome.kind === "uploaded" ? "text-success" : "text-[#8a2b2b]"
           }`}
         >
           {messageFor(outcome)}

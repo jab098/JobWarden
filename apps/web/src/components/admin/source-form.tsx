@@ -116,7 +116,7 @@ function SourceFields({ source }: { source?: JobSourceView }) {
           required
           className="min-h-24 font-mono text-xs"
         />
-        <p className="text-xs text-[#596173]">
+        <p className="text-xs text-ink-secondary">
           One bare lowercase hostname per line. No schemes or paths.
         </p>
       </div>
@@ -205,7 +205,7 @@ export function SourceForm({
         {state.kind !== "idle" ? (
           <p
             role={state.kind === "success" ? "status" : "alert"}
-            className="text-sm text-[#596173]"
+            className="text-sm text-ink-secondary"
           >
             {state.message}
           </p>

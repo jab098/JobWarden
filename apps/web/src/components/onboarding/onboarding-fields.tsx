@@ -1,5 +1,7 @@
 "use client";
 
+import { Check } from "lucide-react";
+
 import {
   employmentTypes,
   ir35Statuses,
@@ -10,6 +12,13 @@ import {
 
 import { formatJobLabel } from "@/components/jobs/job-format";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { OnboardingAnswers } from "@jobwarden/domain";
 
 /**
@@ -44,19 +53,22 @@ function FieldShell({
   label,
   hint,
   children,
+  asLabel = true,
 }: {
   label: string;
   hint?: string;
   children: React.ReactNode;
+  asLabel?: boolean;
 }) {
+  const Element = asLabel ? "label" : "div";
   return (
-    <label className="block space-y-1.5">
-      <span className="block text-sm font-medium text-[#263248]">{label}</span>
+    <Element className="block space-y-1.5">
+      <span className="block text-sm font-medium text-foreground">{label}</span>
       {hint ? (
-        <span className="block text-xs leading-5 text-[#697181]">{hint}</span>
+        <span className="block text-xs leading-5 text-ink-faint">{hint}</span>
       ) : null}
       {children}
-    </label>
+    </Element>
   );
 }
 
@@ -79,11 +91,18 @@ export function ConceptListField({
         name={name}
         defaultValue={(defaultValue ?? []).join(", ")}
         placeholder={placeholder}
-        className="h-10 rounded-md bg-white"
+        className="bg-card"
       />
     </FieldShell>
   );
 }
+
+const seniorityOptions = [
+  ["", "No preference"] as const,
+  ...seniorityLevels
+    .filter((level) => level !== "unspecified")
+    .map((level) => [level, seniorityLabels[level] ?? level] as const),
+];
 
 export function SeniorityField({
   defaultValue,
@@ -94,8 +113,9 @@ export function SeniorityField({
     <FieldShell
       label="The level you are aiming for"
       hint="Leave this unanswered if you are open to any level."
+      asLabel={false}
     >
-      <select
+      <Select
         name="targetSeniority"
         // "unspecified" is the stored form of no preference; it is shown as
         // the empty option rather than as a level.
@@ -104,21 +124,32 @@ export function SeniorityField({
             ? ""
             : defaultValue
         }
-        className="h-10 w-full rounded-md border border-[#cbc7bd] bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+        items={seniorityOptions.map(([value, label]) => ({ value, label }))}
       >
-        <option value="">No preference</option>
-        {seniorityLevels
-          .filter((level) => level !== "unspecified")
-          .map((level) => (
-            <option key={level} value={level}>
-              {seniorityLabels[level] ?? level}
-            </option>
+        <SelectTrigger
+          aria-label="The level you are aiming for"
+          className="w-full bg-card"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent alignItemWithTrigger={false} align="start">
+          {seniorityOptions.map(([value, label]) => (
+            <SelectItem key={value} value={value}>
+              {label}
+            </SelectItem>
           ))}
-      </select>
+        </SelectContent>
+      </Select>
     </FieldShell>
   );
 }
 
+/**
+ * A multi-choice group rendered as selectable pills. The native checkboxes
+ * stay in the form (visually hidden), so posting, labels, and keyboard
+ * behaviour are unchanged; the pill and its check mark make "several can be
+ * on at once" visible at a glance.
+ */
 function CheckboxGroup({
   name,
   legend,
@@ -135,20 +166,25 @@ function CheckboxGroup({
   const chosen = new Set(selected ?? []);
   return (
     <fieldset className="space-y-1.5">
-      <legend className="text-sm font-medium text-[#263248]">{legend}</legend>
-      <p className="text-xs leading-5 text-[#697181]">{hint}</p>
-      <div className="flex flex-wrap gap-x-5 gap-y-2 pt-1">
+      <legend className="text-sm font-medium text-foreground">{legend}</legend>
+      <p className="text-xs leading-5 text-ink-faint">{hint}</p>
+      <div className="flex flex-wrap gap-1.5 pt-1">
         {options.map(([value, copy]) => (
           <label
             key={value}
-            className="flex items-center gap-2 text-sm text-[#40495a]"
+            className="group flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-ink-secondary transition-[background-color,border-color,color] duration-(--duration-quick) ease-(--ease-smooth-out) select-none hover:border-input has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:ring-2 has-focus-visible:ring-ring/60"
           >
             <input
               type="checkbox"
               name={name}
               value={value}
               defaultChecked={chosen.has(value)}
-              className="size-4 rounded border-[#cbc7bd] accent-[#2458a6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+              className="sr-only"
+            />
+            <Check
+              aria-hidden="true"
+              strokeWidth={2.25}
+              className="hidden size-3.5 group-has-checked:block"
             />
             {copy}
           </label>
@@ -232,6 +268,15 @@ export function Ir35Field({
   );
 }
 
+const periodOptions = [
+  ["", "Not set"],
+  ["year", "Year"],
+  ["day", "Day"],
+  ["hour", "Hour"],
+  ["month", "Month"],
+  ["week", "Week"],
+] as const;
+
 export function PayFloorField({
   minimum,
   period,
@@ -259,39 +304,44 @@ export function PayFloorField({
               minimum === null || minimum === undefined ? "" : minimum / 100
             }
             placeholder="45000"
-            className="h-10 rounded-md bg-white"
+            className="bg-card"
           />
         </FieldShell>
         <FieldShell
           label="Per"
           hint="Match how the roles you want are advertised."
+          asLabel={false}
         >
-          <select
+          <Select
             name="compensationPeriod"
             defaultValue={
               period === undefined || period === "unknown" ? "" : period
             }
-            className="h-10 w-full rounded-md border border-[#cbc7bd] bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+            items={periodOptions.map(([value, label]) => ({ value, label }))}
           >
-            <option value="">Not set</option>
-            <option value="year">Year</option>
-            <option value="day">Day</option>
-            <option value="hour">Hour</option>
-            <option value="month">Month</option>
-            <option value="week">Week</option>
-          </select>
+            <SelectTrigger aria-label="Per" className="w-full bg-card">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger={false} align="start">
+              {periodOptions.map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </FieldShell>
       </div>
-      <label className="flex items-start gap-2 text-sm text-[#40495a]">
+      <label className="flex items-start gap-2 text-sm text-ink-secondary">
         <input
           type="checkbox"
           name="allowUnknownCompensation"
           defaultChecked={allowUnknown ?? true}
-          className="mt-0.5 size-4 rounded border-[#cbc7bd] accent-[#2458a6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+          className="mt-0.5 size-4 rounded border-input accent-(--link) focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none"
         />
         <span>
           Include roles that do not state a salary.{" "}
-          <span className="text-[#697181]">
+          <span className="text-ink-faint">
             Most UK adverts do not, so unticking this hides a large part of the
             market.
           </span>
@@ -313,16 +363,16 @@ export function ChoiceField({
   defaultChecked: boolean | undefined;
 }) {
   return (
-    <label className="flex items-start gap-3 rounded-md border border-[#e7e3da] bg-white p-4 text-sm">
+    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-4 text-sm transition-[border-color,background-color] duration-(--duration-quick) ease-(--ease-smooth-out) hover:border-input has-checked:border-link/50 has-focus-visible:ring-2 has-focus-visible:ring-ring/60">
       <input
         type="checkbox"
         name={name}
         defaultChecked={defaultChecked ?? false}
-        className="mt-0.5 size-4 rounded border-[#cbc7bd] accent-[#2458a6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2458a6]"
+        className="mt-0.5 size-4 rounded border-input accent-(--link)"
       />
       <span>
-        <span className="block font-medium text-[#263248]">{title}</span>
-        <span className="mt-1 block leading-6 text-[#596173]">
+        <span className="block font-medium text-foreground">{title}</span>
+        <span className="mt-1 block leading-6 text-ink-secondary">
           {description}
         </span>
       </span>
