@@ -746,7 +746,10 @@ describe("advert location survives normalisation", () => {
     expect(job.remoteEligibility).toBe("not_remote");
   });
 
-  it("keeps an unevidenced remote advert out of the UK-eligible set", async () => {
+  it("does not read an office address as permission to work remotely", async () => {
+    // The advert says remote and gives a London office. That is a UK location,
+    // not a statement about who may work remotely, so the honest answer is
+    // "we do not know" rather than a compliance claim the advert never made.
     const job = await eligibleJob({
       ...baseJob,
       location: "London, England",
@@ -754,6 +757,18 @@ describe("advert location survives normalisation", () => {
     });
 
     expect(job.workplaceType).toBe("remote");
-    expect(["uk", "ambiguous"]).toContain(job.remoteEligibility);
+    expect(job.remoteEligibility).toBe("ambiguous");
+  });
+
+  it("accepts UK remote permission the advert actually states", async () => {
+    const job = await eligibleJob({
+      ...baseJob,
+      location: "Remote",
+      descriptionHtml:
+        "<p>Permanent role, fully remote within the United Kingdom.</p>",
+    });
+
+    expect(job.workplaceType).toBe("remote");
+    expect(job.remoteEligibility).toBe("uk");
   });
 });

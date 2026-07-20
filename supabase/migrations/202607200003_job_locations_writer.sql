@@ -110,10 +110,23 @@ begin
     updated_at = clock_timestamp()
   where id = target_job_id;
 
-  -- An occurrence written before this migration carries no `rawLocation`, and
-  -- inventing one would be worse than having none. Such a job keeps whatever
-  -- location rows it has, which is none, until its source runs again.
   winning_location := winner.candidate_data ->> 'rawLocation';
+
+  -- The delete happens before the backward-compatibility check, not after it.
+  -- Every other column here is unconditionally overwritten from the current
+  -- winner, and location has to behave the same way. Returning early with the
+  -- old rows still in place would leave a job advertised at a location only a
+  -- previous winner ever claimed -- reachable whenever the winner regresses to
+  -- an occurrence persisted before this migration, since the provider and
+  -- compensation tie-breaks outrank recency.
+  --
+  -- Having no location is the honest state for such a job. It stays matchable
+  -- by nothing rather than by somewhere it is not, until its source runs again
+  -- and supplies a real one.
+  delete from public.job_locations where job_id = target_job_id;
+
+  -- An occurrence written before this migration carries no `rawLocation`, and
+  -- inventing one would be worse than having none.
   if winning_location is null or btrim(winning_location) = '' then
     return;
   end if;
@@ -126,10 +139,6 @@ begin
     winning_remote_eligibility := 'unknown';
   end if;
 
-  -- Replace rather than accumulate. A job's location comes wholly from the
-  -- occurrence that won, so merging in rows from a previous winner would leave
-  -- a job matching two places, only one of which it is still advertised in.
-  delete from public.job_locations where job_id = target_job_id;
   insert into public.job_locations (job_id, raw_location, remote_eligibility)
   values (
     target_job_id, left(btrim(winning_location), 1000), winning_remote_eligibility

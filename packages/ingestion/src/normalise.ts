@@ -5,6 +5,7 @@ import {
   normalisedJobSchema,
   parseCompensation,
   type NormalisedJob,
+  type UkEligibilityReason,
 } from "@jobwarden/domain";
 import sanitizeHtml from "sanitize-html";
 
@@ -269,20 +270,29 @@ function classifyWorkplace(
 /**
  * Whether the advert permits remote work from within the UK.
  *
- * This is deliberately not a rename of the workplace type. "Remote" on its own
- * says how the work is done, not where the worker may live, and JobWarden may
- * not infer UK permission from the word alone — a globally remote advert is
- * only in scope with explicit UK evidence. So a remote advert is `uk` only when
- * the UK eligibility check already found that evidence, and `ambiguous`
- * otherwise, which keeps the honest "we do not know" out of the confident set.
+ * This is deliberately not a rename of the workplace type. "Remote" says how
+ * the work is done, not where the worker may live, and AGENTS.md forbids
+ * publishing remote work without explicit UK permission — so the question is
+ * which evidence the eligibility check actually found, not whether it found
+ * any.
+ *
+ * `explicit_uk_remote` is remote-permission language in the advert itself.
+ * `explicit_uk_location` is an office address, which is ample for an onsite or
+ * hybrid role and says nothing at all about who may work remotely. An earlier
+ * version took a `hasUkEvidence` boolean, which is always true this far into
+ * normalisation because every ineligible job has already returned — so the
+ * cautious branch was unreachable and a London-office advert saying "fully
+ * remote" was stamped as UK-permitted on the strength of the office address.
  */
 function classifyRemoteEligibility(
   workplaceType: NormalisedJob["workplaceType"],
-  hasUkEvidence: boolean,
+  reason: UkEligibilityReason,
 ): NormalisedJob["remoteEligibility"] {
-  if (workplaceType === "remote") return hasUkEvidence ? "uk" : "ambiguous";
   if (workplaceType === "onsite" || workplaceType === "hybrid") {
     return "not_remote";
+  }
+  if (workplaceType === "remote") {
+    return reason === "explicit_uk_remote" ? "uk" : "ambiguous";
   }
   return "unknown";
 }
@@ -434,10 +444,11 @@ export async function normaliseProviderJob(
     // location still needs a row, because the location table is what both text
     // and distance search read, so a stated absence is recorded as such rather
     // than dropped.
-    rawLocation: locationText.trim() || "UK location not specified",
+    rawLocation:
+      locationText.trim().slice(0, 1_000) || "UK location not specified",
     remoteEligibility: classifyRemoteEligibility(
       workplaceType,
-      ukEligibility.evidence.length > 0,
+      ukEligibility.reason,
     ),
     ukEligibilityEvidence: ukEligibility.evidence,
     employmentType:
