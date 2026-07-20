@@ -14,6 +14,7 @@ type JobSourceBase = {
 export type JobSource = JobSourceBase &
   (
     | { provider: "greenhouse" }
+    | { provider: "lever" }
     | { provider: "reed"; boardToken: "gb-discovery" }
   );
 
