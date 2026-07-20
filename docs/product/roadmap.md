@@ -46,7 +46,8 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 27   | Onboarding hydration defect                                                | reviewed | Not reproducible; the report was a false negative. Regression test delivered          |
 | 28   | Repair the history secret scan                                             | reviewed | Proven by a planted secret on a scratch branch, since deleted                         |
 | 29   | Early access list operations                                               | pending  | None for the surface; the list itself needs `202607220001` applied                    |
-| 30   | Lever adapter and provider vocabulary widening                             | pending  | None; documented public board endpoint, no credential                                 |
+| 30a  | Lever adapter (TypeScript only)                                            | reviewed | None; documented public board endpoint, no credential                                 |
+| 30b  | Provider vocabulary widening (850 lines of definer SQL)                    | pending  | **Docker**, so the SQL can actually be executed before it is trusted                  |
 | 31   | Ashby adapter                                                              | pending  | None; documented public board endpoint, no credential                                 |
 | 32   | Workable adapter                                                           | pending  | None; documented public board endpoint, no credential                                 |
 | 33   | Emit `JobPosting` structured data                                          | blocked  | Owner decision: public job content, plus a redistribution grant per source            |
