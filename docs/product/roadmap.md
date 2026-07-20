@@ -44,7 +44,7 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 26   | Settings/sources/support, and 26a card surface                             | shipped  | Delivered at `3aa4283` and PR #30 (`58a80fd`); 26a had no independent review pass     |
 | 26b  | Owner surface complaints, early-access dialog                              | shipped  | Delivered by PR #31 (`53d8fbe`); the dialog needs Turnstile keys and the migration    |
 | 27   | Onboarding hydration defect                                                | reviewed | Not reproducible; the report was a false negative. Regression test delivered          |
-| 28   | Repair the history secret scan                                             | pending  | None; needs a scratch branch pushed to GitHub                                         |
+| 28   | Repair the history secret scan                                             | reviewed | Proven by a planted secret on a scratch branch, since deleted                         |
 | 29   | Early access list operations                                               | pending  | None for the surface; the list itself needs `202607220001` applied                    |
 | 30   | Lever adapter and provider vocabulary widening                             | pending  | None; documented public board endpoint, no credential                                 |
 | 31   | Ashby adapter                                                              | pending  | None; documented public board endpoint, no credential                                 |
@@ -303,15 +303,20 @@ What was genuinely missing, and is now delivered, is the regression test. `onboa
 
 `docs/standards/frontend-traps.md` carried the false claim and told the next agent that client behaviour inside onboarding was dead code. It has been corrected, because a wrong entry in that file is more expensive than no entry.
 
-## Task 28 — Repair the history secret scan
+## Task 28 — Repair the history secret scan — done
 
-The `verify` workflow's "Scan full history for secrets" step fails with GitHub 403 `Resource not accessible by integration` when listing pull-request commits, and crashes before scanning. It has therefore never scanned a pull request, while presenting as a configured control.
+The `verify` workflow's secret scan failed with GitHub 403 `Resource not accessible by integration` when listing pull-request commits, and crashed before scanning. It had therefore never scanned a pull request, while presenting as a configured control.
 
-Acceptance:
+**Fixed 2026-07-20 by PR #34.** The job held only `contents: read`; the step lists a pull request's commits through the GitHub API, which needs `pull-requests: read`. That permission is required by this step and by nothing else, so least privilege is preserved.
 
-- the workflow grants the token the permission the step needs, or the step stops depending on the API call;
-- the scan runs to completion on a pull request and its result is visible; and
-- a deliberately planted test secret on a scratch branch is caught, proving the control works rather than merely running.
+The step was also renamed from "Scan full history for secrets" to "Scan incoming commits for secrets". The action's own log shows it running `gitleaks detect --log-opts` with `--no-merges --first-parent` over a commit range: on a pull request it scans that pull request's commits, on a push the pushed commits, and only a manual or scheduled run walks the whole history. The old name claimed something untrue on every event this workflow handles, which is the same class of defect as the 403 — a control describing itself as more than it is.
+
+Both halves of the acceptance were proven, not assumed:
+
+- **It runs.** PR #34 completed the step green, with `event type: pull_request` in the log — the exact path that used to 403.
+- **It catches.** A scratch branch off the fix carried one deliberately planted fictional Slack bot token. Its run passed every other step and failed at the scan, reporting `RuleID: slack-bot-token`, `File: SCAN-PROOF-DELETE-ME.md`, commit `5441c32`, `1 commits scanned`, with the value redacted in the log. The branch and its pull request were closed and deleted immediately afterwards; the commit is unreachable and the value was never a real credential.
+
+Recorded because it cost a step to learn: the planted value has to be chosen against the scanner, not assumed. The obvious first choice — an AWS-style `AKIA…` key, including AWS's own published `AKIAIOSFODNN7EXAMPLE` — is **not** flagged by gitleaks 8, so planting one would have produced a green run and "proven" the control worked when it had caught nothing. `slack-bot-token` and `stripe-access-token` both fire reliably. Slack was chosen because a `sk_live_` string risks tripping this repository's own payments guardrail and failing `pnpm verify` before the scan is ever reached, which would have failed the proof at the wrong step.
 
 ## Task 29 — Early access list operations
 
