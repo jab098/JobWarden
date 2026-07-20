@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 
 import { decideJobAction } from "@/app/(protected)/matches/actions";
 import { Button } from "@/components/ui/button";
+import { Disclosure } from "@/components/ui/disclosure";
 import { formatPostedAge } from "@/components/jobs/job-format";
 import { JobFacts } from "@/components/jobs/job-facts";
 import type { TargetFeedActionState } from "@/lib/target-feed/types";
@@ -152,32 +153,24 @@ export function TargetFeedItem({
           {formatPostedAge(job.postedAt)}
         </p>
 
-        <details className="group mt-4 rounded-md border border-border">
-          <summary className="cursor-pointer list-none rounded-md px-3.5 py-2 text-sm font-medium text-link transition-colors duration-150 ease-out select-none group-open:rounded-b-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none motion-reduce:transition-none [&::-webkit-details-marker]:hidden">
-            <span className="inline-flex items-center gap-1.5">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 8 8"
-                className="size-2 fill-none stroke-current transition-transform duration-(--duration-quick) ease-(--ease-smooth-out) group-open:rotate-90"
-              >
-                <path d="M2.5 1 L5.5 4 L2.5 7" strokeWidth="1.2" />
-              </svg>
-              Why this match
-            </span>
-          </summary>
-          <div className="space-y-4 border-t border-border px-3.5 py-3.5 text-sm">
-            <Disclosure
+        <Disclosure
+          label="Why this match"
+          className="mt-4"
+          panelClassName="px-3.5 py-3.5 text-sm"
+        >
+          <div className="space-y-4">
+            <EvidenceList
               heading="Matching evidence"
               items={explanation.matchedEvidence}
             >
               No confirmed evidence text matched this listing.
-            </Disclosure>
-            <Disclosure
+            </EvidenceList>
+            <EvidenceList
               heading="Important gaps"
               items={explanation.importantGaps}
             >
               No important gaps were recorded for this listing.
-            </Disclosure>
+            </EvidenceList>
             <section>
               <h3 className="text-xs font-semibold text-foreground">
                 Synonym credit
@@ -211,7 +204,7 @@ export function TargetFeedItem({
               </p>
             </section>
           </div>
-        </details>
+        </Disclosure>
 
         <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-3.5">
           <form
@@ -288,7 +281,7 @@ export function TargetFeedItem({
   );
 }
 
-function Disclosure({
+function EvidenceList({
   heading,
   items,
   children,

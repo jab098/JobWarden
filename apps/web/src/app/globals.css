@@ -146,6 +146,13 @@
      offset both read it, so they cannot drift apart. */
   --rail-width: clamp(14rem, 13vw, 17rem);
 
+  /* The rail breathes with the window's height the way its width does with the
+     width. On a short laptop the items stay tight; on a tall monitor they open
+     up instead of leaving one crammed block above a large empty middle. Capped,
+     so the list never stretches down towards the utility items at the bottom. */
+  --rail-gap: clamp(0.125rem, 0.9vh, 0.5rem);
+  --rail-item-padding: clamp(0.375rem, 0.85vh, 0.625rem);
+
   /* Motion scale (transitions.dev). Match on usage, not raw number. */
   --duration-stagger: 40ms;
   --duration-micro: 80ms;
@@ -309,6 +316,13 @@
     transform: translateY(0);
   }
 }
+
+/* Disclosures grow open rather than appearing; see `components/ui/disclosure`.
+   The panel is a grid row animated from `0fr` to `1fr`, which needs no measured
+   height, so a four-line explanation and a forty-line one open at the same
+   speed. `::details-content` would express this in CSS alone, but Chrome does
+   not run transitions on that pseudo-element yet, so the panel is a real
+   element instead. */
 
 @media (prefers-reduced-motion: reduce) {
   *,

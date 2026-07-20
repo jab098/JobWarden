@@ -1,15 +1,22 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
-import { setNotificationChannelAction } from "@/app/(protected)/profile/actions";
+import { notificationSlotHours } from "@jobwarden/domain";
+
+import {
+  setDigestScheduleAction,
+  setNotificationChannelAction,
+} from "@/app/(protected)/profile/actions";
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Button } from "@/components/ui/button";
-import type {
-  NotificationDeliveryStatus,
-  NotificationSettingsView,
-  NotificationsActionState,
+import {
+  MAX_DIGEST_HOURS_PER_DAY,
+  type NotificationDeliveryStatus,
+  type NotificationSettingsView,
+  type NotificationsActionState,
 } from "@/lib/notifications/types";
+import { cn } from "@/lib/utils";
 
 const initialState: NotificationsActionState = { kind: "idle" };
 
@@ -113,6 +120,12 @@ export function NotificationSettings({
         <ActionFeedback state={state} />
       </div>
 
+      <DigestSchedule
+        hours={result.digestHours}
+        weekdays={result.digestWeekdays}
+        readOnly={readOnly}
+      />
+
       <div className="mt-6">
         <h3 className="text-sm font-medium text-foreground">
           Search profiles sending digests
@@ -177,23 +190,178 @@ export function NotificationSettings({
           notification settings.
         </p>
       ) : null}
-
-      <div className="mt-8 border-t border-border pt-6">
-        <h3 className="text-sm font-medium text-foreground">Your data</h3>
-        <p className="mt-2 max-w-prose text-sm text-ink-secondary">
-          Download everything JobWarden holds about you as a JSON file. Your CV
-          file itself stays where it is; the export lists it rather than copying
-          it.
-        </p>
-        <p className="mt-3">
-          <a
-            href="/profile/export"
-            className="text-sm underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-          >
-            Export my data
-          </a>
-        </p>
-      </div>
     </section>
   );
+}
+
+const weekdayLabels: ReadonlyArray<readonly [number, string]> = [
+  [1, "Mon"],
+  [2, "Tue"],
+  [3, "Wed"],
+  [4, "Thu"],
+  [5, "Fri"],
+];
+
+/** A pill-shaped checkbox: the input carries the state, the label is the pill. */
+function TogglePill({
+  name,
+  value,
+  label,
+  checked,
+  disabled,
+  onChange,
+}: {
+  name: string;
+  value: number;
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "relative inline-flex cursor-pointer items-center rounded-full px-3 py-1 text-sm transition-[background-color,box-shadow,color] duration-150 ease-(--ease-smooth-out) select-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring/60 has-[:focus-visible]:ring-offset-1",
+        checked
+          ? "bg-primary font-medium text-primary-foreground"
+          : "bg-surface-sunken text-ink-secondary shadow-[inset_0_0_0_1px_var(--card-ring)] hover:text-foreground",
+        disabled && "cursor-not-allowed opacity-45 hover:text-ink-secondary",
+      )}
+    >
+      <input
+        type="checkbox"
+        name={name}
+        value={value}
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        className="absolute size-0 opacity-0"
+      />
+      {label}
+    </label>
+  );
+}
+
+/**
+ * The cadence controls. Hours are limited to the shared update slots because a
+ * digest at any other time would report on nothing newly indexed, and to three
+ * a day; the fourth unticked time disables rather than silently dropping an
+ * earlier choice, so the ceiling is visible before it is hit.
+ */
+function DigestSchedule({
+  hours,
+  weekdays,
+  readOnly,
+}: {
+  hours: readonly number[];
+  weekdays: readonly number[];
+  readOnly: boolean;
+}) {
+  const [state, action, pending] = useActionState(
+    setDigestScheduleAction,
+    initialState,
+  );
+  const [chosenHours, setChosenHours] = useState<readonly number[]>(hours);
+  const [chosenDays, setChosenDays] = useState<readonly number[]>(weekdays);
+
+  const hourLimitReached = chosenHours.length >= MAX_DIGEST_HOURS_PER_DAY;
+  const incomplete = chosenHours.length === 0 || chosenDays.length === 0;
+
+  function toggle(
+    set: readonly number[],
+    value: number,
+    checked: boolean,
+  ): readonly number[] {
+    return checked
+      ? [...set, value].toSorted((a, b) => a - b)
+      : set.filter((entry) => entry !== value);
+  }
+
+  return (
+    <form action={action} className="mt-6 border-t border-border pt-5">
+      <h3 className="text-sm font-medium text-foreground">
+        When digests arrive
+      </h3>
+      <p className="mt-1.5 max-w-prose text-sm text-ink-secondary">
+        Pick the days you want to hear from JobWarden and up to{" "}
+        {MAX_DIGEST_HOURS_PER_DAY} of the update times above. Fewer times means
+        fewer, fuller emails.
+      </p>
+
+      <fieldset className="mt-4">
+        <legend className="text-xs font-semibold text-foreground">Days</legend>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {weekdayLabels.map(([day, label]) => (
+            <TogglePill
+              key={day}
+              name="weekday"
+              value={day}
+              label={label}
+              checked={chosenDays.includes(day)}
+              disabled={readOnly || pending}
+              onChange={(checked) =>
+                setChosenDays((current) => toggle(current, day, checked))
+              }
+            />
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className="mt-4">
+        <legend className="text-xs font-semibold text-foreground">
+          Times, up to {MAX_DIGEST_HOURS_PER_DAY} a day
+        </legend>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {notificationSlotHours.map((hour) => {
+            const checked = chosenHours.includes(hour);
+            return (
+              <TogglePill
+                key={hour}
+                name="hour"
+                value={hour}
+                label={`${String(hour).padStart(2, "0")}:00`}
+                checked={checked}
+                disabled={readOnly || pending || (!checked && hourLimitReached)}
+                onChange={(next) =>
+                  setChosenHours((current) => toggle(current, hour, next))
+                }
+              />
+            );
+          })}
+        </div>
+      </fieldset>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button
+          type="submit"
+          size="sm"
+          disabled={readOnly || pending || incomplete}
+        >
+          Save schedule
+        </Button>
+        <p className="text-sm text-ink-secondary">
+          {scheduleSummary(chosenDays, chosenHours)}
+        </p>
+        <ActionFeedback state={state} />
+      </div>
+    </form>
+  );
+}
+
+/** States the chosen cadence back in plain words, including when it is empty. */
+function scheduleSummary(
+  days: readonly number[],
+  hours: readonly number[],
+): string {
+  if (days.length === 0) return "Choose at least one day.";
+  if (hours.length === 0) return "Choose at least one time.";
+  const dayCopy =
+    days.length === 5
+      ? "every weekday"
+      : days
+          .map((day) => weekdayLabels.find(([value]) => value === day)?.[1])
+          .filter(Boolean)
+          .join(", ");
+  const perDay = hours.length === 1 ? "once" : `${hours.length} times`;
+  return `${perDay} a day, ${dayCopy}.`;
 }

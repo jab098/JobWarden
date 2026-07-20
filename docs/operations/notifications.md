@@ -10,6 +10,7 @@ Read with [free-tier services and cost boundaries](../architecture/free-tier-ser
 After each shared weekday ingestion slot, the function recomputes every opted-in owner's Target Feed over the already-indexed catalogue and sends at most one digest per owner per slot, only when at least one genuinely new job/profile match exists.
 
 - Cadence: 09:00, 12:00, 15:00, and 18:00 `Europe/London`, weekdays only. Outside those hours the function returns `outside_schedule` and does nothing.
+- Within that cadence each owner chooses their own schedule in Settings: which weekdays, and up to **three** of the four times. `list_pending_notification_digests` filters on `digest_hours` and `digest_weekdays`, so an owner whose schedule excludes the slot is not a recipient and no delivery row is claimed for them. Hours are restricted to the four ingestion slots on purpose: a digest at any other hour would report on nothing newly indexed. New rows default to 09:00 and 15:00, every weekday.
 - The candidate window (200 newest active jobs) is read **once per invocation** and scored for every recipient. The digest path issues no source request at all, so it cannot create per-user source cost.
 - A digest reports counts, job titles, employers, locations, and the matching search profile name. It never contains CV-derived text; the database projection that feeds the runtime omits the evidence excerpt entirely.
 

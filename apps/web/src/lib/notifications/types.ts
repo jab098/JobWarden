@@ -17,9 +17,20 @@ export type NotificationDelivery = {
 
 export type NotificationChannelState = {
   channelEnabled: boolean;
+  /**
+   * Which of the shared update slots this owner wants a digest for, and on
+   * which ISO weekdays (1 Monday to 5 Friday). Hours are a subset of
+   * `notificationSlotHours` and never more than three, matching the database
+   * constraint; a schedule outside that vocabulary would name a time at which
+   * nothing new has been indexed.
+   */
+  digestHours: readonly number[];
+  digestWeekdays: readonly number[];
   recentDeliveries: readonly NotificationDelivery[];
   dataMode: "supabase" | "fixtures";
 };
+
+export const MAX_DIGEST_HOURS_PER_DAY = 3;
 
 /**
  * What the settings section renders. The notifying profile names come from the

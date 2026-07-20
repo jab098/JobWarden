@@ -6,11 +6,33 @@ import type {
   NotificationsRepository,
   UnsubscribeRepository,
 } from "./repository";
-import type { NotificationChannelState, NotificationDelivery } from "./types";
+import {
+  MAX_DIGEST_HOURS_PER_DAY,
+  type NotificationChannelState,
+  type NotificationDelivery,
+} from "./types";
 
 const RECENT_DELIVERY_LIMIT = 10;
 
-const settingsRowSchema = z.object({ channel_enabled: z.boolean() });
+/** Mirrors the database vocabulary, so a drifting row cannot reach the UI. */
+const digestHoursSchema = z
+  .array(z.union([z.literal(9), z.literal(12), z.literal(15), z.literal(18)]))
+  .min(1)
+  .max(MAX_DIGEST_HOURS_PER_DAY);
+const digestWeekdaysSchema = z
+  .array(z.number().int().min(1).max(5))
+  .min(1)
+  .max(5);
+
+const settingsRowSchema = z.object({
+  channel_enabled: z.boolean(),
+  digest_hours: digestHoursSchema,
+  digest_weekdays: digestWeekdaysSchema,
+});
+
+/** What a never-opted-in owner sees, matching the column defaults. */
+const DEFAULT_HOURS: readonly number[] = [9, 15];
+const DEFAULT_WEEKDAYS: readonly number[] = [1, 2, 3, 4, 5];
 
 const deliveryRowSchema = z.object({
   id: z.string().uuid(),
@@ -81,7 +103,7 @@ export function createSupabaseNotificationsRepository(
         const [settingsResponse, deliveriesResponse] = await Promise.all([
           supabaseClient
             .from("career_notification_settings")
-            .select("channel_enabled")
+            .select("channel_enabled,digest_hours,digest_weekdays")
             .maybeSingle(),
           supabaseClient
             .from("career_notification_deliveries")
@@ -101,6 +123,8 @@ export function createSupabaseNotificationsRepository(
         return {
           // No row yet means the owner has never opted in.
           channelEnabled: settings?.channel_enabled ?? false,
+          digestHours: settings?.digest_hours ?? DEFAULT_HOURS,
+          digestWeekdays: settings?.digest_weekdays ?? DEFAULT_WEEKDAYS,
           recentDeliveries: deliveries.map(toDelivery),
           dataMode: "supabase",
         };
@@ -119,6 +143,26 @@ export function createSupabaseNotificationsRepository(
         );
       } catch {
         throw new Error("Unable to update notification settings");
+      }
+    },
+
+    async setSchedule(
+      hours: readonly number[],
+      weekdays: readonly number[],
+    ): Promise<void> {
+      // Validated here as well as in the action and the database: this
+      // repository is the last place the values are still structured data.
+      const targetHours = digestHoursSchema.parse([...hours]);
+      const targetWeekdays = digestWeekdaysSchema.parse([...weekdays]);
+      try {
+        data(
+          await supabaseClient.rpc("set_career_digest_schedule", {
+            target_hours: targetHours,
+            target_weekdays: targetWeekdays,
+          }),
+        );
+      } catch {
+        throw new Error("Unable to update the digest schedule");
       }
     },
   };

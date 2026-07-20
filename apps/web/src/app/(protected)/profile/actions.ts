@@ -3,6 +3,7 @@
 import {
   careerProfileDraftSchema,
   namedSearchProfileDraftSchema,
+  notificationSlotHours,
 } from "@jobwarden/domain";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -10,7 +11,10 @@ import { z } from "zod";
 import { isTrustedMutationOrigin } from "@/lib/admin/origin";
 import { PreviewNotificationsUnavailableError } from "@/lib/notifications/development-notifications";
 import { getNotificationsRepository } from "@/lib/notifications/get-repository";
-import type { NotificationsActionState } from "@/lib/notifications/types";
+import {
+  MAX_DIGEST_HOURS_PER_DAY,
+  type NotificationsActionState,
+} from "@/lib/notifications/types";
 import { getProfileRepository } from "@/lib/profile/get-repository";
 import { ProfileRepositoryError } from "@/lib/profile/repository";
 import type { ProfileActionState } from "@/lib/profile/types";
@@ -233,6 +237,69 @@ export async function setNotificationChannelAction(
     return {
       kind: "unavailable",
       message: "This notification change could not be saved. Try again.",
+    };
+  }
+}
+
+/**
+ * The cadence a digest owner chose. Hours are constrained to the shared update
+ * slots because a digest at any other time would report on nothing newly
+ * indexed, and to three a day so one owner cannot spend the application-wide
+ * free allowance alone. The database enforces the same two rules.
+ */
+const scheduleSchema = z
+  .object({
+    hours: z
+      .array(z.coerce.number().int())
+      .min(1)
+      .max(MAX_DIGEST_HOURS_PER_DAY)
+      .refine((hours) =>
+        hours.every((hour) =>
+          (notificationSlotHours as readonly number[]).includes(hour),
+        ),
+      ),
+    weekdays: z.array(z.coerce.number().int().min(1).max(5)).min(1).max(5),
+  })
+  .strict();
+
+export async function setDigestScheduleAction(
+  _previousState: NotificationsActionState,
+  formData: FormData,
+): Promise<NotificationsActionState> {
+  if (!(await trusted())) {
+    return {
+      kind: "forbidden",
+      message: "This notification change could not be verified.",
+    };
+  }
+
+  const parsed = scheduleSchema.safeParse({
+    hours: [...new Set(formData.getAll("hour").map(String))],
+    weekdays: [...new Set(formData.getAll("weekday").map(String))],
+  });
+  if (!parsed.success) {
+    return {
+      kind: "invalid",
+      message: `Choose at least one day and between one and ${MAX_DIGEST_HOURS_PER_DAY} times.`,
+    };
+  }
+
+  try {
+    await (
+      await getNotificationsRepository()
+    ).setSchedule(parsed.data.hours, parsed.data.weekdays);
+    revalidatePath("/settings");
+    return { kind: "success", message: "Digest schedule saved." };
+  } catch (error) {
+    if (error instanceof PreviewNotificationsUnavailableError) {
+      return {
+        kind: "unavailable",
+        message: "Notification changes are unavailable in this preview.",
+      };
+    }
+    return {
+      kind: "unavailable",
+      message: "This schedule could not be saved. Try again.",
     };
   }
 }

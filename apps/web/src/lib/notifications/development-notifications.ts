@@ -20,6 +20,8 @@ export class PreviewNotificationsUnavailableError extends Error {
  */
 const fictionalSettings: NotificationChannelState = Object.freeze({
   channelEnabled: true,
+  digestHours: Object.freeze([9, 15]),
+  digestWeekdays: Object.freeze([1, 2, 3, 4, 5]),
   recentDeliveries: Object.freeze([
     Object.freeze({
       id: "a0000000-0000-4000-8000-000000000001",
@@ -59,6 +61,9 @@ export function createDevelopmentNotificationsRepository(): NotificationsReposit
       return fictionalSettings;
     },
     async setChannelEnabled() {
+      throw new PreviewNotificationsUnavailableError();
+    },
+    async setSchedule() {
       throw new PreviewNotificationsUnavailableError();
     },
   };

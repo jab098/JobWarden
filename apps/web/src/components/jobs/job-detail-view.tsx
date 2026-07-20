@@ -8,9 +8,16 @@ import type { JobDetail } from "@/lib/jobs/types";
 export function JobDetailView({
   job,
   dataMode,
+  actions,
 }: {
   job: JobDetail;
   dataMode: "supabase" | "fixtures";
+  /**
+   * The secondary things a reader can do with this listing. They sit with the
+   * job facts rather than above the page, so the card holds every action and
+   * the back link stays the first thing on the page.
+   */
+  actions?: React.ReactNode;
 }) {
   return (
     <div className="mx-auto max-w-list px-4 py-5 sm:px-6">
@@ -48,6 +55,11 @@ export function JobDetailView({
             </a>
           </div>
           <JobFacts job={job} className="mt-5" />
+          {actions ? (
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4">
+              {actions}
+            </div>
+          ) : null}
         </header>
         <section
           className="mt-7 border-t border-border pt-6"

@@ -99,11 +99,11 @@ const multiFilters = [
 function SourcesControl({
   sources,
   selected,
-  submitOnClose,
+  applyOnChange,
 }: {
   sources: readonly JobSourceOption[];
   selected: readonly string[];
-  submitOnClose: boolean;
+  applyOnChange: boolean;
 }) {
   if (sources.length === 0) return null;
   return (
@@ -113,7 +113,7 @@ function SourcesControl({
       allLabel="All sources"
       options={sources.map((source) => [source.id, source.label] as const)}
       selected={selected}
-      submitOnClose={submitOnClose}
+      applyOnChange={applyOnChange}
     />
   );
 }
@@ -121,8 +121,8 @@ function SourcesControl({
 /**
  * The desktop filters as a horizontal toolbar over the results: search
  * fields and a submit up top, then compact dropdowns beneath. Multi-choice
- * dropdowns apply when their popup closes; single-choice ones on selection.
- * One GET form, same field contract as ever.
+ * dropdowns apply on every tick and stay open; single-choice ones apply on
+ * selection. One GET form, same field contract as ever.
  */
 function FilterToolbar({
   filters,
@@ -171,7 +171,7 @@ function FilterToolbar({
         <SourcesControl
           sources={sources}
           selected={filters.sources}
-          submitOnClose
+          applyOnChange
         />
         <Button type="submit" size="sm" className="h-8 px-3">
           Search
@@ -194,7 +194,7 @@ function FilterToolbar({
             allLabel={allLabel}
             options={options[name]}
             selected={filters[name]}
-            submitOnClose
+            applyOnChange
           />
         ))}
         <span className="mx-0.5 h-4 w-px bg-border" aria-hidden="true" />
@@ -297,7 +297,7 @@ function FilterForm({
           <SourcesControl
             sources={sources}
             selected={filters.sources}
-            submitOnClose={false}
+            applyOnChange={false}
           />
         </div>
       ) : null}
@@ -316,7 +316,7 @@ function FilterForm({
             allLabel={allLabel}
             options={options[name]}
             selected={filters[name]}
-            submitOnClose={false}
+            applyOnChange={false}
           />
         </div>
       ))}

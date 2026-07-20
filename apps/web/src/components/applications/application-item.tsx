@@ -16,6 +16,7 @@ import {
 } from "@/app/(protected)/applications/actions";
 import { Button } from "@/components/ui/button";
 import { ActionFeedback } from "@/components/ui/action-feedback";
+import { Disclosure } from "@/components/ui/disclosure";
 import { formatCompensation } from "@/components/jobs/job-format";
 import { Input } from "@/components/ui/input";
 import {
@@ -261,22 +262,10 @@ export function ApplicationItem({
         </div>
 
         {!compact ? (
-          <details className="group mt-3 rounded-md border border-border">
-            <summary className="cursor-pointer list-none rounded-md px-3.5 py-2 text-sm font-medium text-link transition-colors duration-150 select-none group-open:rounded-b-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
-              <span className="inline-flex items-center gap-1.5">
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 8 8"
-                  className="size-2 fill-none stroke-current transition-transform duration-(--duration-quick) ease-(--ease-smooth-out) group-open:rotate-90"
-                >
-                  <path d="M2.5 1 L5.5 4 L2.5 7" strokeWidth="1.2" />
-                </svg>
-                Next action and notes
-              </span>
-            </summary>
+          <Disclosure label="Next action and notes" className="mt-3">
             <form
               action={planAction}
-              className="space-y-3 border-t border-border px-3.5 py-3.5 text-sm"
+              className="space-y-3 px-3.5 py-3.5 text-sm"
             >
               <input type="hidden" name="applicationId" value={item.id} />
               <div className="flex flex-wrap gap-3">
@@ -323,7 +312,7 @@ export function ApplicationItem({
                 <ActionFeedback state={planState} />
               </div>
             </form>
-          </details>
+          </Disclosure>
         ) : null}
 
         {!compact ? (

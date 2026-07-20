@@ -53,7 +53,7 @@ export function AppShell({
             <form action={signOut}>
               <button
                 type="submit"
-                className="group flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-ink-secondary transition-colors duration-150 outline-none hover:bg-sidebar-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
+                className="group flex w-full items-center gap-2.5 rounded-md px-2.5 py-[var(--rail-item-padding)] text-sm text-ink-secondary transition-colors duration-150 outline-none hover:bg-sidebar-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
               >
                 <LogOut
                   aria-hidden="true"
