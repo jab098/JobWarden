@@ -27,6 +27,13 @@ export type OnboardingView = {
   /** The profile fence the CV upload handshake has to quote. */
   generation: number;
   uploadCapability: ProfileUploadCapability;
+  /**
+   * Whether the step buttons move the flow on. Separate from `dataMode`
+   * because the fictional preview has two modes: the frozen single step, which
+   * cannot advance, and a review walkthrough, which can. Neither writes a real
+   * record; this only says whether the walk itself is live.
+   */
+  canAdvance: boolean;
   dataMode: "supabase" | "fixtures";
 };
 

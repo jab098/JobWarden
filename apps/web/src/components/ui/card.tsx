@@ -11,8 +11,25 @@ import { cn } from "@/lib/utils";
  * proportions, and a checklist row.
  */
 
-/** `data` is the default for a plain quantity: graphite ink, not an accent. */
-export type Tone = "data" | "neutral" | "good" | "attention" | "danger";
+/**
+ * `data` is the default for a plain quantity: graphite ink, not an accent.
+ *
+ * `progress-1` to `progress-5` are the funnel ramp and are the one exception to
+ * "quantities are graphite": they belong to an ordered sequence where a later
+ * stage is genuinely nearer a good outcome, and the ramp says so. Never reach
+ * for them to make an unordered set of bars look livelier.
+ */
+export type Tone =
+  | "data"
+  | "neutral"
+  | "good"
+  | "attention"
+  | "danger"
+  | "progress-1"
+  | "progress-2"
+  | "progress-3"
+  | "progress-4"
+  | "progress-5";
 
 const meterFill: Record<Tone, string> = {
   data: "bg-data",
@@ -20,14 +37,36 @@ const meterFill: Record<Tone, string> = {
   good: "bg-success",
   attention: "bg-warning",
   danger: "bg-danger",
+  "progress-1": "bg-funnel-1",
+  "progress-2": "bg-funnel-2",
+  "progress-3": "bg-funnel-3",
+  "progress-4": "bg-funnel-4",
+  "progress-5": "bg-funnel-5",
 };
 
+/** The ramp in order, so a caller maps a stage index straight onto a tone. */
+export const progressTones = [
+  "progress-1",
+  "progress-2",
+  "progress-3",
+  "progress-4",
+  "progress-5",
+] as const satisfies readonly Tone[];
+
+// The ramp is a meter fill, not a label colour: a tinted pill in a mid-ramp
+// green would claim a state the stage does not have. They all read as a plain
+// quantity here.
 const pillTone: Record<Tone, string> = {
   data: "bg-surface-sunken text-foreground",
   neutral: "bg-surface-sunken text-ink-secondary",
   good: "bg-success-surface text-success",
   attention: "bg-warning-surface text-warning",
   danger: "bg-danger-surface text-danger",
+  "progress-1": "bg-surface-sunken text-foreground",
+  "progress-2": "bg-surface-sunken text-foreground",
+  "progress-3": "bg-surface-sunken text-foreground",
+  "progress-4": "bg-surface-sunken text-foreground",
+  "progress-5": "bg-surface-sunken text-foreground",
 };
 
 /** A small tinted state pill: "On track", "Good", "Overdue". */

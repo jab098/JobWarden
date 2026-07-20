@@ -32,17 +32,20 @@ export default async function JobDetailPage({
     (application) => application.job?.id === job.id,
   );
   return (
-    <>
-      <div className="mx-auto flex max-w-list flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-4 sm:px-6">
-        <TrackApplicationButton jobId={job.id} tracked={tracked} />
-        <Link
-          href={`/tailor/${job.id}`}
-          className="rounded-sm text-sm font-medium text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
-        >
-          Tailor my CV for this role
-        </Link>
-      </div>
-      <JobDetailView dataMode={dataMode} job={job} />
-    </>
+    <JobDetailView
+      dataMode={dataMode}
+      job={job}
+      actions={
+        <>
+          <TrackApplicationButton jobId={job.id} tracked={tracked} />
+          <Link
+            href={`/tailor/${job.id}`}
+            className="rounded-sm text-sm font-medium text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
+          >
+            Tailor my CV for this role
+          </Link>
+        </>
+      }
+    />
   );
 }

@@ -27,6 +27,7 @@ function view(overrides: Partial<OnboardingView> = {}): OnboardingView {
     hasSignal: true,
     generation: 0,
     uploadCapability: { enabled: false, reason: "uploads_disabled" },
+    canAdvance: true,
     dataMode: "supabase",
     ...overrides,
   };
@@ -370,12 +371,34 @@ describe("OnboardingFlow", () => {
     ).toBeInTheDocument();
   });
 
-  it("refuses to save in the fictional preview", () => {
-    render(<OnboardingFlow view={view({ dataMode: "fixtures" })} />);
+  it("refuses to save in the frozen fictional preview", () => {
+    render(
+      <OnboardingFlow
+        view={view({ dataMode: "fixtures", canAdvance: false })}
+      />,
+    );
 
     for (const button of screen.getAllByRole("button")) {
       expect(button).toBeDisabled();
     }
     expect(screen.getByText(/cannot save progress/)).toBeInTheDocument();
+  });
+
+  it("lets the review walkthrough move between steps without saving anything", () => {
+    render(
+      <OnboardingFlow
+        view={view({ dataMode: "fixtures", canAdvance: true })}
+      />,
+    );
+
+    for (const button of screen.getAllByRole("button")) {
+      expect(button).toBeEnabled();
+    }
+    expect(
+      screen.getByText(/nothing is saved to a real account/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /restart the walkthrough/i }),
+    ).toHaveAttribute("href", "/development/journey?restart=1");
   });
 });

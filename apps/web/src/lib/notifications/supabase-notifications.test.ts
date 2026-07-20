@@ -31,7 +31,14 @@ function client(options: {
   const deliverySelect = vi.fn().mockReturnValue({ order });
   const maybeSingle = vi.fn().mockResolvedValue({
     // `??` would swallow a deliberate null, which is the opted-out case.
-    data: "settings" in options ? options.settings : { channel_enabled: true },
+    data:
+      "settings" in options
+        ? options.settings
+        : {
+            channel_enabled: true,
+            digest_hours: [9, 15],
+            digest_weekdays: [1, 2, 3, 4, 5],
+          },
     error: options.settingsError ?? null,
   });
   const settingsSelect = vi.fn().mockReturnValue({ maybeSingle });
@@ -73,6 +80,8 @@ describe("getSettings", () => {
 
     expect(result).toEqual({
       channelEnabled: true,
+      digestHours: [9, 15],
+      digestWeekdays: [1, 2, 3, 4, 5],
       recentDeliveries: [
         {
           id: "a0000000-0000-4000-8000-000000000001",

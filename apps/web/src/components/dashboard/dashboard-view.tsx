@@ -6,6 +6,7 @@ import {
   CheckItem,
   Meter,
   MeterRow,
+  progressTones,
   type Tone,
 } from "@/components/ui/card";
 
@@ -121,6 +122,156 @@ const windowChoices = [
   [30, "30 days"],
 ] as const;
 
+/**
+ * Home measures what the user has done. Before they have done anything there is
+ * nothing to measure, and a grid of zeros reports that as failure rather than
+ * as a beginning. This is the same page in its first state: what JobWarden has
+ * already found for them, then the two things that start the measuring.
+ *
+ * It is keyed off tracked applications and decisions, not off matches: matching
+ * runs over the shared catalogue, so a user can have matches within minutes of
+ * finishing onboarding while every other panel is still empty.
+ */
+function FirstRun({
+  matchCount,
+  topProfileName,
+  startSteps,
+  profileComplete,
+}: {
+  matchCount: number;
+  topProfileName: string | null;
+  startSteps: readonly StartStep[];
+  profileComplete: boolean;
+}) {
+  const setUp = profileComplete;
+
+  return (
+    <>
+      <section className="card-surface mt-4 p-5">
+        <p className="text-sm text-ink-secondary">
+          {setUp ? "Your profile is set up." : "Your profile is nearly set up."}
+        </p>
+        <p className="mt-1.5 text-2xl font-semibold tracking-[-0.02em] text-foreground">
+          {matchCount === 0
+            ? "No roles match your profile yet"
+            : `${matchCount} ${matchCount === 1 ? "role matches" : "roles match"} your profile right now`}
+        </p>
+        <p className="mt-1.5 max-w-[62ch] text-sm leading-6 text-ink-secondary">
+          {matchCount === 0
+            ? "JobWarden checks the UK listings it has indexed four times each weekday. As soon as one fits your evidence and preferences, it appears under Matches."
+            : `Scored against ${topProfileName ? `your ${topProfileName} search` : "your saved searches"}, with the evidence behind every score.`}
+        </p>
+        {matchCount > 0 ? (
+          <Link
+            href="/matches"
+            className="mt-4 inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground outline-none transition-[background-color,transform] duration-150 ease-(--ease-smooth-out) hover:bg-primary/85 focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 active:scale-[0.98]"
+          >
+            View your matches
+          </Link>
+        ) : null}
+      </section>
+
+      <GettingStarted steps={startSteps} />
+    </>
+  );
+}
+
+type StartStep = { key: string; href: string; title: string; body: string };
+
+/**
+ * What is still outstanding before the page can report anything useful. It is
+ * the same card whether it stands alone on a new account or sits pinned above a
+ * dashboard that has begun to fill; only its heading changes, because in one
+ * case the page is empty and in the other it is partly answered.
+ */
+function GettingStarted({
+  steps,
+  pinned = false,
+}: {
+  steps: readonly StartStep[];
+  pinned?: boolean;
+}) {
+  if (steps.length === 0) return null;
+  return (
+    <section
+      aria-labelledby="getting-started"
+      className={cn("card-surface p-5", pinned ? "mt-4" : "mt-2.5")}
+    >
+      <h2 id="getting-started" className="text-sm font-semibold">
+        {pinned ? "Still to set up" : "What fills this page"}
+      </h2>
+      <ul className="mt-3.5 flex flex-col gap-3">
+        {steps.map((step) => (
+          <NextStep
+            key={step.key}
+            href={step.href}
+            title={step.title}
+            body={step.body}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** One numbered-feeling next action: a whole-row link with a quiet marker. */
+function NextStep({
+  href,
+  title,
+  body,
+}: {
+  href: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <li>
+      <Link
+        href={href}
+        className="group flex gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+      >
+        <span
+          aria-hidden="true"
+          className="mt-1.5 size-1.5 shrink-0 rounded-full bg-ink-faint transition-colors duration-(--duration-quick) group-hover:bg-link"
+        />
+        <span className="min-w-0">
+          <span className="block text-sm font-medium text-foreground transition-colors duration-(--duration-quick) group-hover:text-link">
+            {title}
+          </span>
+          <span className="mt-0.5 block max-w-[62ch] text-sm leading-6 text-ink-secondary">
+            {body}
+          </span>
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+/** What a panel says instead of drawing an empty chart or a row of zeros. */
+function NothingYet({
+  children,
+  href,
+  action,
+}: {
+  children: React.ReactNode;
+  href: string;
+  action: string;
+}) {
+  return (
+    <div className="mt-4 flex flex-1 flex-col justify-center py-2">
+      <p className="max-w-[52ch] text-sm leading-6 text-ink-secondary">
+        {children}
+      </p>
+      <Link
+        href={href}
+        className="mt-2 self-start rounded-sm text-sm font-medium text-link outline-none transition-colors duration-(--duration-quick) hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
+      >
+        {action}
+      </Link>
+    </div>
+  );
+}
+
 export function DashboardView({ result }: { result: DashboardResult }) {
   const { insights } = result.applications;
   const funnelPeak = Math.max(1, ...insights.funnel.map((s) => s.reached));
@@ -158,6 +309,135 @@ export function DashboardView({ result }: { result: DashboardResult }) {
     });
   }
   const settledChecks = profileChecks.filter((check) => check.done).length;
+  const decisionTotal =
+    result.decisions.counts.saved +
+    result.decisions.counts.considering +
+    result.decisions.counts.dismissed;
+  // "Has this account done anything yet", not "is anything on screen zero".
+  // Matches arrive on their own; applications and decisions only exist because
+  // the user made them, so they are what separates a new account from a quiet
+  // week on an established one.
+  const firstRun = insights.totalTracked === 0 && decisionTotal === 0;
+  const profileComplete = settledChecks === profileChecks.length;
+
+  // The getting-started list retires itself: each entry disappears as the fact
+  // behind it becomes true, and the card goes when the last one does. There is
+  // no timer, because time does not make a dashboard informative; doing these
+  // does. Nobody is held away from their own data waiting for a clock.
+  const startSteps: StartStep[] = [
+    ...(decisionTotal === 0
+      ? [
+          {
+            key: "decide",
+            href: "/matches",
+            title: "Save or dismiss a few matches",
+            body: "Your decisions are the record JobWarden measures. They also tell it which roles to keep showing you.",
+          },
+        ]
+      : []),
+    ...(insights.totalTracked === 0
+      ? [
+          {
+            key: "track",
+            href: "/jobs",
+            title: "Track an application",
+            body: "Applied on an employer's site? Track it here and this page starts reporting your funnel, your follow-ups, and what has gone quiet.",
+          },
+        ]
+      : []),
+  ];
+  // Profile set-up is deliberately absent: the Profile health panel is on this
+  // same screen, owns that checklist, and links to the fix. Repeating it here
+  // would say the same thing twice on one page.
+
+  // Extracted because both the first-run layout and the full dashboard show it:
+  // it is the one panel that already has real content for a new account, since
+  // onboarding just filled it in.
+  const profileHealthPanel = (
+    <Panel
+      title="Profile health"
+      status={{
+        label: `${settledChecks} of ${profileChecks.length} set up`,
+        tone: settledChecks === profileChecks.length ? "good" : "neutral",
+      }}
+      action={{ href: "/profile", label: "Open career profile" }}
+    >
+      <Meter
+        value={settledChecks}
+        max={profileChecks.length}
+        tone={settledChecks === profileChecks.length ? "good" : "attention"}
+        className="mt-3.5"
+      />
+      <dl className="mt-4 grid grid-cols-3 gap-3">
+        <div>
+          <dd className="tnum text-base font-semibold text-foreground">
+            {result.profileHealth.confirmedEvidenceCount}
+          </dd>
+          <dt className="mt-0.5 text-xs text-ink-faint">
+            confirmed evidence items
+          </dt>
+        </div>
+        <div>
+          <dd className="tnum text-base font-semibold text-foreground">
+            {result.profileHealth.enabledSearchCount}
+          </dd>
+          <dt className="mt-0.5 text-xs text-ink-faint">enabled searches</dt>
+        </div>
+        <div>
+          <dd className="text-base font-semibold text-foreground">
+            {result.profileHealth.hasCv
+              ? (result.profileHealth.cvKind ?? "yes").toUpperCase()
+              : "None"}
+          </dd>
+          <dt className="mt-0.5 text-xs text-ink-faint">CV on file</dt>
+        </div>
+      </dl>
+      <ul className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
+        {profileChecks.map((check) => (
+          <CheckItem key={check.key} done={check.done}>
+            {check.done ? (
+              check.settled
+            ) : (
+              <Link
+                href={nudgeCopy[check.key].href}
+                className="rounded-sm text-ink-secondary underline decoration-border underline-offset-4 outline-none transition-colors duration-(--duration-quick) hover:text-foreground hover:decoration-ink-faint focus-visible:ring-2 focus-visible:ring-ring/60"
+              >
+                {nudgeCopy[check.key].text}
+              </Link>
+            )}
+          </CheckItem>
+        ))}
+      </ul>
+    </Panel>
+  );
+
+  if (firstRun) {
+    return (
+      <div className="mx-auto max-w-page px-4 py-5 lg:px-6">
+        <header>
+          <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
+            Home
+          </h1>
+          <p className="mt-1 max-w-[62ch] text-sm leading-6 text-ink-secondary">
+            This page reports on your own job search. It fills in as you use
+            JobWarden, and it never estimates or invents anything.
+          </p>
+        </header>
+        <FirstRun
+          matchCount={result.targetFeed.currentMatchCount}
+          topProfileName={result.targetFeed.topProfileName}
+          startSteps={startSteps}
+          profileComplete={profileComplete}
+        />
+        <div className="mt-2.5">{profileHealthPanel}</div>
+        {result.dataMode === "fixtures" ? (
+          <p className="mt-5 text-xs text-ink-faint">
+            This preview shows frozen fictional statistics.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-page px-4 py-5 lg:px-6">
@@ -193,6 +473,10 @@ export function DashboardView({ result }: { result: DashboardResult }) {
           employer is never reported as a rejection.
         </p>
       </header>
+
+      {/* Pinned above the dashboard until the last item is done, so the guidance
+          persists while the page is still sparse without ever hiding data. */}
+      <GettingStarted steps={startSteps} pinned />
 
       <div className="stagger-children mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <StatCard
@@ -232,46 +516,60 @@ export function DashboardView({ result }: { result: DashboardResult }) {
           title="Applications"
           action={{ href: "/applications", label: "Open tracker" }}
         >
-          <dl className="mt-4 flex flex-col gap-2.5">
-            {insights.funnel.map((step) => (
-              <MeterRow
-                key={step.stage}
-                label={funnelStageLabels[step.stage]}
-                value={step.reached}
-                max={funnelPeak}
-              />
-            ))}
-          </dl>
-          <p className="mt-4">
-            <Comparison
-              value={result.applications.startedThisPeriod}
-              unit="started this period"
-            />
-          </p>
-          <dl className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4">
-            <div>
-              <dd className="tnum text-base font-semibold text-foreground">
-                {insights.outcomes.open}
-              </dd>
-              <dt className="mt-0.5 text-xs text-ink-faint">still open</dt>
-            </div>
-            <div>
-              <dd className="tnum text-base font-semibold text-foreground">
-                {insights.outcomes.observed}
-              </dd>
-              <dt className="mt-0.5 text-xs text-ink-faint">
-                with an observed outcome
-              </dt>
-            </div>
-            <div>
-              <dd className="tnum text-base font-semibold text-foreground">
-                {insights.outcomes.quietFourteenPlusDays}
-              </dd>
-              <dt className="mt-0.5 text-xs text-ink-faint">
-                no response observed in 14+ days
-              </dt>
-            </div>
-          </dl>
+          {insights.totalTracked === 0 ? (
+            <NothingYet href="/jobs" action="Find a role to apply for">
+              Once you track an application, this panel reports how far each one
+              got, what is still open, and what has gone quiet.
+            </NothingYet>
+          ) : (
+            <>
+              <dl className="mt-4 flex flex-col gap-2.5">
+                {insights.funnel.map((step, index) => (
+                  <MeterRow
+                    key={step.stage}
+                    label={funnelStageLabels[step.stage]}
+                    value={step.reached}
+                    max={funnelPeak}
+                    // Each stage is nearer an offer than the last, so the ramp
+                    // reads as progress rather than five interchangeable bars.
+                    tone={
+                      progressTones[Math.min(index, progressTones.length - 1)]
+                    }
+                  />
+                ))}
+              </dl>
+              <p className="mt-4">
+                <Comparison
+                  value={result.applications.startedThisPeriod}
+                  unit="started this period"
+                />
+              </p>
+              <dl className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4">
+                <div>
+                  <dd className="tnum text-base font-semibold text-foreground">
+                    {insights.outcomes.open}
+                  </dd>
+                  <dt className="mt-0.5 text-xs text-ink-faint">still open</dt>
+                </div>
+                <div>
+                  <dd className="tnum text-base font-semibold text-foreground">
+                    {insights.outcomes.observed}
+                  </dd>
+                  <dt className="mt-0.5 text-xs text-ink-faint">
+                    with an observed outcome
+                  </dt>
+                </div>
+                <div>
+                  <dd className="tnum text-base font-semibold text-foreground">
+                    {insights.outcomes.quietFourteenPlusDays}
+                  </dd>
+                  <dt className="mt-0.5 text-xs text-ink-faint">
+                    no response observed in 14+ days
+                  </dt>
+                </div>
+              </dl>
+            </>
+          )}
         </Panel>
 
         <Panel
@@ -299,6 +597,7 @@ export function DashboardView({ result }: { result: DashboardResult }) {
               series={result.targetFeed.byDay}
               label={`Matching jobs by the day JobWarden first saw them, over ${result.windowDays} days`}
               unit="matching jobs first seen"
+              tone="inbound"
             />
             <p className="mt-1.5 text-xs text-ink-faint">
               By the day JobWarden first saw each job
@@ -310,95 +609,49 @@ export function DashboardView({ result }: { result: DashboardResult }) {
           title="Your decisions"
           action={{ href: "/matches", label: "Review saved roles" }}
         >
-          <dl className="mt-4 mb-4 grid grid-cols-3 gap-3">
-            <div>
-              <dd className="tnum text-base font-semibold text-foreground">
-                {result.decisions.counts.saved}
-              </dd>
-              <dt className="mt-0.5 text-xs text-ink-faint">saved</dt>
-            </div>
-            <div>
-              <dd className="tnum text-base font-semibold text-foreground">
-                {result.decisions.counts.considering}
-              </dd>
-              <dt className="mt-0.5 text-xs text-ink-faint">considering</dt>
-            </div>
-            <div>
-              <dd className="tnum text-base font-semibold text-foreground">
-                {result.decisions.counts.dismissed}
-              </dd>
-              <dt className="mt-0.5 text-xs text-ink-faint">dismissed</dt>
-            </div>
-          </dl>
-          <div className="mt-auto border-t border-border pt-4">
-            <ActivityChart
-              series={result.decisions.byDay}
-              label={`Decisions per day over ${result.windowDays} days`}
-              unit="decisions"
-            />
-            <p className="mt-1.5 text-xs text-ink-faint">
-              {result.decisions.inPeriod} in this period
-            </p>
-          </div>
+          {decisionTotal === 0 ? (
+            <NothingYet href="/matches" action="Go to your matches">
+              Saving, considering and dismissing roles is what teaches JobWarden
+              your taste. Your decisions appear here as you make them.
+            </NothingYet>
+          ) : (
+            <>
+              <dl className="mt-4 mb-4 grid grid-cols-3 gap-3">
+                <div>
+                  <dd className="tnum text-base font-semibold text-foreground">
+                    {result.decisions.counts.saved}
+                  </dd>
+                  <dt className="mt-0.5 text-xs text-ink-faint">saved</dt>
+                </div>
+                <div>
+                  <dd className="tnum text-base font-semibold text-foreground">
+                    {result.decisions.counts.considering}
+                  </dd>
+                  <dt className="mt-0.5 text-xs text-ink-faint">considering</dt>
+                </div>
+                <div>
+                  <dd className="tnum text-base font-semibold text-foreground">
+                    {result.decisions.counts.dismissed}
+                  </dd>
+                  <dt className="mt-0.5 text-xs text-ink-faint">dismissed</dt>
+                </div>
+              </dl>
+              <div className="mt-auto border-t border-border pt-4">
+                <ActivityChart
+                  series={result.decisions.byDay}
+                  label={`Decisions per day over ${result.windowDays} days`}
+                  unit="decisions"
+                  tone="action"
+                />
+                <p className="mt-1.5 text-xs text-ink-faint">
+                  {result.decisions.inPeriod} in this period
+                </p>
+              </div>
+            </>
+          )}
         </Panel>
 
-        <Panel
-          title="Profile health"
-          status={{
-            label: `${settledChecks} of ${profileChecks.length} set up`,
-            tone: settledChecks === profileChecks.length ? "good" : "neutral",
-          }}
-          action={{ href: "/profile", label: "Open career profile" }}
-        >
-          <Meter
-            value={settledChecks}
-            max={profileChecks.length}
-            tone={settledChecks === profileChecks.length ? "good" : "attention"}
-            className="mt-3.5"
-          />
-          <dl className="mt-4 grid grid-cols-3 gap-3">
-            <div>
-              <dd className="tnum text-base font-semibold text-foreground">
-                {result.profileHealth.confirmedEvidenceCount}
-              </dd>
-              <dt className="mt-0.5 text-xs text-ink-faint">
-                confirmed evidence items
-              </dt>
-            </div>
-            <div>
-              <dd className="tnum text-base font-semibold text-foreground">
-                {result.profileHealth.enabledSearchCount}
-              </dd>
-              <dt className="mt-0.5 text-xs text-ink-faint">
-                enabled searches
-              </dt>
-            </div>
-            <div>
-              <dd className="text-base font-semibold text-foreground">
-                {result.profileHealth.hasCv
-                  ? (result.profileHealth.cvKind ?? "yes").toUpperCase()
-                  : "None"}
-              </dd>
-              <dt className="mt-0.5 text-xs text-ink-faint">CV on file</dt>
-            </div>
-          </dl>
-          <ul className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
-            {profileChecks.map((check) => (
-              <CheckItem key={check.key} done={check.done}>
-                {check.done ? (
-                  check.settled
-                ) : (
-                  <Link
-                    href={nudgeCopy[check.key].href}
-                    className="rounded-sm text-ink-secondary underline decoration-border underline-offset-4 outline-none transition-colors duration-(--duration-quick) hover:text-foreground hover:decoration-ink-faint focus-visible:ring-2 focus-visible:ring-ring/60"
-                  >
-                    {nudgeCopy[check.key].text}
-                  </Link>
-                )}
-              </CheckItem>
-            ))}
-          </ul>
-        </Panel>
+        {profileHealthPanel}
       </div>
 
       <div className="mt-2.5 grid gap-2.5 lg:grid-cols-2">

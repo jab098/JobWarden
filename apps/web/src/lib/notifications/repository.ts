@@ -5,6 +5,10 @@ import type { NotificationChannelState } from "./types";
 export interface NotificationsRepository {
   getSettings(): Promise<NotificationChannelState>;
   setChannelEnabled(enabled: boolean): Promise<void>;
+  setSchedule(
+    hours: readonly number[],
+    weekdays: readonly number[],
+  ): Promise<void>;
 }
 
 /**

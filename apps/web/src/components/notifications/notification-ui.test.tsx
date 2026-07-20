@@ -7,10 +7,12 @@ vi.mock("server-only", () => ({}));
 
 const actionMocks = vi.hoisted(() => ({
   setNotificationChannelAction: vi.fn(),
+  setDigestScheduleAction: vi.fn(),
   unsubscribeAction: vi.fn(),
 }));
 vi.mock("@/app/(protected)/profile/actions", () => ({
   setNotificationChannelAction: actionMocks.setNotificationChannelAction,
+  setDigestScheduleAction: actionMocks.setDigestScheduleAction,
 }));
 vi.mock("@/app/unsubscribe/actions", () => ({
   unsubscribeAction: actionMocks.unsubscribeAction,
@@ -39,6 +41,10 @@ beforeEach(() => {
   actionMocks.setNotificationChannelAction.mockReset().mockResolvedValue({
     kind: "success",
     message: "Digest emails are off.",
+  });
+  actionMocks.setDigestScheduleAction.mockReset().mockResolvedValue({
+    kind: "success",
+    message: "Digest schedule saved.",
   });
   actionMocks.unsubscribeAction.mockReset().mockResolvedValue({
     kind: "success",
@@ -155,13 +161,98 @@ describe("NotificationSettings", () => {
     ).toBeInTheDocument();
   });
 
-  it("offers a data export alongside the existing deletion path", () => {
+  it("leaves the data export to the settings page that owns it", () => {
     render(<NotificationSettings result={settings()} />);
 
     expect(
-      screen.getByRole("link", { name: "Export my data" }),
-    ).toHaveAttribute("href", "/profile/export");
-    expect(screen.getByText(/stays where it is/)).toBeInTheDocument();
+      screen.queryByRole("link", { name: "Export my data" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the saved cadence as ticked days and times", () => {
+    render(
+      <NotificationSettings
+        result={settings({ digestHours: [9, 15], digestWeekdays: [1, 3] })}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox", { name: "Mon" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Wed" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Tue" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "09:00" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "12:00" })).not.toBeChecked();
+  });
+
+  it("submits the chosen days and times", async () => {
+    const user = userEvent.setup();
+    render(
+      <NotificationSettings
+        result={settings({ digestHours: [9], digestWeekdays: [1] })}
+      />,
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: "Fri" }));
+    await user.click(screen.getByRole("button", { name: "Save schedule" }));
+
+    await waitFor(() =>
+      expect(actionMocks.setDigestScheduleAction).toHaveBeenCalled(),
+    );
+    const [, formData] = actionMocks.setDigestScheduleAction.mock.calls[0];
+    expect(formData.getAll("weekday")).toEqual(["1", "5"]);
+    expect(formData.getAll("hour")).toEqual(["9"]);
+  });
+
+  it("stops a fourth time being added rather than dropping an earlier one", async () => {
+    const user = userEvent.setup();
+    render(
+      <NotificationSettings result={settings({ digestHours: [9, 12, 15] })} />,
+    );
+
+    const fourth = screen.getByRole("checkbox", { name: "18:00" });
+    expect(fourth).toBeDisabled();
+
+    // Un-ticking one frees the slot back up, so the ceiling never becomes a
+    // dead end the reader has to work out for themselves.
+    await user.click(screen.getByRole("checkbox", { name: "09:00" }));
+    expect(screen.getByRole("checkbox", { name: "18:00" })).toBeEnabled();
+  });
+
+  it("refuses a schedule with no day or no time", async () => {
+    const user = userEvent.setup();
+    render(
+      <NotificationSettings
+        result={settings({ digestHours: [9], digestWeekdays: [1] })}
+      />,
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: "Mon" }));
+
+    expect(
+      screen.getByRole("button", { name: "Save schedule" }),
+    ).toBeDisabled();
+    expect(screen.getByText("Choose at least one day.")).toBeInTheDocument();
+  });
+
+  it("lets the fictional preview be worked, but never saved", async () => {
+    // A reviewer who cannot work the control cannot judge it, and ticking
+    // changes nothing outside this component. Only the write is refused.
+    const user = userEvent.setup();
+    render(
+      <NotificationSettings result={settings({ dataMode: "fixtures" })} />,
+    );
+
+    const monday = screen.getByRole("checkbox", { name: "Mon" });
+    expect(monday).toBeEnabled();
+    await user.click(monday);
+    expect(monday).not.toBeChecked();
+
+    expect(
+      screen.getByRole("button", { name: "Save schedule" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(/this preview writes nothing/i),
+    ).toBeInTheDocument();
+    expect(actionMocks.setDigestScheduleAction).not.toHaveBeenCalled();
   });
 
   it("refuses mutation in the fictional preview", () => {

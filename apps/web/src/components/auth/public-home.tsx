@@ -2,12 +2,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 
+import { AccessDialog } from "@/components/auth/access-dialog";
 import { PublicFooter } from "@/components/legal/public-footer";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type PublicHomeProps = {
   dataMode?: "fixtures";
+  /** Passed in so the dialog can start Google sign-in without a page hop. */
+  signInAction: () => Promise<void>;
+  turnstileSiteKey: string | null;
 };
 
 const principles = [
@@ -22,7 +26,11 @@ const principles = [
   ],
 ] as const;
 
-export function PublicHome({ dataMode }: PublicHomeProps) {
+export function PublicHome({
+  dataMode,
+  signInAction,
+  turnstileSiteKey,
+}: PublicHomeProps) {
   const isDevelopment = dataMode === "fixtures";
 
   return (
@@ -73,22 +81,56 @@ export function PublicHome({ dataMode }: PublicHomeProps) {
                   JobWarden
                 </h1>
                 <p className="mt-4 max-w-md text-base leading-7 text-ink-secondary">
-                  Finds the UK roles that genuinely fit your experience, shows
-                  the evidence behind every match, tailors your CV honestly to
-                  each one, and tracks every application to its outcome.
-                  Applications stay in your hands on the employer&apos;s site.
+                  We don&apos;t mass-apply. We find the few UK roles that
+                  actually fit, and show you the evidence for each one.
+                </p>
+                <p className="mt-3 max-w-md text-sm leading-6 text-ink-faint">
+                  Matches are scored against your real experience, your CV is
+                  tailored honestly to each role, and every application is
+                  tracked to its outcome. You apply yourself, on the
+                  employer&apos;s own site.
                 </p>
                 <div className="mt-7 flex flex-col items-start gap-3">
-                  <Link
-                    href={isDevelopment ? "/home" : "/auth/sign-in"}
-                    className={cn(
-                      buttonVariants({ size: "lg" }),
-                      "h-10 px-5 transition-[background-color,transform] duration-150 ease-(--ease-smooth-out) active:scale-[0.98]",
-                    )}
-                  >
-                    {isDevelopment ? "Open jobs workspace" : "Request access"}
-                    <ArrowRight aria-hidden="true" />
-                  </Link>
+                  {/* Locally the call to action walks the journey a real new
+                      user takes, sign-up aside: onboarding, then Home in its
+                      first-run state. That is the sequence worth reviewing, and
+                      it cannot be reached from the populated preview. */}
+                  {isDevelopment ? (
+                    <Link
+                      href="/development/journey"
+                      className={cn(
+                        buttonVariants({ size: "lg" }),
+                        "h-10 px-5 transition-[background-color,transform] duration-150 ease-(--ease-smooth-out) active:scale-[0.98]",
+                      )}
+                    >
+                      Walk the new-user journey
+                      <ArrowRight aria-hidden="true" />
+                    </Link>
+                  ) : (
+                    <AccessDialog
+                      signInAction={signInAction}
+                      turnstileSiteKey={turnstileSiteKey}
+                    >
+                      <button
+                        type="button"
+                        className={cn(
+                          buttonVariants({ size: "lg" }),
+                          "h-10 px-5 transition-[background-color,transform] duration-150 ease-(--ease-smooth-out) active:scale-[0.98]",
+                        )}
+                      >
+                        Request access
+                        <ArrowRight aria-hidden="true" />
+                      </button>
+                    </AccessDialog>
+                  )}
+                  {isDevelopment ? (
+                    <Link
+                      href="/home"
+                      className="rounded-sm text-sm font-medium text-link outline-none transition-colors duration-(--duration-quick) hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
+                    >
+                      Skip to the populated workspace
+                    </Link>
+                  ) : null}
                   <span className="text-xs text-ink-faint">
                     {isDevelopment
                       ? "Explicitly fictional fixtures are enabled locally."

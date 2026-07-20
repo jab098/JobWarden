@@ -16,11 +16,129 @@ function result(overrides: Partial<DashboardResult> = {}): DashboardResult {
   return { ...fictional, dataMode: "supabase", ...overrides };
 }
 
+/** An account that finished onboarding and has done nothing else yet. */
+function brandNew(overrides: Partial<DashboardResult> = {}): DashboardResult {
+  return result({
+    applications: {
+      ...fictional.applications,
+      insights: {
+        ...fictional.applications.insights,
+        totalTracked: 0,
+        funnel: fictional.applications.insights.funnel.map((step) => ({
+          ...step,
+          reached: 0,
+        })),
+        outcomes: {
+          open: 0,
+          observed: 0,
+          quietFourteenPlusDays: 0,
+        },
+        followUps: { overdue: 0, dueToday: 0, upcoming: 0 },
+      },
+    },
+    decisions: {
+      ...fictional.decisions,
+      counts: { saved: 0, considering: 0, dismissed: 0 },
+      inPeriod: 0,
+    },
+    ...overrides,
+  });
+}
+
 describe("DashboardView", () => {
   it("has no detectable accessibility violations", async () => {
     const { container } = render(<DashboardView result={result()} />);
 
     await expect(axe(container)).resolves.toHaveNoViolations();
+  });
+
+  describe("a brand new account", () => {
+    it("has no detectable accessibility violations", async () => {
+      const { container } = render(<DashboardView result={brandNew()} />);
+
+      await expect(axe(container)).resolves.toHaveNoViolations();
+    });
+
+    it("leads with the matches it already found rather than a grid of zeros", () => {
+      render(
+        <DashboardView
+          result={brandNew({
+            targetFeed: { ...fictional.targetFeed, currentMatchCount: 5 },
+          })}
+        />,
+      );
+
+      expect(
+        screen.getByText(/5 roles match your profile right now/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "View your matches" }),
+      ).toHaveAttribute("href", "/matches");
+      expect(screen.queryByText("still open")).not.toBeInTheDocument();
+    });
+
+    it("says what fills the page instead of drawing empty charts", () => {
+      render(<DashboardView result={brandNew()} />);
+
+      expect(screen.getByText("What fills this page")).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /Track an application/ }),
+      ).toHaveAttribute("href", "/jobs");
+    });
+
+    it("does not promise matches it has not found", () => {
+      render(
+        <DashboardView
+          result={brandNew({
+            targetFeed: { ...fictional.targetFeed, currentMatchCount: 0 },
+          })}
+        />,
+      );
+
+      expect(
+        screen.getByText("No roles match your profile yet"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "View your matches" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("still shows profile health, which onboarding has already filled in", () => {
+      render(<DashboardView result={brandNew()} />);
+
+      expect(screen.getByText("Profile health")).toBeInTheDocument();
+    });
+
+    it("drops the window switcher, since nothing is being measured yet", () => {
+      render(<DashboardView result={brandNew()} />);
+
+      expect(
+        screen.queryByRole("navigation", { name: "Activity window" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("explains an empty panel on an account that is otherwise active", () => {
+    // Tracked an application but made no decisions: the full dashboard renders,
+    // and only the panel with nothing in it explains itself.
+    render(
+      <DashboardView
+        result={result({
+          decisions: {
+            ...fictional.decisions,
+            counts: { saved: 0, considering: 0, dismissed: 0 },
+            inPeriod: 0,
+          },
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByText(/teaches JobWarden your taste/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: "Activity window" }),
+    ).toBeInTheDocument();
   });
 
   it("states that nothing is estimated", () => {

@@ -13,6 +13,13 @@ vi.mock("@/app/(protected)/matches/actions", () => ({
     message: "Job decision saved.",
   })),
 }));
+// The multi-choice filters apply by soft navigation. `usePathname` stays real
+// so the rail still derives its active item the way it does in the app.
+const routerMock = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }));
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => routerMock,
+}));
 
 import { AppShell } from "@/components/app-shell";
 import { JobsErrorView } from "@/components/jobs/jobs-error-view";

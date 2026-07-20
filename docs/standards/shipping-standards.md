@@ -12,6 +12,8 @@ You are not just implementing a feature. You are shipping something onto infrast
 
 Reference whenever a change touches one of these. This is where "works on my machine" dies in production.
 
+For the browser half of the same problem, read [`frontend-traps.md`](frontend-traps.md) before touching CSS tokens, animation, or anything collapsible. Every entry there is a failure that typechecked, passed tests, and did nothing.
+
 | Service | Silent failure mode if ignored | Check every time it's touched |
 |---|---|---|
 | Supabase | Table with no RLS is world-readable/writable via the API | Does every new table have RLS policies for select/insert/update/delete, scoped to the right role? |
@@ -87,6 +89,7 @@ Not "it works" — "it's shippable":
 - [ ] Error messages are specific enough to debug from, not a generic "something went wrong"
 - [ ] Any mutating action writes an audit log entry
 - [ ] If this calls an LLM: per-user cap exists, response streams, timeout and retry cap are set
+- [ ] For UI: the **result** was verified, not the mechanism. A class being applied, a rule existing, or a component rendering proves nothing on its own. Measure the computed value, on the axis you changed and the one you did not. See the table in [`frontend-traps.md`](frontend-traps.md)
 
 ## Legal baseline (UK/EU users)
 

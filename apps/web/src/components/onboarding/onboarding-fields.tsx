@@ -67,7 +67,9 @@ function FieldShell({
       {hint ? (
         <span className="block text-xs leading-5 text-ink-faint">{hint}</span>
       ) : null}
-      {children}
+      {/* The control is capped rather than stretched to the column. A field as
+          wide as the page implies a long answer; these take a few words. */}
+      <div className="max-w-[var(--field-width)]">{children}</div>
     </Element>
   );
 }
@@ -288,7 +290,7 @@ export function PayFloorField({
 }) {
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid max-w-[var(--field-width)] gap-3 sm:grid-cols-2">
         <FieldShell
           label="Lowest pay you would accept"
           hint="Whole pounds. Needs a period below, or it is not applied."

@@ -2,6 +2,11 @@ import "server-only";
 
 import { buildDashboard } from "@jobwarden/domain";
 
+import {
+  previewJourneyIsFresh,
+  readPreviewJourney,
+} from "@/lib/development/preview-journey";
+
 import type { DashboardRepository } from "./repository";
 import type { DashboardResult } from "./types";
 
@@ -20,6 +25,52 @@ function daysAgo(days: number, hour = 9): string {
 export function createDevelopmentDashboardRepository(): DashboardRepository {
   return {
     async getDashboard(windowDays: number): Promise<DashboardResult> {
+      // Someone who has just walked the review journey has finished onboarding
+      // and done nothing else, so Home has to answer for that state rather than
+      // for the established account the rest of the preview describes. Matches
+      // stay populated: they come from the shared catalogue, not from anything
+      // the user has done.
+      if (previewJourneyIsFresh(await readPreviewJourney())) {
+        const dashboard = buildDashboard({
+          now: previewNow,
+          windowDays,
+          applications: [],
+          jobDecisions: [],
+          // Matching runs over the shared catalogue, so a brand new account
+          // genuinely has these on its first visit. One search profile, because
+          // onboarding saves one.
+          matchingJobs: [
+            {
+              firstSeenAt: daysAgo(0),
+              profileName: "Analytics implementation",
+            },
+            {
+              firstSeenAt: daysAgo(1),
+              profileName: "Analytics implementation",
+            },
+            {
+              firstSeenAt: daysAgo(2),
+              profileName: "Analytics implementation",
+            },
+          ],
+          enabledSearchProfiles: ["Analytics implementation"],
+          explore: {
+            enabled: false,
+            qualifyingCount: 0,
+            dismissedCount: 0,
+            promotedCount: 0,
+          },
+          profile: {
+            confirmedEvidenceCount: 3,
+            enabledSearchCount: 1,
+            hasCv: true,
+            cvKind: "docx",
+          },
+          notificationDeliveries: [],
+        });
+        return { ...dashboard, dataMode: "fixtures" };
+      }
+
       const dashboard = buildDashboard({
         now: previewNow,
         windowDays,

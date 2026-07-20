@@ -37,7 +37,12 @@ vi.mock("@/lib/applications/get-repository", () => ({
   getApplicationsRepository,
 }));
 vi.mock("@/lib/sources/get-repository", () => ({ getSourcesRepository }));
-vi.mock("next/navigation", () => ({ notFound }));
+vi.mock("next/navigation", () => ({
+  notFound,
+  usePathname: () => "/jobs",
+  // The multi-choice filters apply by soft navigation rather than a submit.
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+}));
 
 import MatchesPage from "../matches/page";
 import JobDetailPage from "./[jobId]/page";

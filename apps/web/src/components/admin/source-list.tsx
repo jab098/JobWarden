@@ -1,3 +1,5 @@
+import { Disclosure } from "@/components/ui/disclosure";
+
 import { AdminStatus } from "./admin-status";
 import { formatAdminDate } from "./admin-format";
 import { SourceForm } from "./source-form";
@@ -26,14 +28,13 @@ export function SourceList({
         </p>
       </div>
       {!readOnly && saveAction ? (
-        <details className="rounded-md border border-border bg-white px-5 py-4">
-          <summary className="cursor-pointer text-sm font-semibold">
-            Add a Greenhouse source
-          </summary>
-          <div className="mt-5">
-            <SourceForm action={saveAction} />
-          </div>
-        </details>
+        <Disclosure
+          label="Add a Greenhouse source"
+          className="bg-white"
+          panelClassName="px-5 py-4"
+        >
+          <SourceForm action={saveAction} />
+        </Disclosure>
       ) : null}
       {sources.length === 0 ? (
         <p className="text-sm text-ink-secondary">
@@ -100,14 +101,13 @@ export function SourceList({
                 {source.complianceNotes}
               </p>
               {!readOnly && saveAction && source.provider === "greenhouse" ? (
-                <details className="mt-4 border-t border-[#e3dfd7] pt-4">
-                  <summary className="cursor-pointer text-sm font-medium text-link">
-                    Edit source configuration
-                  </summary>
-                  <div className="mt-5">
-                    <SourceForm action={saveAction} source={source} />
-                  </div>
-                </details>
+                <Disclosure
+                  label="Edit source configuration"
+                  className="mt-4"
+                  panelClassName="px-3.5 py-3.5"
+                >
+                  <SourceForm action={saveAction} source={source} />
+                </Disclosure>
               ) : source.provider === "reed" ? (
                 <p className="mt-4 border-t border-[#e3dfd7] pt-4 text-xs text-ink-secondary">
                   Reed discovery settings are environment-managed and read-only
