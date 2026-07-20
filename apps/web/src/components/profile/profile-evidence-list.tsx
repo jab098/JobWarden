@@ -74,7 +74,7 @@ export function ProfileEvidenceList({
   return (
     <section
       aria-labelledby="profile-evidence-heading"
-      className="mt-3 rounded-lg border border-border bg-card p-5"
+      className="mt-3 card-surface p-5"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>

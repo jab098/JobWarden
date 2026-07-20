@@ -6,7 +6,7 @@ export function ExploreView({ result }: { result: ExploreResult }) {
   const count = result.items.length;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-5 lg:px-6">
+    <div className="mx-auto max-w-list px-4 py-5 lg:px-6">
       <header>
         <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
           Career pathways
@@ -43,7 +43,7 @@ export function ExploreView({ result }: { result: ExploreResult }) {
       {!result.enabled ? (
         <section
           aria-label="About pathways"
-          className="mt-4 rounded-lg border border-border bg-card px-6 py-14 text-center"
+          className="mt-4 card-surface px-6 py-14 text-center"
         >
           <h2 className="text-base font-semibold tracking-[-0.01em]">
             Adjacent careers your confirmed skills already cover
@@ -62,7 +62,7 @@ export function ExploreView({ result }: { result: ExploreResult }) {
         <>
           <section aria-label="Suggested pathways" className="mt-4 min-w-0">
             {count === 0 ? (
-              <div className="rounded-lg border border-border bg-card px-6 py-14 text-center">
+              <div className="card-surface px-6 py-14 text-center">
                 <h2 className="text-base font-semibold tracking-[-0.01em]">
                   No pathway clears the bar right now
                 </h2>

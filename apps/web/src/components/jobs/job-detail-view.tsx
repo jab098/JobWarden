@@ -13,14 +13,14 @@ export function JobDetailView({
   dataMode: "supabase" | "fixtures";
 }) {
   return (
-    <div className="mx-auto max-w-4xl px-4 py-5 sm:px-6">
+    <div className="mx-auto max-w-list px-4 py-5 sm:px-6">
       <Link
         href="/jobs"
         className="rounded-sm text-sm text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
       >
         ← Back to UK jobs
       </Link>
-      <article className="mt-4 rounded-lg border border-border bg-card p-5 [overflow-wrap:anywhere] sm:p-8">
+      <article className="mt-4 card-surface p-5 [overflow-wrap:anywhere] sm:p-8">
         <header>
           <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
             <div className="min-w-0">

@@ -37,7 +37,7 @@ export function AppShell({
         </Link>
         <MobileNavigation dataMode={dataMode} activePath={activePath} />
       </header>
-      <aside className="fixed inset-y-0 left-0 hidden w-56 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
+      <aside className="fixed inset-y-0 left-0 hidden w-[var(--rail-width)] flex-col border-r border-sidebar-border bg-sidebar lg:flex">
         <div className="px-5 pt-5 pb-4">
           <Link
             href="/home"
@@ -69,7 +69,7 @@ export function AppShell({
           </div>
         </div>
       </aside>
-      <main className="min-w-0 lg:pl-56">{children}</main>
+      <main className="min-w-0 lg:pl-[var(--rail-width)]">{children}</main>
     </div>
   );
 }

@@ -122,7 +122,7 @@ export function ApplicationItem({
           "[overflow-wrap:anywhere]",
           compact
             ? "bg-card p-3.5"
-            : "rounded-lg border border-border bg-card p-4 transition-[border-color,box-shadow] duration-150 ease-(--ease-smooth-out) hover:border-input hover:shadow-[0_2px_8px_rgba(16,20,28,0.05)] sm:p-5",
+            : "card-surface p-4 card-interactive sm:p-5",
         )}
       >
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">

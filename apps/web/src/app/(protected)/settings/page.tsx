@@ -18,7 +18,7 @@ export default async function SettingsPage() {
     .map((search) => search.name);
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-5 lg:px-6">
+    <div className="mx-auto max-w-list px-4 py-5 lg:px-6">
       <header>
         <h1 className="text-xl font-semibold tracking-[-0.02em] text-foreground">
           Settings
@@ -35,7 +35,7 @@ export default async function SettingsPage() {
 
       <section
         aria-labelledby="data-export-heading"
-        className="mt-3 rounded-lg border border-border bg-card p-5"
+        className="mt-3 card-surface p-5"
       >
         <h2
           id="data-export-heading"

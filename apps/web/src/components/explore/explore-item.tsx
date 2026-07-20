@@ -8,6 +8,7 @@ import {
 } from "@/app/(protected)/pathways/actions";
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Button } from "@/components/ui/button";
+import { Meter } from "@/components/ui/card";
 import type {
   ExploreActionState,
   ExploreSuggestionItem,
@@ -33,7 +34,7 @@ export function ExploreItem({ item }: { item: ExploreSuggestionItem }) {
     <li className="not-first:mt-2">
       <article
         className={cn(
-          "rounded-lg border border-border bg-card p-4 [overflow-wrap:anywhere] transition-[border-color,box-shadow] duration-150 ease-(--ease-smooth-out) hover:border-input hover:shadow-[0_2px_8px_rgba(16,20,28,0.05)] sm:p-5",
+          "card-surface p-4 [overflow-wrap:anywhere] card-interactive sm:p-5",
           dismissed && "opacity-75",
         )}
       >
@@ -81,15 +82,11 @@ export function ExploreItem({ item }: { item: ExploreSuggestionItem }) {
                 skill overlap
               </span>
             </span>
-            <span
-              aria-hidden="true"
-              className="mt-1.5 block h-1 w-full overflow-hidden rounded-full bg-border"
-            >
-              <span
-                className="block h-full rounded-full bg-link/80 transition-[width] duration-(--duration-slow) ease-(--ease-smooth-out)"
-                style={{ width: `${suggestion.overlapPercent}%` }}
-              />
-            </span>
+            <Meter
+              value={suggestion.overlapPercent}
+              max={100}
+              className="mt-1.5 h-1"
+            />
           </div>
         </div>
 

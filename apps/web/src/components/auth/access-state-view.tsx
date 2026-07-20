@@ -103,7 +103,7 @@ export function AccessStateView({
               </p>
             </div>
 
-            <div className="rounded-lg border border-border bg-card p-6">
+            <div className="card-surface p-6">
               <StateIcon
                 aria-hidden="true"
                 className={`size-5 ${state.colour}`}

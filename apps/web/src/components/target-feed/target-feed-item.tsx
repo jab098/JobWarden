@@ -87,7 +87,7 @@ export function TargetFeedItem({
           : "max-h-[80rem] opacity-100 not-first:mt-2",
       )}
     >
-      <article className="rounded-lg border border-border bg-card p-4 [overflow-wrap:anywhere] transition-[border-color,box-shadow] duration-150 ease-(--ease-smooth-out) hover:border-input hover:shadow-[0_2px_8px_rgba(16,20,28,0.05)] sm:p-5">
+      <article className="card-surface p-4 [overflow-wrap:anywhere] card-interactive sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">

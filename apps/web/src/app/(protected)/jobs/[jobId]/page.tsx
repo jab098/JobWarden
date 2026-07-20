@@ -33,7 +33,7 @@ export default async function JobDetailPage({
   );
   return (
     <>
-      <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-4 sm:px-6">
+      <div className="mx-auto flex max-w-list flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-4 sm:px-6">
         <TrackApplicationButton jobId={job.id} tracked={tracked} />
         <Link
           href={`/tailor/${job.id}`}

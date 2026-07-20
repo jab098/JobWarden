@@ -65,7 +65,7 @@ export function ProfileSuggestionList({
   return (
     <section
       aria-labelledby="profile-suggestions-heading"
-      className="mt-3 rounded-lg border border-border bg-card p-5"
+      className="mt-3 card-surface p-5"
     >
       <h2
         id="profile-suggestions-heading"

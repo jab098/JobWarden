@@ -6,6 +6,18 @@ import type {
 
 import type { JobListItem } from "@/lib/jobs/types";
 
+/** The funnel stage names, written once for every surface that shows them. */
+export const funnelStageLabels: Record<
+  ApplicationInsights["funnel"][number]["stage"],
+  string
+> = {
+  applied: "Applied",
+  screening: "Screening",
+  interviewing: "Interviewing",
+  offer: "Offer",
+  accepted: "Accepted",
+};
+
 export type ApplicationPlan = {
   nextAction: string | null;
   nextActionDueOn: string | null;
