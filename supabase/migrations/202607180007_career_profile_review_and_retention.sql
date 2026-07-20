@@ -207,7 +207,7 @@ begin
       suggestion."normalizedConcept",
       suggestion."label",
       suggestion."confidence",
-      references.ids,
+      evidence_refs.ids,
       'proposed'
     from jsonb_to_recordset(proposal_value -> 'suggestions') as suggestion(
       "kind" text,
@@ -224,8 +224,8 @@ begin
         and evidence.evidence_reference in (
           select jsonb_array_elements_text(suggestion."evidenceReferences")
         )
-    ) as references
-    where cardinality(references.ids) between 1 and 30
+    ) as evidence_refs
+    where cardinality(evidence_refs.ids) between 1 and 30
     on conflict (extraction_run_id, kind, normalized_concept) do nothing;
 
     insert into public.profile_suggestions (
@@ -248,7 +248,7 @@ begin
       suggestion."normalizedConcept",
       suggestion."label",
       suggestion."confidence",
-      references.ids,
+      evidence_refs.ids,
       'proposed',
       clock_timestamp()
     from jsonb_to_recordset(proposal_value -> 'aiSuggestions') as suggestion(
@@ -268,9 +268,9 @@ begin
           select value::uuid
           from jsonb_array_elements_text(suggestion."evidenceItemIds") as value
         )
-    ) as references
-    where cardinality(references.ids) between 1 and 30
-      and cardinality(references.ids)
+    ) as evidence_refs
+    where cardinality(evidence_refs.ids) between 1 and 30
+      and cardinality(evidence_refs.ids)
         = jsonb_array_length(suggestion."evidenceItemIds")
     on conflict do nothing;
   end if;

@@ -26,13 +26,38 @@ if (docker.status !== 0) {
   process.exit(1);
 }
 
-run("supabase", ["db", "reset", "--no-seed"]);
-run("supabase", ["db", "lint"]);
+/**
+ * The Supabase CLI is not a dependency of this repository, so it may be a
+ * global install or may resolve through npx. Spawning a bare `supabase`
+ * assumed the former and produced `Failed: supabase db reset` on a machine
+ * where only the latter was true — a resolution problem wearing the costume of
+ * a migration failure. Resolve it once, and say which was found.
+ */
+function resolveSupabase() {
+  if (spawnSync("supabase", ["--version"], { stdio: "ignore" }).status === 0) {
+    return ["supabase", []];
+  }
+  const viaNpx = spawnSync("npx", ["--no-install", "supabase", "--version"], {
+    stdio: "ignore",
+  });
+  if (viaNpx.status === 0) return ["npx", ["--no-install", "supabase"]];
+
+  console.error(
+    "The Supabase CLI was not found on PATH or in the npx cache. Install it " +
+      "(https://supabase.com/docs/guides/local-development) and run this again.",
+  );
+  process.exit(1);
+}
+
+const [cli, cliArgs] = resolveSupabase();
+
+run(cli, [...cliArgs, "db", "reset", "--no-seed"]);
+run(cli, [...cliArgs, "db", "lint"]);
 
 const tests = readdirSync("supabase/tests")
   .filter((file) => file.endsWith(".sql"))
   .toSorted();
 console.log(`\nRunning ${tests.length} pgTAP files.`);
-run("supabase", ["test", "db"]);
+run(cli, [...cliArgs, "test", "db"]);
 
 console.log("\nLive verification passed.");

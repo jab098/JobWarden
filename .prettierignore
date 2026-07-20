@@ -1,6 +1,10 @@
 docs/standards/shipping-standards.md
 docs/superpowers/
 pnpm-lock.yaml
+# Written by the Supabase CLI during `db reset`/`start`. Git already ignores it
+# (supabase/.gitignore), but Prettier does not read that, so `format:check`
+# failed the moment the database gate was first run on a machine.
+supabase/.temp/
 .claude-flow/
 .claude/
 graphify-out/
