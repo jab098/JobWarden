@@ -1,11 +1,13 @@
 import { normalisedJobSchema } from "@jobwarden/domain";
 import type { NormalisedJob } from "@jobwarden/domain";
 import { normaliseProviderJob } from "@jobwarden/ingestion";
+import type { NormalisationResult } from "@jobwarden/ingestion";
 
 import {
   MAX_JOBS_PER_SOURCE,
   MAX_SOURCES_PER_INVOCATION,
   type ClaimedIngestion,
+  type DropBreakdown,
   type IngestionHandlerDependencies,
   type RuntimeLog,
   type SourceCompletion,
@@ -128,6 +130,62 @@ function sourceLog(
   dependencies.log(record);
 }
 
+/**
+ * The reasons a run discarded adverts, accumulated while normalising.
+ *
+ * Locations are a Set because one unrecognised town typically appears across
+ * many adverts from the same employer, and the useful figure is how many
+ * distinct places recognition is missing, not how many rows mention them.
+ */
+type DropTally = {
+  excludedNonUk: number;
+  quarantinedAmbiguous: number;
+  quarantinedInvalidUrl: number;
+  unrecognisedLocations: Set<string>;
+};
+
+/** Matches the database's own ceiling, so the payload cannot be rejected for size. */
+const MAX_UNRECOGNISED_LOCATIONS = 25;
+
+function newDropTally(): DropTally {
+  return {
+    excludedNonUk: 0,
+    quarantinedAmbiguous: 0,
+    quarantinedInvalidUrl: 0,
+    unrecognisedLocations: new Set<string>(),
+  };
+}
+
+function breakdownOf(tally: DropTally): DropBreakdown {
+  return {
+    excludedNonUkCount: tally.excludedNonUk,
+    quarantinedAmbiguousCount: tally.quarantinedAmbiguous,
+    quarantinedInvalidUrlCount: tally.quarantinedInvalidUrl,
+    unrecognisedLocations: [...tally.unrecognisedLocations].sort(),
+  };
+}
+
+function recordDrop(tally: DropTally, result: NormalisationResult): void {
+  if (result.outcome === "eligible") return;
+  if (result.outcome === "excluded") {
+    tally.excludedNonUk += 1;
+    return;
+  }
+  if (result.reason === "invalid_application_url") {
+    tally.quarantinedInvalidUrl += 1;
+    return;
+  }
+
+  tally.quarantinedAmbiguous += 1;
+  const location = result.locationText.trim();
+  if (
+    location !== "" &&
+    tally.unrecognisedLocations.size < MAX_UNRECOGNISED_LOCATIONS
+  ) {
+    tally.unrecognisedLocations.add(location.slice(0, 120));
+  }
+}
+
 async function finaliseFailure(options: {
   dependencies: IngestionHandlerDependencies;
   repository: ReturnType<IngestionHandlerDependencies["createRepository"]>;
@@ -140,6 +198,7 @@ async function finaliseFailure(options: {
   unchangedCount: number;
   retryCount: number;
   errorCode: string;
+  drops?: DropTally;
 }): Promise<SourceResult> {
   const completion: SourceCompletion = {
     sourceRunId: options.claim.sourceRunId,
@@ -155,6 +214,7 @@ async function finaliseFailure(options: {
     ),
     retryCount: options.retryCount,
     errorCode: options.errorCode,
+    ...breakdownOf(options.drops ?? newDropTally()),
   };
 
   try {
@@ -199,6 +259,7 @@ async function processSource(options: {
   let eligibleCount = 0;
   let upsertedCount = 0;
   let unchangedCount = 0;
+  const drops = newDropTally();
 
   try {
     const adapter = options.dependencies.createAdapter(
@@ -227,6 +288,7 @@ async function processSource(options: {
         upsertedCount,
         unchangedCount,
         retryCount: 0,
+        drops,
         errorCode: "source_job_cap_reached",
       });
     }
@@ -237,7 +299,10 @@ async function processSource(options: {
         options.claim.source,
         providerJob,
       );
-      if (result.outcome !== "eligible") continue;
+      if (result.outcome !== "eligible") {
+        recordDrop(drops, result);
+        continue;
+      }
 
       eligibleJobs.push(normalisedJobSchema.parse(result.job));
     }
@@ -256,6 +321,7 @@ async function processSource(options: {
       sourceRunId: options.claim.sourceRunId,
       status: "succeeded",
       responseComplete: fetchResult.coverage === "complete",
+      ...breakdownOf(drops),
       receivedCount,
       eligibleCount,
       upsertedCount,

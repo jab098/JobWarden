@@ -23,6 +23,10 @@ export const requiredMigrationFiles = [
   "202607190008_onboarding_answers.sql",
   "202607190009_admin_observability.sql",
   "202607190010_onboarding_completion.sql",
+  "202607200001_cv_upload_client.sql",
+  "202607200002_location_radius.sql",
+  "202607200003_job_locations_writer.sql",
+  "202607200004_ingestion_drop_visibility.sql",
 ];
 
 const publicTables = [

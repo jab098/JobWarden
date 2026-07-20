@@ -138,6 +138,10 @@ function finishParameters(completion: SourceCompletion) {
     duration_ms_value: completion.durationMs,
     retry_count_value: completion.retryCount,
     sanitised_error_code: completion.errorCode,
+    excluded_non_uk_count_value: completion.excludedNonUkCount,
+    quarantined_ambiguous_count_value: completion.quarantinedAmbiguousCount,
+    quarantined_invalid_url_count_value: completion.quarantinedInvalidUrlCount,
+    unrecognised_locations_value: completion.unrecognisedLocations,
   };
 }
 

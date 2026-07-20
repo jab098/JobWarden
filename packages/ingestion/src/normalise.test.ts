@@ -287,6 +287,7 @@ describe("Greenhouse normalisation", () => {
         outcome: "quarantined",
         reason: "ambiguous_uk_eligibility",
         providerJobId: baseJob.providerJobId,
+        locationText: "Remote",
       });
     },
   );
@@ -311,6 +312,7 @@ describe("Greenhouse normalisation", () => {
         outcome: "quarantined",
         reason: "ambiguous_uk_eligibility",
         providerJobId: baseJob.providerJobId,
+        locationText: "Remote",
       });
     },
   );
@@ -410,6 +412,7 @@ describe("Greenhouse normalisation", () => {
         outcome: "quarantined",
         reason: "ambiguous_uk_eligibility",
         providerJobId: baseJob.providerJobId,
+        locationText: "Remote",
       });
     },
   );
@@ -434,6 +437,7 @@ describe("Greenhouse normalisation", () => {
         outcome: "quarantined",
         reason: "ambiguous_uk_eligibility",
         providerJobId: baseJob.providerJobId,
+        locationText: "Remote",
       });
     },
   );
@@ -461,6 +465,7 @@ describe("Greenhouse normalisation", () => {
         outcome: "quarantined",
         reason: "ambiguous_uk_eligibility",
         providerJobId: baseJob.providerJobId,
+        locationText: "Remote",
       });
     },
   );
@@ -486,6 +491,7 @@ describe("Greenhouse normalisation", () => {
         outcome: "quarantined",
         reason: "ambiguous_uk_eligibility",
         providerJobId: baseJob.providerJobId,
+        locationText: "Remote",
       });
     },
   );
@@ -549,6 +555,7 @@ describe("Greenhouse normalisation", () => {
       outcome: "quarantined",
       reason: "ambiguous_uk_eligibility",
       providerJobId: baseJob.providerJobId,
+      locationText: "Remote",
     });
   });
 
@@ -564,6 +571,7 @@ describe("Greenhouse normalisation", () => {
       outcome: "quarantined",
       reason: "ambiguous_uk_eligibility",
       providerJobId: baseJob.providerJobId,
+      locationText: "Remote",
     });
   });
 
@@ -580,6 +588,7 @@ describe("Greenhouse normalisation", () => {
       outcome: "quarantined",
       reason: "ambiguous_uk_eligibility",
       providerJobId: baseJob.providerJobId,
+      locationText: "Remote",
     });
   });
 
@@ -596,6 +605,7 @@ describe("Greenhouse normalisation", () => {
       outcome: "quarantined",
       reason: "ambiguous_uk_eligibility",
       providerJobId: baseJob.providerJobId,
+      locationText: "Remote",
     });
   });
 

@@ -139,6 +139,51 @@ describe("administrator workspace", () => {
     expect(screen.getByText(/54100000/)).toBeInTheDocument();
   });
 
+  // Received and eligible alone made a source dropping most of its stock look
+  // like a source without much UK content. The run must now say why.
+  it("shows why a run discarded adverts and which locations were not recognised", () => {
+    render(<IngestionRunList runs={snapshot.runs} />);
+
+    const successfulRun = screen
+      .getAllByText("Fictional Northstar UK Ltd")[0]
+      .closest("article");
+    const runCopy = successfulRun?.textContent ?? "";
+
+    ["Not UK", "6", "Unrecognised location", "7", "Unusable link", "1"].reduce(
+      (previous, text) => {
+        const index = runCopy.indexOf(text, previous + 1);
+        expect(index).toBeGreaterThan(previous);
+        return index;
+      },
+      -1,
+    );
+
+    expect(
+      screen.getByText("Ashby-de-la-Zouch, Leicestershire"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Hebden Bridge, West Yorkshire"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Adding these places/)).toBeInTheDocument();
+  });
+
+  it("omits the unrecognised-location panel when a run recognised everything", () => {
+    const [succeeded] = snapshot.runs;
+    render(
+      <IngestionRunList
+        runs={[
+          {
+            ...succeeded,
+            quarantinedAmbiguousCount: 0,
+            unrecognisedLocations: [],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.queryByText(/Adding these places/)).toBeNull();
+  });
+
   it("shows compact source freshness, salary provenance, and work-pattern counts", () => {
     render(<SourceHealthList sources={snapshot.sourceHealth} />);
 

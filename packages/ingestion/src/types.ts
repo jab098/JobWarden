@@ -62,7 +62,18 @@ export type NormalisationResult =
   | { outcome: "eligible"; job: NormalisedJob }
   | {
       outcome: "quarantined";
-      reason: "ambiguous_uk_eligibility" | "invalid_application_url";
+      reason: "invalid_application_url";
       providerJobId: string;
+    }
+  | {
+      outcome: "quarantined";
+      reason: "ambiguous_uk_eligibility";
+      providerJobId: string;
+      /**
+       * The advert's location text, carried so ingestion can record which place
+       * names recognition is missing. Only this reason has it: an advert
+       * rejected for its application URL is never classified for location.
+       */
+      locationText: string;
     }
   | { outcome: "excluded"; reason: "non_uk"; providerJobId: string };

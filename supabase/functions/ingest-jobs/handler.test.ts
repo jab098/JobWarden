@@ -345,6 +345,90 @@ describe("shared ingestion Edge Function handler", () => {
     });
   });
 
+  // Every non-eligible outcome used to be skipped by one `continue`, so a run
+  // that discarded almost everything recorded nothing but a low eligible count.
+  it("records why each discarded advert was discarded", async () => {
+    const claim = source(1);
+    const harness = repositoryHarness([claim]);
+    harness.upsertJobs.mockResolvedValueOnce({
+      insertedCount: 1,
+      updatedCount: 0,
+      unchangedCount: 0,
+    });
+    const handler = createIngestionHandler(
+      dependencies({
+        harness,
+        adapterFor: () =>
+          adapter([
+            providerJob(1),
+            { ...providerJob(2), location: "Austin, Texas" },
+            {
+              ...providerJob(3),
+              location: "Ashby-de-la-Zouch, Leicestershire",
+            },
+            {
+              ...providerJob(4),
+              location: "Ashby-de-la-Zouch, Leicestershire",
+            },
+            { ...providerJob(5), location: "Hebden Bridge, West Yorkshire" },
+            {
+              ...providerJob(6),
+              absoluteUrl: "https://not-an-allowed-host.example/jobs/6",
+            },
+          ]),
+      }),
+    );
+
+    await handler(request({ secret: expectedSecret }));
+
+    expect(harness.finishSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        receivedCount: 6,
+        eligibleCount: 1,
+        excludedNonUkCount: 1,
+        quarantinedAmbiguousCount: 3,
+        quarantinedInvalidUrlCount: 1,
+        // Deduplicated: the same unrecognised town across two adverts is one
+        // gap in the gazetteer, not two.
+        unrecognisedLocations: [
+          "Ashby-de-la-Zouch, Leicestershire",
+          "Hebden Bridge, West Yorkshire",
+        ],
+      }),
+    );
+  });
+
+  it("accounts for every received advert exactly once", async () => {
+    const claim = source(1);
+    const harness = repositoryHarness([claim]);
+    harness.upsertJobs.mockResolvedValueOnce({
+      insertedCount: 1,
+      updatedCount: 0,
+      unchangedCount: 0,
+    });
+    const handler = createIngestionHandler(
+      dependencies({
+        harness,
+        adapterFor: () =>
+          adapter([
+            providerJob(1),
+            { ...providerJob(2), location: "Austin, Texas" },
+            { ...providerJob(3), location: "Somewhere, Nowhere" },
+          ]),
+      }),
+    );
+
+    await handler(request({ secret: expectedSecret }));
+
+    const completion = harness.finishSource.mock.calls[0][0];
+    expect(
+      completion.eligibleCount +
+        completion.excludedNonUkCount +
+        completion.quarantinedAmbiguousCount +
+        completion.quarantinedInvalidUrlCount,
+    ).toBe(completion.receivedCount);
+  });
+
   it("finalises incremental discovery successfully without claiming a complete snapshot", async () => {
     const claim = source(1);
     claim.source = {

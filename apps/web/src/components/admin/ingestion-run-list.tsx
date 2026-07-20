@@ -10,6 +10,19 @@ const countFields = [
   ["Closed", "closedCount"],
 ] as const;
 
+/**
+ * Why the run discarded what it discarded.
+ *
+ * Received and eligible alone made a source that dropped 95% of its stock look
+ * like a source without much UK content, which is how the eligibility
+ * classifier defect went unnoticed for twenty-five tasks.
+ */
+const dropFields = [
+  ["Not UK", "excludedNonUkCount"],
+  ["Unrecognised location", "quarantinedAmbiguousCount"],
+  ["Unusable link", "quarantinedInvalidUrlCount"],
+] as const;
+
 export function IngestionRunList({
   runs,
 }: {
@@ -60,6 +73,35 @@ export function IngestionRunList({
                   </div>
                 ))}
               </dl>
+              <dl className="mt-3 grid grid-cols-2 gap-x-5 gap-y-3 text-sm sm:grid-cols-5">
+                {dropFields.map(([label, field]) => (
+                  <div key={field}>
+                    <dt className="text-xs text-[#596173]">{label}</dt>
+                    <dd className="mt-0.5 font-mono">{run[field]}</dd>
+                  </div>
+                ))}
+              </dl>
+              {run.unrecognisedLocations.length > 0 ? (
+                <div className="mt-4 rounded border border-[#dedad1] bg-white px-3 py-2">
+                  <h4 className="text-xs text-[#596173]">
+                    Locations not recognised
+                  </h4>
+                  <p className="mt-1 text-xs text-[#596173]">
+                    Adding these places to the location dataset republishes
+                    their adverts on the next run.
+                  </p>
+                  <ul className="mt-2 flex flex-wrap gap-1.5">
+                    {run.unrecognisedLocations.map((location) => (
+                      <li
+                        key={location}
+                        className="rounded bg-[#f4f1ea] px-2 py-0.5 font-mono text-xs"
+                      >
+                        {location}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               {run.errorCode ? (
                 <p className="mt-4 flex items-center gap-2 rounded border border-[#e7dcd9] bg-white px-3 py-2 font-mono text-xs text-[#7d2d2d]">
                   <span
