@@ -71,6 +71,18 @@ export function allUkPlaces(): readonly UkPlace[] {
 }
 
 /**
+ * Whether the text names a bundled place exactly.
+ *
+ * Deliberately not `resolveUkPlaces`, which matches *contained* names: that is
+ * right for search — "Leeds, West Yorkshire (hybrid)" should find Leeds — and
+ * wrong for eligibility, where `resolveUkPlaces("New York City")` returns York
+ * and would publish a New York role as British.
+ */
+export function isUkPlaceName(text: string): boolean {
+  return byNormalisedName.has(normalisePlaceName(text));
+}
+
+/**
  * Resolves free text to the places it could mean.
  *
  * Job adverts write locations as prose — "Leeds, West Yorkshire (hybrid)",

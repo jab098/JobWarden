@@ -1,4 +1,5 @@
 import type { EmploymentType } from "./job.ts";
+import { isUkPlaceName } from "./uk-places.ts";
 
 export type UkEligibilityReason =
   "explicit_uk_location" | "explicit_uk_remote" | "non_uk" | "ambiguous";
@@ -67,6 +68,246 @@ const nonLocationLabels = new Set([
   "onsite",
   "remote",
   "remote role",
+]);
+
+/**
+ * Foreign countries and the first-level subdivisions of the English-speaking
+ * ones, which is the level that disambiguates.
+ *
+ * The collision that matters is a UK-named city beside a foreign region —
+ * "Birmingham, Alabama", "Manchester, NH", "London, Ontario" — because the city
+ * label is genuinely a UK place name. Foreign *city* names are otherwise
+ * deliberately absent: they would add homonym risk against real UK towns (there
+ * is a Boston in Lincolnshire and a Washington in Tyne and Wear) while adding no
+ * cover, since a bare "Paris" matches no UK name and is quarantined rather than
+ * published. The two listed exceptions are whole-location labels that carry a UK
+ * name and would otherwise fall through the exact-match rule.
+ *
+ * Two-letter state abbreviations are required rather than optional: "Boston,
+ * MA" and "Manchester, NH" are the realistic false-publish cases.
+ *
+ * Every entry was checked against the bundled 230-place UK dataset; none of
+ * them names a UK place.
+ */
+const foreignRegionAnchors = new Set([
+  // United States
+  "alabama",
+  "alaska",
+  "arizona",
+  "arkansas",
+  "california",
+  "colorado",
+  "connecticut",
+  "delaware",
+  "florida",
+  "georgia",
+  "hawaii",
+  "idaho",
+  "illinois",
+  "indiana",
+  "iowa",
+  "kansas",
+  "kentucky",
+  "louisiana",
+  "maine",
+  "maryland",
+  "massachusetts",
+  "michigan",
+  "minnesota",
+  "mississippi",
+  "missouri",
+  "montana",
+  "nebraska",
+  "nevada",
+  "new hampshire",
+  "new jersey",
+  "new mexico",
+  "new york",
+  "north carolina",
+  "north dakota",
+  "ohio",
+  "oklahoma",
+  "oregon",
+  "pennsylvania",
+  "rhode island",
+  "south carolina",
+  "south dakota",
+  "tennessee",
+  "texas",
+  "utah",
+  "vermont",
+  "virginia",
+  "washington",
+  "west virginia",
+  "wisconsin",
+  "wyoming",
+  "district of columbia",
+  "al",
+  "ak",
+  "az",
+  "ar",
+  "ca",
+  "co",
+  "ct",
+  "de",
+  "dc",
+  "fl",
+  "ga",
+  "hi",
+  "id",
+  "il",
+  "ia",
+  "ks",
+  "ky",
+  "la",
+  "md",
+  "ma",
+  "mi",
+  "mn",
+  "ms",
+  "mo",
+  "mt",
+  "ne",
+  "nv",
+  "nh",
+  "nj",
+  "nm",
+  "ny",
+  "nc",
+  "nd",
+  "oh",
+  "ok",
+  "pa",
+  "ri",
+  "sc",
+  "sd",
+  "tn",
+  "tx",
+  "ut",
+  "vt",
+  "va",
+  "wa",
+  "wv",
+  "wi",
+  "wy",
+  // Canada
+  "ontario",
+  "quebec",
+  "british columbia",
+  "alberta",
+  "manitoba",
+  "saskatchewan",
+  "nova scotia",
+  "new brunswick",
+  "newfoundland",
+  "newfoundland and labrador",
+  "prince edward island",
+  "yukon",
+  "northwest territories",
+  "nunavut",
+  "on",
+  "qc",
+  "bc",
+  "ab",
+  "mb",
+  "sk",
+  "ns",
+  "nb",
+  "nl",
+  "pe",
+  "yt",
+  "nt",
+  "nu",
+  // Australia and New Zealand
+  "new south wales",
+  "queensland",
+  "western australia",
+  "south australia",
+  "tasmania",
+  "northern territory",
+  "australian capital territory",
+  "nsw",
+  "qld",
+  "vic",
+  "tas",
+  "act",
+  // Cities that are whole locations in their own right, and whose label is not
+  // the state above: "New York City" is not "New York", and it carries "York".
+  "new york city",
+  "washington dc",
+  // Countries
+  "usa",
+  "u s a",
+  "united states",
+  "united states of america",
+  "america",
+  "canada",
+  "australia",
+  "new zealand",
+  "ireland",
+  "republic of ireland",
+  "france",
+  "germany",
+  "spain",
+  "italy",
+  "netherlands",
+  "the netherlands",
+  "belgium",
+  "luxembourg",
+  "switzerland",
+  "austria",
+  "poland",
+  "portugal",
+  "sweden",
+  "norway",
+  "denmark",
+  "finland",
+  "iceland",
+  "estonia",
+  "latvia",
+  "lithuania",
+  "czechia",
+  "czech republic",
+  "slovakia",
+  "hungary",
+  "romania",
+  "bulgaria",
+  "greece",
+  "croatia",
+  "slovenia",
+  "serbia",
+  "ukraine",
+  "turkey",
+  "russia",
+  "india",
+  "pakistan",
+  "bangladesh",
+  "china",
+  "hong kong",
+  "japan",
+  "south korea",
+  "singapore",
+  "malaysia",
+  "indonesia",
+  "thailand",
+  "vietnam",
+  "philippines",
+  "israel",
+  "united arab emirates",
+  "uae",
+  "saudi arabia",
+  "qatar",
+  "south africa",
+  "nigeria",
+  "kenya",
+  "egypt",
+  "morocco",
+  "brazil",
+  "argentina",
+  "chile",
+  "colombia",
+  "mexico",
+  "peru",
 ]);
 
 const ukAnchorSource = String.raw`(?:United Kingdom|UK|Northern Ireland|Scotland|Wales|England)`;
@@ -218,8 +459,22 @@ function isQualifiedUkLabel(label: string): boolean {
   return (
     ukNationAnchors.has(label) ||
     ukOfficialRegions.has(label) ||
-    knownUkCities.has(label)
+    // Derry and Newcastle are in this allowlist but not in the gazetteer, which
+    // carries Londonderry and Newcastle upon Tyne, so it still earns its place.
+    knownUkCities.has(label) ||
+    isUkPlaceName(label)
   );
+}
+
+/**
+ * Whether the location names a real foreign place.
+ *
+ * This is asked *before* UK evidence, and outranks it. "North West, USA" and
+ * "London, Ontario" both carry a genuine UK region or city name, and in both the
+ * UK word is the homonym rather than the location.
+ */
+function isForeignLabel(label: string): boolean {
+  return foreignRegionAnchors.has(label);
 }
 
 function assessLocation(location: string): LocationAssessment {
@@ -231,19 +486,20 @@ function assessLocation(location: string): LocationAssessment {
     return { outcome: "ambiguous" };
   }
 
-  const hasUkEvidence = labels.some(isQualifiedUkLabel);
-  const hasContradictoryQualifier = labels.some(
-    (label) => !isQualifiedUkLabel(label) && !nonLocationLabels.has(label),
-  );
+  if (labels.some(isForeignLabel)) return { outcome: "non_uk" };
 
-  if (hasUkEvidence && !hasContradictoryQualifier) {
+  if (labels.some(isQualifiedUkLabel)) {
     return {
       outcome: "eligible",
       evidence: formatEvidence("Location", location.trim()),
     };
   }
 
-  return { outcome: "non_uk" };
+  // An unrecognised label is unknown, not foreign. Treating absence of
+  // recognition as evidence *against* the UK excluded 95.7% of adverts written
+  // "Town, County" — silently, because the outcome was `excluded` rather than
+  // `quarantined`. Exclusion now requires naming a foreign place.
+  return { outcome: "ambiguous" };
 }
 
 function clausesFrom(description: string): string[] {
