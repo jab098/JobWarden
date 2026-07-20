@@ -2,19 +2,30 @@
 
 This is the binding design language for every JobWarden surface. `docs/design/ui-direction.md` holds the taste rationale; this file holds the concrete rules. When they disagree, this file wins. All values live as CSS custom properties in `apps/web/src/app/globals.css`; never hardcode a hex that has a token.
 
+Before implementing anything here, read `docs/standards/frontend-traps.md`. Several of these rules exist because the obvious implementation silently does nothing on this stack, and that file records which ones and why.
+
 ## Character
 
-JobWarden is a calm, dense, professional work tool. Cool near-white ground, white working surfaces, dark cool ink. Structure comes from typography, alignment and spacing before containers. Nothing is decorated; everything states.
+JobWarden is a calm, dense, professional work tool. Dark cool ink, structure from typography and alignment before containers. Nothing is decorated; everything states.
 
-Since the 2026-07-20 card revision the product is a **field of lifted white cards on a lightly dotted ground**. A card is defined by its shadow and a hairline ring, never by a drawn border. Inside a card the vocabulary is fixed and small: a header line that may carry a status, rounded meters for proportions, ticked checklists for set-up state, and tinted pills for state words. Every surface in the hub uses that same set; a surface that invents its own card treatment is a defect.
+**Surfaces were inverted on 2026-07-22, owner decision.** The chrome is grey and the working surface is white:
+
+- the navigation rail is `--sidebar`, a near-white grey, and reads as frame rather than content;
+- the content column beside it is `--workspace`, pure white, and carries a hairline left edge and a rounded top-left corner so it reads as a panel laid on the frame;
+- cards are `--card`, a shade of grey **on** that white column. This is the point of the inversion: a white card on a white page can only be found by its shadow, whereas a light card on white is simply visible.
+
+This replaces the 2026-07-20 scheme of lifted white cards on a tinted ground. A card is still defined by its fill, shadow and hairline ring, never by a drawn border, and the card vocabulary is unchanged: a header line that may carry a status, rounded meters for proportions, ticked checklists for set-up state, tinted pills for state words. Every surface in the hub uses that set; one that invents its own card treatment is a defect.
+
+Objects in the rail carry their own edge rather than sitting as a tone on a tone: the brand block and the active navigation item are bounded, white, and lightly raised.
 
 ## Colour
 
 | Role             | Token                                    | Rule                                                                                                             |
 | ---------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Page ground      | `--background`                           | Tinted cool gray, never vanilla white and never warm beige.                                                      |
+| Chrome ground    | `--background` / `--sidebar`             | The grey frame: page ground and navigation rail. Never vanilla white, never warm beige.                          |
 | Ground texture   | `--ground-dot`                           | The 16px dot grid on `body`. The only texture in the product; never on a card.                                   |
-| Working surface  | `--card`                                 | Pure white panels raised on the tinted ground; the sidebar is the same white.                                    |
+| Working surface  | `--workspace`                            | The white content column the rail sits beside. Carries a hairline left edge and a rounded top-left corner.       |
+| Card             | `--card`                                 | A shade of grey laid on the white column, so a card is visible without relying on its shadow.                    |
 | Card edge        | `--card-ring` / `--card-ring-strong`     | Inset hairline ring on a card; the strong value is the hover state.                                              |
 | Card lift        | `--shadow-card` / `--shadow-card-raised` | The two-stop card shadow, and its hover/overlay counterpart.                                                     |
 | Ink              | `--foreground`                           | Headings and primary values.                                                                                     |
@@ -65,6 +76,7 @@ Fit scores colour by threshold, everywhere they appear:
 - **Widths scale with the viewport; nothing in the frame is a fixed pixel count.** A large monitor must produce a larger working area, not larger grey gutters. Three tokens carry this, and page markup uses them instead of the numeric Tailwind scale:
   - `--rail-width` (`clamp(14rem, 13vw, 17rem)`) is the navigation rail. Both shells read it for the rail's width and the content column's left offset, so the two cannot drift apart. Never hardcode `w-56`/`pl-56` again.
   - `--rail-gap` and `--rail-item-padding` do the same for the rail's height: nav items breathe on a tall monitor and stay tight on a short laptop, instead of one crammed block above a large empty middle. Both are clamped, so the list never stretches down towards Settings and Support.
+  - `--container-flow` is the guided single-column flows: onboarding, and anything else asking one question at a time. It is centred both ways and scales to 832px on a large monitor, because one short question pinned to the top-left of a tall screen reads as a page that failed to load. `--field-width` caps the control inside it; a field as wide as the column implies a long answer, and these take a few words. Both are declared in `:root`, not `@theme` — see `frontend-traps.md` for why that distinction is load-bearing.
   - `max-w-page` (`--container-page`) is the dense multi-column surfaces: Home, the jobs feed, the applications tracker, admin.
   - `max-w-list` (`--container-list`) is the single-column reading surfaces: matches, pathways, job detail, profile, settings, sources, support.
   - Prose keeps the fixed narrow scale (`max-w-2xl` and below). Legal pages, onboarding and the signed-out landing page are deliberately excluded; line length wins there.
@@ -113,6 +125,8 @@ Tokens (`--duration-*`, `--ease-*`) come from the transitions.dev scale in `glob
   - **Established**: dashboard alone. Any single panel with nothing in it still says what it will show and links to the action that fills it, rather than drawing an empty chart.
 - Key job facts render as the shared `JobFacts` row: location with a small quiet icon and medium ink; compensation as a mono chip whose tint is its provenance (advertised = success, estimated = warning, unknown = neutral); IR35 as a small outlined chip. Facts scan in one stable order everywhere: location, workplace, employment type, working time, compensation, IR35, then posted age/closing.
 - A record's actions live inside its card, not floating above it. On job detail that is one row under the `JobFacts` line, separated by a hairline: tracking and CV tailoring sit with the facts they act on, and the back link stays the first thing on the page.
+- Getting in is one dialog, not a page hop: the landing call to action opens `AccessDialog`, which holds both doors, joining the early-access list and signing in with Google. Google is the only identity source, so no surface anywhere shows a password field. The dialog animates in (backdrop fades, panel rises and settles) and out; it never appears or vanishes instantly.
+- A fictional preview disables **writes, not controls**. A reviewer who cannot work a control cannot judge it, and a dead grey block is not an honest preview of a live one. `dataMode` says where the data came from; whether a surface may be operated is a separate question, which is why `OnboardingView.canAdvance` exists apart from it.
 - Status is a small dot + label, one per element, only when it conveys real state.
 - Tables for admin; list rows for product surfaces. Loading = skeletons shaped like the final layout. Empty/error states are designed surfaces with one clear next action.
 - Navigation: white-on-ground rail, active item = subtle neutral fill + ink text + small icon; never a coloured edge bar or overlay.
