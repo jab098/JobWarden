@@ -39,6 +39,20 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 21   | Authentication activation                                                  | pending  | Supabase project and Google OAuth — setup runbook steps 1–4                           |
 | 22   | Search Jobs, route naming, and onboarding follow-ups                       | reviewed | Delivered by PR #22 (`0fa46de`); no platform setup was required                       |
 | 23   | Single landing destination and public legal footer                         | reviewed | Delivered by PR #23 (`25314de`); no platform setup was required                       |
+| 24   | CV upload client                                                           | reviewed | Delivered by PR #24 (`976065b`)                                                       |
+| 25   | Location and radius, and slices 25a–25c                                    | reviewed | Delivered by PRs #25–#28; see project status for the per-slice record                 |
+| 26   | Settings/sources/support, and 26a card surface                             | shipped  | Delivered at `3aa4283` and PR #30 (`58a80fd`); 26a had no independent review pass     |
+| 26b  | Owner surface complaints, early-access dialog                              | shipped  | Delivered by PR #31 (`53d8fbe`); the dialog needs Turnstile keys and the migration    |
+| 27   | Onboarding hydration defect                                                | pending  | None                                                                                  |
+| 28   | Repair the history secret scan                                             | pending  | None; needs a scratch branch pushed to GitHub                                         |
+| 29   | Early access list operations                                               | pending  | None for the surface; the list itself needs `202607220001` applied                    |
+| 30   | Lever adapter and provider vocabulary widening                             | pending  | None; documented public board endpoint, no credential                                 |
+| 31   | Ashby adapter                                                              | pending  | None; documented public board endpoint, no credential                                 |
+| 32   | Workable adapter                                                           | pending  | None; documented public board endpoint, no credential                                 |
+| 33   | Emit `JobPosting` structured data                                          | pending  | Deployment for a live Rich Results check                                              |
+| 34   | Read `JobPosting` schema from allowlisted career pages                     | pending  | None; per-employer compliance record before each page is allowlisted                  |
+
+**Numbering note, 2026-07-20.** Tasks 24, 25 and 26 in an earlier revision of this file described the ATS adapters, Google Jobs schema and early-access operations. Those numbers were already taken by shipped work recorded in `docs/project-status.md`, so that outstanding work was renumbered 29–34 and the sections below match. No section in this file now shares a number with another.
 
 ## Task 7 — Administrator operations
 
@@ -271,43 +285,6 @@ Acceptance:
 - the development bypass is absent from every deployed environment, re-proven after activation; and
 - the full-path browser verification covers every surface including `/home` and onboarding, as Task 16 requires.
 
-## Task 24 — ATS source adapters: Lever, Ashby, Workable
-
-Only Greenhouse and Reed exist. The three remaining mainstream ATS boards are the cheapest real coverage available: each publishes a documented, free, employer-authored JSON feed, so they need no commercial agreement and carry no access-control risk. Deliver them as independently reviewed slices, one provider per slice, not as one change.
-
-Rejected alternative, recorded so it is not re-proposed: **LinkedIn is not a source.** There is no public jobs-search API at any partner tier, and scraping it breaks both their terms and the allowlisted-source rule in `AGENTS.md`. "Sign in with LinkedIn" returns name, email and photo only, never work history, so it cannot populate a career profile either. Do not spend a slice discovering this again.
-
-Acceptance, per provider:
-
-- the adapter reads only the provider's documented public board endpoint for an allowlisted employer, with bounded retries, sanitised errors, and append-only audit records;
-- `job_sources.provider` accepts the new value through a migration that widens the existing check constraint, and the admin source form can configure it;
-- UK eligibility evidence is extracted explicitly, never inferred, and a listing without it is not published, including remote roles without explicit UK permission;
-- compensation keeps advertised, estimated, and unknown as visibly distinct provenance, and IR35 is never inferred from contract status;
-- duplicate control across providers is proven with a listing that appears on two boards; and
-- the shared ingestion run stays global, cooldown-bound, and free of per-user cost.
-
-## Task 25 — Google Jobs structured data
-
-Emit `JobPosting` structured data for published listings so indexed roles are discoverable, and read `JobPosting` schema from allowlisted employer career pages as an ingestion path where no ATS feed exists.
-
-Acceptance:
-
-- emitted markup validates against Google's Rich Results test and describes only published, UK-eligible listings;
-- markup is never emitted for a listing whose eligibility evidence is missing, so the index cannot advertise a role the product itself would not show;
-- the reading path treats scraped schema as untrusted input: schema-validated, evidence-checked, and subject to the same source-access rules as any adapter; and
-- no page emits structured data describing compensation the advert did not state.
-
-## Task 26 — Early access list operations
-
-The list ships in the landing dialog but has no interface. The owner currently reads it with SQL.
-
-Acceptance:
-
-- an administrator surface lists pending signups oldest first, with the free-text field rendered as text and never as markup;
-- marking somebody invited sets `invited_at` and is auditable;
-- the surface is read-mostly, imports no production mutation action beyond the invite mark, and exposes no product data; and
-- the enumeration property holds: nothing in the interface or its errors reveals whether a given address is on the list to anybody but an administrator.
-
 ## Task 27 — Onboarding hydration defect
 
 `OnboardingFlow` does not hydrate. No React fiber attaches to any of its subtree, so `useActionState` pending states, `ActionFeedback`, and every client effect inside onboarding are inert; the step buttons work only because form actions are progressively enhanced. Confirmed pre-existing at merge commit `9d2b49b` by stashing local work, and unchanged by a clean dev-server restart with `.next` cleared. All client chunks load 200 and the console is clean, so the cause is not a missing bundle.
@@ -328,6 +305,74 @@ Acceptance:
 - the workflow grants the token the permission the step needs, or the step stops depending on the API call;
 - the scan runs to completion on a pull request and its result is visible; and
 - a deliberately planted test secret on a scratch branch is caught, proving the control works rather than merely running.
+
+## Task 29 — Early access list operations
+
+The list ships in the landing dialog but has no interface. The owner currently reads it with SQL.
+
+Acceptance:
+
+- an administrator surface lists pending signups oldest first, with the free-text field rendered as text and never as markup;
+- marking somebody invited sets `invited_at` and is auditable;
+- the surface is read-mostly, imports no production mutation action beyond the invite mark, and exposes no product data; and
+- the enumeration property holds: nothing in the interface or its errors reveals whether a given address is on the list to anybody but an administrator.
+
+## Tasks 30–32 — ATS source adapters: Lever, Ashby, Workable
+
+Only Greenhouse and Reed exist. The three remaining mainstream ATS boards are the cheapest real coverage available: each publishes a documented, free, employer-authored JSON feed, so they need no commercial agreement and carry no access-control risk. They are three separately reviewed and separately merged tasks, one provider each, because half-adding them would put sources in the allowlist that cannot be trusted to produce eligible UK listings.
+
+Rejected alternative, recorded so it is not re-proposed: **LinkedIn is not a source.** There is no public jobs-search API at any partner tier, and scraping it breaks both their terms and the allowlisted-source rule in `AGENTS.md`. "Sign in with LinkedIn" returns name, email and photo only, never work history, so it cannot populate a career profile either. Do not spend a slice discovering this again.
+
+Do not carry a provider endpoint forward from this file. Each slice confirms the current documented public board endpoint against the provider's own documentation at its start, and records it in the dated compliance record in `docs/product/source-coverage.md` beside Reed and Adzuna. An endpoint that turns out to need a credential or a commercial agreement stops the slice and comes back to the owner; it does not become a scrape.
+
+### What the first slice carries, and the other two do not
+
+The provider vocabulary is not one check constraint. It is hardcoded in every layer, and widening it is most of why Task 30 is larger than Tasks 31 and 32. Task 30 widens it once, from a two-value list to a list the remaining providers join by adding a value; Tasks 31 and 32 then add a value, an adapter, and fixtures. The known sites:
+
+- `job_sources_supported_provider` and `job_sources_reed_minimum_interval` in `202607180003_uk_coverage_compensation.sql`, which also bind `coverage_mode` per provider — the three ATS boards are `complete` like Greenhouse, not `incremental` like Reed;
+- the `provider is distinct from 'greenhouse'` and `provider not in ('greenhouse', 'reed')` guards in `configure_job_source`, `request_source_ingestion`, `begin_source_ingestion` and `enqueue_scheduled_ingestion`, across `202607170003_audit_and_ingestion.sql`, `202607180002_shared_ingestion_runtime.sql` and `202607180003_uk_coverage_compensation.sql`;
+- the `case source.provider when 'greenhouse' then 0 else 1 end` orderings in `202607180003` and `202607200003_job_locations_writer.sql`;
+- the `z.enum(["greenhouse", "reed"])` row schema and the Reed-shaped row assertion in `supabase/functions/ingest-jobs/repository.ts`;
+- the adapter dispatch in `supabase/functions/ingest-jobs/index.ts`;
+- the `JobSource` discriminated union in `packages/ingestion/src/types.ts`; and
+- `components/admin/source-form.tsx`, `components/admin/source-list.tsx`, `lib/admin/types.ts` and `lib/sources/development-sources.ts`.
+
+Every widened database function must use `create or replace`, never `drop function` plus `create`. Task 25c's review found that a drop resets the ACL to PostgreSQL's default `EXECUTE` to `PUBLIC`, which left a security-definer ingestion function reachable by the anon key while the static verifier certified it as revoked. If a signature genuinely has to change, the migration revokes and grants explicitly and `verify-supabase-foundation.mjs` is checked against it.
+
+### Acceptance, per provider
+
+- the adapter reads only the provider's documented public board endpoint for an allowlisted employer, with bounded retries, sanitised errors, and append-only audit records, reusing `retry.ts` and the `ProviderAdapter` contract rather than a second fetching mechanism;
+- the response is validated in full before any part of it is trusted, and non-visible or unsafe provider content is stripped before every classifier, exactly as Greenhouse does;
+- `job_sources.provider` accepts the new value through a migration, the admin source form can configure it, and the source's `coverage_mode` and minimum sync interval are constrained at the database boundary rather than by convention;
+- UK eligibility evidence is extracted explicitly, never inferred, and a listing without it is not published, including a remote role without explicit UK permission — an unrecognised location quarantines rather than publishes, per Task 25b;
+- compensation keeps advertised, estimated, and unknown as visibly distinct provenance, never estimating a figure the advert did not state, and IR35 is never inferred from contract status;
+- duplicate control across providers is proven with a fixture listing that appears on two boards, reconciling through the Task 9 canonical occurrence key without losing either provider's provenance;
+- the shared ingestion run stays global, cooldown-bound, and free of per-user cost, and a failure of the new source does not abort the others or close their unseen jobs;
+- the drop-reason counts and unrecognised-location list added by Task 25c populate for the new provider, so a slice that discards most of its stock is visible instead of silent; and
+- a dated compliance record with attribution rules, cadence, fixtures, and removal behaviour lands in `docs/product/source-coverage.md`, and the source ships disabled until the owner enables it.
+
+## Task 33 — Emit `JobPosting` structured data
+
+Emit `JobPosting` markup for published listings so indexed roles are discoverable. This is a rendering change on pages JobWarden already serves, and it is not a source; it is separated from Task 34 because the two share only a schema name.
+
+Acceptance:
+
+- emitted markup validates against Google's Rich Results test and describes only published, UK-eligible listings;
+- markup is never emitted for a listing whose eligibility evidence is missing, so the index cannot advertise a role the product itself would not show;
+- no page emits structured data describing compensation the advert did not state, and `unknown` provenance emits no salary field at all rather than a zero or a guess; and
+- no page emits any user, career-profile, or CV-derived value, since this markup is public by definition.
+
+## Task 34 — Read `JobPosting` schema from allowlisted career pages
+
+An ingestion path for employers whose careers page carries `JobPosting` markup but who publish through no ATS feed JobWarden supports. This is the only source in the programme that reads a page rather than a documented API, so it carries the strictest rules.
+
+Acceptance:
+
+- an employer's career page is read only after its own dated compliance record exists, its `robots.txt` permits the path, and the owner has allowlisted it — a page is never read because it happened to have markup;
+- scraped schema is untrusted input: schema-validated, bounded in size and depth, evidence-checked, and stripped of markup before any classifier, on the same footing as AI-proposed content;
+- a listing whose UK eligibility evidence is absent from the markup is not published, and the markup's own `jobLocationType` is treated as a claim needing evidence rather than as evidence;
+- compensation provenance comes from what the markup actually states, and a `baseSalary` absent from the page stays `unknown`; and
+- the path degrades visibly: a page that stops carrying markup, changes shape, or starts refusing is a recorded source failure, not a silent zero.
 
 ## Continuous source expansion
 
