@@ -84,8 +84,15 @@ const invokedPath = process.argv[1]
   : undefined;
 
 if (invokedPath === import.meta.url) {
-  bootstrapAdmin().catch(() => {
-    process.stderr.write("Administrator bootstrap failed.\n");
+  bootstrapAdmin().catch((error) => {
+    // Print the reason. Every message this throws is already written to be
+    // safe to show — a missing variable name, a malformed uuid, or an
+    // already-sanitised provider failure — and none carries a credential or a
+    // provider response body. Swallowing them left the only person who can act
+    // on the failure with nothing but the word "failed".
+    const reason =
+      error instanceof Error && error.message ? error.message : "unknown error";
+    process.stderr.write(`Administrator bootstrap failed: ${reason}\n`);
     process.exitCode = 1;
   });
 }

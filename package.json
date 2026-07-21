@@ -7,7 +7,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "bootstrap:admin": "node scripts/bootstrap-admin.mjs",
+    "bootstrap:admin": "node --env-file-if-exists=.env.local scripts/bootstrap-admin.mjs",
     "build": "pnpm --filter @jobwarden/web build",
     "check:deno": "deno check --config supabase/functions/ingest-jobs/deno.json supabase/functions/ingest-jobs/index.ts && deno check --config supabase/functions/extract-career-profile/deno.json supabase/functions/extract-career-profile/index.ts && deno check --config supabase/functions/send-digests/deno.json supabase/functions/send-digests/index.ts",
     "check:guardrails": "node scripts/check-project-guardrails.mjs",
