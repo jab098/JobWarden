@@ -38,7 +38,13 @@ const profileRowSchema = z.object({
 
 const sourceRowSchema = z.object({
   id: z.string().uuid(),
-  provider: z.enum(["greenhouse", "lever", "reed", "teaching_vacancies"]),
+  provider: z.enum([
+    "greenhouse",
+    "lever",
+    "ashby",
+    "reed",
+    "teaching_vacancies",
+  ]),
   board_token: z.string().min(1).max(200),
   employer_name: z.string().min(1).max(300),
   enabled: z.boolean(),
@@ -54,7 +60,13 @@ const sourceRowSchema = z.object({
 
 const sourceJoinSchema = z.object({
   id: z.string().uuid(),
-  provider: z.enum(["greenhouse", "lever", "reed", "teaching_vacancies"]),
+  provider: z.enum([
+    "greenhouse",
+    "lever",
+    "ashby",
+    "reed",
+    "teaching_vacancies",
+  ]),
   employer_name: z.string().min(1).max(300),
 });
 
@@ -117,7 +129,13 @@ const requestResultSchema = z
 const sourceHealthRowSchema = z.object({
   source_id: z.string().uuid(),
   employer_name: z.string().min(1).max(300),
-  provider: z.enum(["greenhouse", "lever", "reed", "teaching_vacancies"]),
+  provider: z.enum([
+    "greenhouse",
+    "lever",
+    "ashby",
+    "reed",
+    "teaching_vacancies",
+  ]),
   coverage_mode: z.enum(["complete", "incremental"]),
   enabled: z.boolean(),
   freshness_state: z.enum(["fresh", "stale", "failed", "never", "disabled"]),

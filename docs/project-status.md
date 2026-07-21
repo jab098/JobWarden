@@ -4,9 +4,9 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Start here if you are picking this up
 
-**Next task: 31, the Ashby adapter.** Its access confirmation is done and merged, so the slice starts with no research: `GET https://api.ashbyhq.com/posting-api/job-board/{board}?includeCompensation=true`, **no authentication**, whole board in one request so coverage is `complete` like Greenhouse and Lever. The dated record in [source coverage](product/source-coverage.md) carries six implementation facts. Task 32 (Workable) follows and is the same shape.
+**Next task: 32, the Workable adapter.** Task 31 (Ashby) shipped on 2026-07-21 and is the template to copy: adapter, provider value, compliance record and disabled source in one slice. Two things Task 31 learned that will save Task 32 time — **prefix exported helpers by provider** (`toAshbyCompensation`, not `toCompensation`; the barrel re-exports every adapter and the collision is a typecheck failure that silently rebinds another adapter's tests first), and **generate the vocabulary migration rather than transcribing it**, per the instruction below. Task 29 (early-access list operations) is independent of the source work and can jump ahead if the owner wants the signup list sooner.
 
-**State as of 2026-07-21.** `main` is clean. Tasks 30b, 37 and 38 were completed and merged on this date, along with one defect fix. Tasks 37 and 38 have since had their independent review pass, and the `auth.users` deletion defect is fixed. The live database gate is green at **31 migrations and 28 pgTAP files, 581 tests**. Nothing has ever been deployed anywhere; production readiness has not been started and is a separate thing from the local gate.
+**State as of 2026-07-21.** `main` is clean. Tasks 30b, 37, 38 and 31 were completed and merged on this date, along with two defect fixes. Tasks 37 and 38 have had their independent review pass, and the `auth.users` deletion defect is fixed. The live database gate is green at **32 migrations and 28 pgTAP files, 582 tests**. Nothing has ever been deployed anywhere; production readiness has not been started and is a separate thing from the local gate.
 
 ### Before you write any SQL
 
@@ -16,14 +16,11 @@ This file is the durable cross-session recovery map. Update task status to `revi
 4. **Never `drop function` and recreate.** A drop resets the ACL to `EXECUTE` for `PUBLIC`. Always `create or replace`.
 5. **Do not hand-write the provider vocabulary migrations.** They are ~750 lines of definer SQL and were produced by extracting each live definition programmatically and substituting only the provider list, then diffing against the originals to prove the change. Re-run that approach; transcribing by hand is how a subtle hole gets in.
 
-### What Task 31 must flip
+### What Task 32 must flip — the pattern Task 31 established
 
-Task 30b deliberately left `ashby` pinned as **rejected** at three layers — the `job_sources_supported_provider` constraint, `upsert_job_source`, and the Edge Function row schema — with assertions in `023_provider_vocabulary.sql`, `packages/domain/src/admin.test.ts` and `supabase/functions/ingest-jobs/repository.test.ts`. The reasoning was that a provider value with no adapter lets an administrator configure a source that saves, enables, then fails at dispatch. Task 31 flips those assertions **alongside** its adapter, never ahead of it.
+Task 30b deliberately left `ashby` and `workable` pinned as **rejected** at three layers — the `job_sources_supported_provider` constraint, `upsert_job_source`, and the Edge Function row schema — with assertions in `023_provider_vocabulary.sql`, `packages/domain/src/admin.test.ts` and `supabase/functions/ingest-jobs/repository.test.ts`. The reasoning was that a provider value with no adapter lets an administrator configure a source that saves, enables, then fails at dispatch.
 
-### Two traps in the Ashby data
-
-- **`isListed: false` must not be published.** It is not on the employer's board.
-- **`isRemote` and `workplaceType` are never UK evidence.** The live sample's first posting is `isRemote: true`, `location: "Remote - European Union"` — remote and explicitly not the UK. Remote work needs explicit UK permission; this field is exactly the trap that rule exists for.
+**Task 31 flipped `ashby` at all three, alongside its adapter, and `workable` is still rejected at all three.** Task 32 flips it the same way, never ahead of its adapter. Every site is listed in the Task 31 record below.
 
 ### Lessons from 2026-07-21, in order of how much they will cost you
 
@@ -35,7 +32,7 @@ Task 30b deliberately left `ashby` pinned as **rejected** at three layers — th
 
 ### Open debt, none of it blocking Task 31
 
-- **Task 36, Task 26a and Task 30b shipped without an independent review pass.** Tasks 37 and 38 have now had one — see the review record below.
+- **Task 36, Task 26a, Task 30b and Task 31 shipped without an independent review pass.** Tasks 37 and 38 have now had one — see the review record below. Task 31 is the newest of these and the largest, so it is the one to review first.
 - The **development administrator preview renders no hub rail**; closing it needs a shell refactor separating the rail's presentation from its live sign-out form.
 - **Task 26a left two owner-visible calls unsettled**: the `interviewing` stage dot is still interactive blue, and no gauge or ring component exists.
 - ~~**One schema defect is recorded and undecided — no `auth.users` row can be deleted.**~~ **Fixed 2026-07-21** by migration `202607220006_audit_log_actor_nulling.sql`. See the record below.
@@ -107,49 +104,50 @@ Task 37 fixed string **shapes**. Six non-settlement shapes still drop and two ar
 
 ## Task progress
 
-| Task                                                                   | Status   | Notes                                                                               |
-| ---------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------- |
-| 1. Monorepo, persistent standards, and invariant guardrails            | reviewed | Commits `5563920` and `dc021a6`; independent review clean                           |
-| 2. UK job domain and access state machine                              | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean                       |
-| 3. Greenhouse adapter and normalisation pipeline                       | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean                        |
-| 4. Supabase schema, RLS, mutations, and database tests                 | reviewed | Review clean; reset and pgTAP now execute green since Task 35                       |
-| 5. Supabase authentication and route gates                             | reviewed | Code retained; live OAuth and operational setup deferred                            |
-| 6. Responsive app shell and UK jobs feed                               | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally                         |
-| 7. Administrator operations                                            | reviewed | Delivered by PR #8; final code review clean at `4a1efdd`                            |
-| 8. Shared ingestion runtime                                            | reviewed | Delivered by PR #9; final code review clean at `8556997`                            |
-| 9. UK coverage and compensation                                        | reviewed | Delivered by PR #10; merge commit `44a3580` verified locally                        |
-| 10. Career profile, onboarding, and CV extraction                      | reviewed | Delivered by PR #11; merge commit `06b5a9c` verified locally                        |
-| 11. Target Feed and explainable fit scores                             | reviewed | Delivered by PR #12; merge commit `c86a14d` verified locally                        |
-| 12. Explore and career pathways                                        | reviewed | Delivered by PR #13; merge commit `124216f` verified locally                        |
-| 13. Application tracker and follow-ups                                 | reviewed | Delivered by PR #14; merge commit `9e66b32` verified locally                        |
-| 14. Scheduled updates and notifications                                | reviewed | Delivered by PR #15; merge commit `41ab43f` verified locally                        |
-| 15. Evidence-bound CV tailoring                                        | reviewed | Delivered by PR #16; merge commit `ed75c9d` verified locally                        |
-| 16. Privacy, production access, deployment, and full-path verification | reviewed | Delivered by PR #18; merge commit `46dacb4`; live setup pending                     |
-| 17. Home activity dashboard                                            | reviewed | Delivered by PR #17; merge commit `2246b49` verified locally                        |
-| 18. Onboarding gate and state machine                                  | reviewed | Independent review clean; gate fails closed in every direction                      |
-| 19. Guided setup and first-run population                              | reviewed | Independent review clean; writes the profile before unlocking                       |
-| 20. Administrator audit log and operational health                     | reviewed | Independent review clean; no new data is collected                                  |
-| 21. Authentication activation                                          | pending  | Owner-approved 2026-07-19; needs owner platform setup                               |
-| 22. Search Jobs, route naming, and onboarding follow-ups               | reviewed | Delivered by PR #22; independent review APPROVED at `0fa46de`                       |
-| 23. Single landing destination and public legal footer                 | reviewed | Delivered by PR #23; independent review APPROVED at `25314de`                       |
-| 24. CV upload client                                                   | reviewed | Delivered by PR #24; independent review APPROVED at `976065b`                       |
-| 25. Location and radius                                                | reviewed | Delivered by PR #25; review found a wrong seeded coordinate, fixed at `ca625e8`     |
-| 25a. job_locations ingestion writer                                    | reviewed | Delivered by PR #26 at `7ffed39`; review caught a false UK remote-permission claim  |
-| 25b. UK eligibility classifier                                         | reviewed | Delivered by PR #27 at `94913bf`; review rejected the first design and was right    |
-| 25c. Ingestion drop visibility                                         | reviewed | Delivered by PR #28 at `6ad2e07`; review caught an RPC left open to anon            |
-| 26. Settings, sources, and support pages                               | shipped  | Delivered directly on `main` at `3aa4283`; not recorded here at the time            |
-| 26a. Card surface, graphite data, and viewport-scaled frame            | shipped  | Delivered by PR #30 at `58a80fd`; verified green, no independent review pass        |
-| 26b. Owner surface complaints and the early-access dialog              | shipped  | Delivered by PR #31 at `53d8fbe`; dialog needs Turnstile keys and `202607220001`    |
-| 27. Onboarding hydration defect                                        | reviewed | Not reproducible at the commit that reported it; regression test delivered instead  |
-| 28. Repair the history secret scan                                     | reviewed | Delivered by PR #34; proven to catch a planted secret, not merely to run            |
-| 33. Emit `JobPosting` structured data                                  | blocked  | Stopped before implementation; needs owner decisions, not engineering               |
-| 30a. Lever adapter (TypeScript only)                                   | reviewed | Adapter and 26 tests; dispatches to nothing until 30b, so inert in every path       |
-| 36. Entrance motion, administration inside the hub                     | shipped  | Owner request from a reference video; no independent review pass                    |
-| 35. Make the live database gate pass                                   | reviewed | Delivered by PR #41 at `ab1515b`; 542 tests, lint clean, review APPROVED            |
-| 30b. Provider vocabulary widening                                      | shipped  | `lever` accepted; Ashby/Workable rejected until their adapters ship; 561 tests      |
-| 37. Location string-shape recognition                                  | reviewed | Independent pass 2026-07-21; boundary held under 53 probes, one notation gap closed |
-| 38. Official UK public-sector sources                                  | reviewed | Independent pass 2026-07-21; no code defect, duplicate-control limit now recorded   |
-| 39. Adzuna licence decision                                            | blocked  | Owner action; written licence and attribution terms required before any connector   |
+| Task                                                                   | Status   | Notes                                                                                |
+| ---------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------ |
+| 1. Monorepo, persistent standards, and invariant guardrails            | reviewed | Commits `5563920` and `dc021a6`; independent review clean                            |
+| 2. UK job domain and access state machine                              | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean                        |
+| 3. Greenhouse adapter and normalisation pipeline                       | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean                         |
+| 4. Supabase schema, RLS, mutations, and database tests                 | reviewed | Review clean; reset and pgTAP now execute green since Task 35                        |
+| 5. Supabase authentication and route gates                             | reviewed | Code retained; live OAuth and operational setup deferred                             |
+| 6. Responsive app shell and UK jobs feed                               | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally                          |
+| 7. Administrator operations                                            | reviewed | Delivered by PR #8; final code review clean at `4a1efdd`                             |
+| 8. Shared ingestion runtime                                            | reviewed | Delivered by PR #9; final code review clean at `8556997`                             |
+| 9. UK coverage and compensation                                        | reviewed | Delivered by PR #10; merge commit `44a3580` verified locally                         |
+| 10. Career profile, onboarding, and CV extraction                      | reviewed | Delivered by PR #11; merge commit `06b5a9c` verified locally                         |
+| 11. Target Feed and explainable fit scores                             | reviewed | Delivered by PR #12; merge commit `c86a14d` verified locally                         |
+| 12. Explore and career pathways                                        | reviewed | Delivered by PR #13; merge commit `124216f` verified locally                         |
+| 13. Application tracker and follow-ups                                 | reviewed | Delivered by PR #14; merge commit `9e66b32` verified locally                         |
+| 14. Scheduled updates and notifications                                | reviewed | Delivered by PR #15; merge commit `41ab43f` verified locally                         |
+| 15. Evidence-bound CV tailoring                                        | reviewed | Delivered by PR #16; merge commit `ed75c9d` verified locally                         |
+| 16. Privacy, production access, deployment, and full-path verification | reviewed | Delivered by PR #18; merge commit `46dacb4`; live setup pending                      |
+| 17. Home activity dashboard                                            | reviewed | Delivered by PR #17; merge commit `2246b49` verified locally                         |
+| 18. Onboarding gate and state machine                                  | reviewed | Independent review clean; gate fails closed in every direction                       |
+| 19. Guided setup and first-run population                              | reviewed | Independent review clean; writes the profile before unlocking                        |
+| 20. Administrator audit log and operational health                     | reviewed | Independent review clean; no new data is collected                                   |
+| 21. Authentication activation                                          | pending  | Owner-approved 2026-07-19; needs owner platform setup                                |
+| 22. Search Jobs, route naming, and onboarding follow-ups               | reviewed | Delivered by PR #22; independent review APPROVED at `0fa46de`                        |
+| 23. Single landing destination and public legal footer                 | reviewed | Delivered by PR #23; independent review APPROVED at `25314de`                        |
+| 24. CV upload client                                                   | reviewed | Delivered by PR #24; independent review APPROVED at `976065b`                        |
+| 25. Location and radius                                                | reviewed | Delivered by PR #25; review found a wrong seeded coordinate, fixed at `ca625e8`      |
+| 25a. job_locations ingestion writer                                    | reviewed | Delivered by PR #26 at `7ffed39`; review caught a false UK remote-permission claim   |
+| 25b. UK eligibility classifier                                         | reviewed | Delivered by PR #27 at `94913bf`; review rejected the first design and was right     |
+| 25c. Ingestion drop visibility                                         | reviewed | Delivered by PR #28 at `6ad2e07`; review caught an RPC left open to anon             |
+| 26. Settings, sources, and support pages                               | shipped  | Delivered directly on `main` at `3aa4283`; not recorded here at the time             |
+| 26a. Card surface, graphite data, and viewport-scaled frame            | shipped  | Delivered by PR #30 at `58a80fd`; verified green, no independent review pass         |
+| 26b. Owner surface complaints and the early-access dialog              | shipped  | Delivered by PR #31 at `53d8fbe`; dialog needs Turnstile keys and `202607220001`     |
+| 27. Onboarding hydration defect                                        | reviewed | Not reproducible at the commit that reported it; regression test delivered instead   |
+| 28. Repair the history secret scan                                     | reviewed | Delivered by PR #34; proven to catch a planted secret, not merely to run             |
+| 33. Emit `JobPosting` structured data                                  | blocked  | Stopped before implementation; needs owner decisions, not engineering                |
+| 30a. Lever adapter (TypeScript only)                                   | reviewed | Adapter and 26 tests; dispatches to nothing until 30b, so inert in every path        |
+| 36. Entrance motion, administration inside the hub                     | shipped  | Owner request from a reference video; no independent review pass                     |
+| 35. Make the live database gate pass                                   | reviewed | Delivered by PR #41 at `ab1515b`; 542 tests, lint clean, review APPROVED             |
+| 30b. Provider vocabulary widening                                      | shipped  | `lever` accepted; Ashby/Workable rejected until their adapters ship; 561 tests       |
+| 37. Location string-shape recognition                                  | reviewed | Independent pass 2026-07-21; boundary held under 53 probes, one notation gap closed  |
+| 38. Official UK public-sector sources                                  | reviewed | Independent pass 2026-07-21; no code defect, duplicate-control limit now recorded    |
+| 39. Adzuna licence decision                                            | blocked  | Owner action; written licence and attribution terms required before any connector    |
+| 31. Ashby adapter                                                      | shipped  | Adapter, provider value and compliance record; ships disabled; no independent review |
 
 ## Last verification commands
 
@@ -247,6 +245,26 @@ Run to clear the review debt these two shipped with. Both are now `reviewed`. **
 **The unmet one is duplicate control, and it is unmeetable as built.** Acceptance asked for reconciliation with an existing source to be proven. Deduplication keys on the exact canonical application URL, and this adapter's canonical destination is the service's own advert page, so a teaching role also on the school's ATS board produces a different key and appears twice. Coding around it would mean fuzzy title/employer merging, which `AGENTS.md` forbids. Recorded as a known property in the source's compliance record rather than papered over.
 
 **Not reviewed here.** Tasks 30b, 36 and 26a still carry review debt.
+
+## Task 31 — Ashby adapter, 2026-07-21
+
+Adapter, provider value and compliance record in one slice. The source **ships disabled**: no migration inserts a row, so an administrator must configure and enable a board.
+
+**The vocabulary migration was generated, not transcribed**, which is the instruction this file carries and it was worth following. Each live definition was extracted with `pg_get_functiondef`, the provider list substituted, and the result diffed against the extraction. That proved **exactly seven changed lines across six functions**, each adding only `'ashby'`, over roughly 720 lines of definer SQL. The six objects were found by querying the live database for every function whose definition contains a provider literal, rather than by reading the Task 30b plan's table — which was the right call, because that plan also claimed 30b would add `ashby` and `workable`, and it did not. **Confirm against the database, not against a plan.**
+
+**Every one of the six confirmed implementation facts is honoured and tested**, each test naming the trap it guards. `isListed: false` is filtered out; `isRemote` and `workplaceType` are never consulted, and the live sample's `isRemote: true` / `"Remote - European Union"` posting is asserted not to publish; empty-string address fields are treated as missing; `employmentType` states working time rather than contract type, so `FullTime` never becomes `permanent`; compensation summaries are free text through the shared parser, advertised where stated and unknown where absent, never estimated; and `secondaryLocations` is not read.
+
+**One design decision worth carrying forward.** The postal address is a **fallback for an absent location, never an addition to a present one.** Appending can only lose publications, because eligibility requires every label to be recognised — `"Manchester" + "Head Office"` quarantines where `"Manchester"` alone publishes. This is a direct consequence of the all-labels rule the Task 37 review pass documented, and it is the kind of interaction that is invisible unless the two are read together.
+
+**Duplicate control genuinely reconciles here, unlike Teaching Vacancies.** Ashby's canonical destination is the employer's own `applyUrl`, so a listing on both an Ashby board and a Greenhouse board resolves to one occurrence through the canonical key once tracking parameters are removed. A test asserts the shared key and that each source keeps its own provenance. Teaching Vacancies cannot do this because its canonical destination is the service's own advert page; that limit is recorded in its compliance record.
+
+**The typechecker caught a real defect.** `toCompensation` was exported by both `lever.ts` and `ashby.ts` and the barrel re-exports both, so **Lever's own tests silently rebound to Ashby's function**. Ashby's helpers are now provider-prefixed. **Task 32 will hit this the moment it adds a third**, so prefix Workable's exported helpers from the start.
+
+**`ponytail:` debt raised rather than paid.** The Lever adapter's marker named the ceiling — "if Ashby and Workable also duplicate it, five copies is where extracting a shared transport pays" — and this slice reached it. Extracting was deliberately not folded in: the honest extraction is of the three single-request whole-board adapters (Greenhouse, Lever, Ashby), since Reed and Teaching Vacancies paginate, and refactoring reviewed security-sensitive transport code is its own task with its own review. **Raise it before Task 32 adds the sixth copy.**
+
+**Verification.** `pnpm verify` green at **1,554 tests**, of which 22 are the adapter's; `pnpm verify:live` green at **32 migrations, 28 pgTAP files, 582 tests** with clean `db lint`; `pnpm check:supabase` at 32 migrations and 34 forced-RLS tables; clean secret scan and production audit.
+
+**No independent review pass.** Task 31 carries the same review debt as 30b, 36 and 26a, and is the largest of them.
 
 ## Schema fix — the `auth.users` deletion defect, 2026-07-21
 

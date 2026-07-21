@@ -136,7 +136,7 @@ Each service below was checked against its own current interface rather than aga
 
 Northern Ireland's official service is named as coverage layer 1 in this document and was not reached in this pass. It needs its own dated record before any implementation.
 
-### Ashby public job posting API — reviewed 2026-07-21
+### Ashby public job posting API — implemented 2026-07-21, ships disabled
 
 Task 31's access-confirmation step. Confirmed against [Ashby's own documentation](https://developers.ashbyhq.com/docs/public-job-posting-api) and against a live board on 2026-07-21, not against a summary.
 
@@ -154,5 +154,14 @@ Five implementation facts worth carrying into the slice, so they are not redisco
 4. **`employmentType` uses Ashby's own vocabulary** (`"FullTime"`), not the schema.org tokens Teaching Vacancies uses. It states working time, not contract type, so it must not be read as permanent.
 5. **`compensation` is a nested object** — `compensationTierSummary`, `scrapeableCompensationSalarySummary`, `compensationTiers`, `summaryComponents` — and needs `includeCompensation=true`. Summaries are free text, so the same discipline Teaching Vacancies needed applies: parse deterministically, keep advertised and unknown distinct, and never estimate.
 6. **`secondaryLocations` is deliberately not used for eligibility.** The primary `location` is what the advert headlines. Reading secondary locations changes what a listing's location means, so it is its own decision rather than a detail of this slice.
+
+**Implementation record, Task 31.** The adapter is `packages/ingestion/src/ashby.ts` and every fact above is honoured, each with a test naming the trap it guards.
+
+- **Location evidence** is the primary `location` string as the advert wrote it. The postal address is a **fallback for when that is absent, never an addition to it** — appending a locality to a location that already publishes can only lose publications, because eligibility requires every label to be recognised, so `"Manchester" + "Head Office"` would quarantine where `"Manchester"` alone publishes. `addressCountry` is excluded from the schema entirely, following the Lever precedent.
+- **`coverage_mode` is `complete`**, constrained at the database boundary by `job_sources_supported_provider`, so an Ashby source cannot be configured as incremental. The two-consecutive-omissions closure rule therefore applies.
+- **No provider-specific minimum interval.** Ashby follows the Greenhouse and Lever precedent and takes the general 15-minute floor. Reed and Teaching Vacancies keep their 6-hour floors because they are national discovery services read repeatedly, which is a different shape. Ashby's terms state no rate limit; that is treated as unstated rather than unlimited, which is what the bounded retries and the per-source interval are for.
+- **Administrator configurable**, unlike Reed and Teaching Vacancies, because it is a per-employer board. It appears in the source form.
+- **Duplicate control is proven**, and unlike Teaching Vacancies it genuinely reconciles: Ashby's canonical destination is the employer's own `applyUrl`, so a listing carried on both an Ashby board and a Greenhouse board resolves to one occurrence through the canonical key once tracking parameters are removed. A test asserts the shared key and that each source keeps its own provenance.
+- **The source ships disabled.** No row is inserted by any migration; an administrator must configure and enable a board.
 
 - **Decision:** approved for implementation as an employer-board adapter. Each Ashby board still needs its own dated employer entry and allowlisted hosts before it is enabled, and the source ships disabled.

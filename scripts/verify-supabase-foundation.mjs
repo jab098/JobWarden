@@ -34,6 +34,7 @@ export const requiredMigrationFiles = [
   "202607220004_provider_vocabulary.sql",
   "202607220005_teaching_vacancies_provider.sql",
   "202607220006_audit_log_actor_nulling.sql",
+  "202607220007_ashby_provider.sql",
 ];
 
 const publicTables = [
