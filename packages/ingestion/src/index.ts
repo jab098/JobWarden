@@ -6,4 +6,5 @@ export * from "./normalise.ts";
 export * from "./reed.ts";
 export * from "./teaching-vacancies.ts";
 export * from "./retry.ts";
+export * from "./transport.ts";
 export * from "./types.ts";

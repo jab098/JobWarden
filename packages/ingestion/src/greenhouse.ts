@@ -1,16 +1,12 @@
 import { z } from "zod";
 
-import { isTransientStatus, retryDelayMilliseconds, sleep } from "./retry.ts";
-import type { Sleep } from "./retry.ts";
+import { AdapterError, BoundedJsonTransport } from "./transport.ts";
+import type { BoundedTransportOptions } from "./transport.ts";
 import type {
   JobSource,
   ProviderAdapter,
   ProviderFetchResult,
 } from "./types.ts";
-
-const MAX_ATTEMPTS = 3;
-const DEFAULT_TIMEOUT_MS = 8_000;
-const DEFAULT_MAX_RETRY_AFTER_MS = 30_000;
 
 const metadataPrimitiveSchema = z.union([
   z.string(),
@@ -45,36 +41,11 @@ const greenhouseResponseSchema = z.object({
   ),
 });
 
-export type AdapterErrorCode =
-  | "aborted"
-  | "timeout"
-  | "network_error"
-  | "http_error"
-  | "invalid_response"
-  | "configuration_error";
-
-export class AdapterError extends Error {
-  override readonly name = "AdapterError";
-
-  constructor(
-    readonly code: AdapterErrorCode,
-    message: string,
-    readonly attempts: number,
-    readonly status: number | null = null,
-  ) {
-    super(message);
-  }
-}
-
-export type GreenhouseAdapterOptions = {
-  fetch?: typeof fetch;
-  sleep?: Sleep;
-  random?: () => number;
-  now?: () => number;
-  createTimeoutSignal?: (milliseconds: number) => AbortSignal;
-  timeoutMs?: number;
-  maxRetryAfterMs?: number;
-};
+// `AdapterError` and `AdapterErrorCode` moved to `./transport.ts` when the
+// shared transport was extracted. They were never Greenhouse-specific — every
+// adapter raised them, and four of them imported the type from here, which read
+// as though Greenhouse owned the error vocabulary for the whole package.
+export type GreenhouseAdapterOptions = BoundedTransportOptions;
 
 function stablePrimitiveText(
   value: z.infer<typeof metadataPrimitiveSchema>,
@@ -98,79 +69,11 @@ function compareText(left: string, right: string): number {
   return 0;
 }
 
-function callerAborted(attempts: number): AdapterError {
-  return new AdapterError(
-    "aborted",
-    "Greenhouse request was cancelled by the caller.",
-    attempts,
-  );
-}
-
 export class GreenhouseAdapter implements ProviderAdapter {
-  readonly #fetch: typeof fetch;
-  readonly #sleep: Sleep;
-  readonly #random: () => number;
-  readonly #now: () => number;
-  readonly #createTimeoutSignal: (milliseconds: number) => AbortSignal;
-  readonly #timeoutMs: number;
-  readonly #maxRetryAfterMs: number;
+  readonly #transport: BoundedJsonTransport;
 
   constructor(options: GreenhouseAdapterOptions = {}) {
-    this.#fetch = options.fetch ?? globalThis.fetch;
-    this.#sleep = options.sleep ?? sleep;
-    this.#random = options.random ?? Math.random;
-    this.#now = options.now ?? Date.now;
-    this.#createTimeoutSignal =
-      options.createTimeoutSignal ??
-      ((milliseconds) => AbortSignal.timeout(milliseconds));
-    this.#timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.#maxRetryAfterMs =
-      options.maxRetryAfterMs ?? DEFAULT_MAX_RETRY_AFTER_MS;
-  }
-
-  async #waitBeforeRetry(
-    retryNumber: number,
-    retryAfter: string | null,
-    attempts: number,
-    callerSignal?: AbortSignal,
-  ): Promise<void> {
-    const delay = retryDelayMilliseconds({
-      retryNumber,
-      retryAfter,
-      maximumRetryAfterMilliseconds: this.#maxRetryAfterMs,
-      random: this.#random,
-      now: this.#now,
-    });
-
-    try {
-      await this.#sleep(delay, callerSignal);
-    } catch {
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-      throw new AdapterError(
-        "network_error",
-        "Greenhouse retry scheduling failed.",
-        attempts,
-      );
-    }
-  }
-
-  async #retryTransportFailure(
-    code: "timeout" | "network_error",
-    retryNumber: number,
-    attempts: number,
-    callerSignal?: AbortSignal,
-  ): Promise<void> {
-    if (attempts === MAX_ATTEMPTS) {
-      throw new AdapterError(
-        code,
-        code === "timeout"
-          ? "Greenhouse request timed out after bounded retries."
-          : "Greenhouse request failed after bounded retries.",
-        attempts,
-      );
-    }
-
-    await this.#waitBeforeRetry(retryNumber, null, attempts, callerSignal);
+    this.#transport = new BoundedJsonTransport("Greenhouse", options);
   }
 
   async fetchJobs(
@@ -189,132 +92,29 @@ export class GreenhouseAdapter implements ProviderAdapter {
     );
     endpoint.searchParams.set("content", "true");
 
-    let attempts = 0;
-    for (let retryNumber = 1; retryNumber <= MAX_ATTEMPTS; retryNumber += 1) {
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-
-      const timeoutSignal = this.#createTimeoutSignal(this.#timeoutMs);
-      const requestSignal = callerSignal
-        ? AbortSignal.any([callerSignal, timeoutSignal])
-        : timeoutSignal;
-      attempts += 1;
-
-      let response: Response;
-      try {
-        response = await this.#fetch(endpoint, {
-          method: "GET",
-          redirect: "error",
-          headers: {
-            Accept: "application/json",
-            "User-Agent": "JobWarden/0.1 (+private UK job index)",
-          },
-          signal: requestSignal,
-        });
-      } catch {
-        if (callerSignal?.aborted) throw callerAborted(attempts);
-
-        const code = timeoutSignal.aborted ? "timeout" : "network_error";
-        await this.#retryTransportFailure(
-          code,
-          retryNumber,
-          attempts,
-          callerSignal,
-        );
-        continue;
-      }
-
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-
-      if (!response.ok) {
-        if (isTransientStatus(response.status) && attempts < MAX_ATTEMPTS) {
-          await this.#waitBeforeRetry(
-            retryNumber,
-            response.headers.get("retry-after"),
-            attempts,
-            callerSignal,
-          );
-          continue;
-        }
-
-        throw new AdapterError(
-          "http_error",
-          `Greenhouse request failed with HTTP status ${response.status}.`,
-          attempts,
-          response.status,
-        );
-      }
-
-      let responseBody: string;
-      try {
-        responseBody = await response.text();
-      } catch {
-        if (callerSignal?.aborted) throw callerAborted(attempts);
-
-        const code = timeoutSignal.aborted ? "timeout" : "network_error";
-        await this.#retryTransportFailure(
-          code,
-          retryNumber,
-          attempts,
-          callerSignal,
-        );
-        continue;
-      }
-
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-      if (timeoutSignal.aborted) {
-        await this.#retryTransportFailure(
-          "timeout",
-          retryNumber,
-          attempts,
-          callerSignal,
-        );
-        continue;
-      }
-
-      let untrustedPayload: unknown;
-      try {
-        untrustedPayload = JSON.parse(responseBody) as unknown;
-      } catch {
-        throw new AdapterError(
-          "invalid_response",
-          "Greenhouse returned invalid JSON syntax.",
-          attempts,
-        );
-      }
-
-      const result = greenhouseResponseSchema.safeParse(untrustedPayload);
-      if (!result.success) {
-        throw new AdapterError(
-          "invalid_response",
-          "Greenhouse response did not match the expected schema.",
-          attempts,
-        );
-      }
-
-      return {
-        coverage: "complete",
-        jobs: result.data.jobs.map((job) => ({
-          providerJobId: String(job.id),
-          title: job.title,
-          location: job.location.name,
-          descriptionHtml: job.content,
-          absoluteUrl: job.absolute_url,
-          canonicalApplicationUrl: job.absolute_url,
-          updatedAt: job.updated_at,
-          metadataText: (job.metadata ?? [])
-            .map(
-              (metadata) =>
-                `${metadata.name}: ${stableMetadataValue(metadata.value)}`,
-            )
-            .sort(compareText),
-        })),
-      };
-    }
-
-    throw new AdapterError(
-      "network_error",
-      "Greenhouse request exhausted its bounded retry policy.",
-      attempts,
+    const data = await this.#transport.requestJson(
+      endpoint,
+      greenhouseResponseSchema,
+      callerSignal,
     );
+
+    return {
+      coverage: "complete",
+      jobs: data.jobs.map((job) => ({
+        providerJobId: String(job.id),
+        title: job.title,
+        location: job.location.name,
+        descriptionHtml: job.content,
+        absoluteUrl: job.absolute_url,
+        canonicalApplicationUrl: job.absolute_url,
+        updatedAt: job.updated_at,
+        metadataText: (job.metadata ?? [])
+          .map(
+            (metadata) =>
+              `${metadata.name}: ${stableMetadataValue(metadata.value)}`,
+          )
+          .sort(compareText),
+      })),
+    };
   }
 }

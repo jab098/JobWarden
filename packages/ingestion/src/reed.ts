@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AdapterError } from "./greenhouse.ts";
+import { AdapterError } from "./transport.ts";
 import { isTransientStatus, retryDelayMilliseconds, sleep } from "./retry.ts";
 import type { Sleep } from "./retry.ts";
 import type {
@@ -173,6 +173,27 @@ export class ReedAdapter implements ProviderAdapter {
       options.maxRetryAfterMs ?? DEFAULT_MAX_RETRY_AFTER_MS;
   }
 
+  /**
+   * Reed keeps its own transport loop, deliberately.
+   *
+   * `BoundedJsonTransport` in `./transport.ts` carries the shared loop that
+   * Greenhouse, Lever, Ashby and Teaching Vacancies all use. Reed differs in
+   * three ways that are behaviour rather than style, and folding it in would
+   * change what it does:
+   *
+   * 1. **It never retries HTTP 429** — see `response.status !== 429 &&
+   *    isTransientStatus(...)` below. A rate limit from a credentialed API is a
+   *    signal to stop, not to back off and try again, and the shared transport
+   *    treats 429 as transient because that is right for the anonymous public
+   *    boards.
+   * 2. It sends an `Authorization` header built from the configured key.
+   * 3. It returns the raw payload for the caller to parse, because Reed's two
+   *    endpoints have different shapes.
+   *
+   * Do not migrate this to the shared transport to remove the duplication. If a
+   * future provider needs Reed's 429 policy or a credential, give it its own
+   * path rather than widening the shared one with flags.
+   */
   async #request(url: URL, callerSignal?: AbortSignal): Promise<unknown> {
     let attempts = 0;
     for (let retryNumber = 1; retryNumber <= MAX_ATTEMPTS; retryNumber += 1) {

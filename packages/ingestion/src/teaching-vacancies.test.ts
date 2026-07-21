@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import pageOne from "./fixtures/teaching-vacancies-page-one.json" with { type: "json" };
-import { AdapterError } from "./greenhouse.ts";
+import { AdapterError } from "./transport.ts";
 import { TeachingVacanciesAdapter } from "./teaching-vacancies.ts";
 import type { JobSource } from "./types.ts";
 
