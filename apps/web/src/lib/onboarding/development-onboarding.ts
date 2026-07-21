@@ -97,7 +97,13 @@ function frozenView(): OnboardingView {
     currentStep: nextOnboardingStep(previewState),
     path: "cv",
     cvOutcome: "rich",
-    cv: { present: true, kind: "docx", conceptCount: previewEvidence.length },
+    cv: {
+      present: true,
+      kind: "docx",
+      conceptCount: previewEvidence.length,
+      // The fictional CV is presented as already read.
+      ready: true,
+    },
     complete: false,
     answers: previewAnswers,
     generation: 0,
@@ -132,7 +138,13 @@ function journeyView(journey: PreviewJourney): OnboardingView {
         ? "rich"
         : "none"
       : null,
-    cv: { present: true, kind: "docx", conceptCount: previewEvidence.length },
+    cv: {
+      present: true,
+      kind: "docx",
+      conceptCount: previewEvidence.length,
+      // The fictional CV is presented as already read.
+      ready: true,
+    },
     complete: journey.finishedAt !== null,
     answers: { ...previewAnswers, ...(journey.answers as OnboardingAnswers) },
     generation: 0,

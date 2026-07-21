@@ -119,6 +119,7 @@ export function createSupabaseOnboardingRepository(
             present: cv !== null,
             kind: cv?.kind ?? null,
             conceptCount: confirmable,
+            ready: cv?.lifecycleStatus === "ready",
           },
           complete: isOnboardingComplete(state),
           answers,

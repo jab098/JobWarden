@@ -8,6 +8,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
+// CvReadingNotice polls with router.refresh() while a CV is being read.
+const refresh = vi.fn();
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => ({ refresh }),
+}));
+
 const actionMocks = vi.hoisted(() => ({
   advanceOnboardingAction: vi.fn(),
   completeOnboardingAction: vi.fn(),
@@ -24,7 +31,7 @@ function view(overrides: Partial<OnboardingView> = {}): OnboardingView {
     currentStep: "cv",
     path: "cv",
     cvOutcome: "rich",
-    cv: { present: true, kind: "docx", conceptCount: 14 },
+    cv: { present: true, kind: "docx", conceptCount: 14, ready: true },
     complete: false,
     answers: { roleFamilies: ["Analytics implementation"] },
     evidence: [],
@@ -101,7 +108,7 @@ describe("OnboardingFlow", () => {
     render(
       <OnboardingFlow
         view={view({
-          cv: { present: false, kind: null, conceptCount: 0 },
+          cv: { present: false, kind: null, conceptCount: 0, ready: false },
           cvOutcome: "none",
           path: "aspiration",
         })}
@@ -528,6 +535,72 @@ describe("OnboardingFlow", () => {
         />,
       );
       expect(screen.queryByRole("button", { name: /^Back to/ })).toBeNull();
+    });
+  });
+
+  // Found by an owner whose CV extracted successfully and who was still shown
+  // an empty form asking them to type everything in by hand.
+  describe("continuing with a CV", () => {
+    it("sends the path the CV implies, not the one chosen before it existed", () => {
+      const { container } = render(
+        <OnboardingFlow
+          view={view({
+            // Chose "no CV" first, then uploaded one. The stored path is stale.
+            path: "aspiration",
+            cvOutcome: "rich",
+            cv: { present: true, kind: "docx", conceptCount: 9, ready: true },
+            currentStep: "cv",
+            state: {
+              path: "aspiration",
+              completedSteps: [],
+              completedAt: null,
+            },
+          })}
+        />,
+      );
+
+      const withCv = [...container.querySelectorAll("form")].find((form) =>
+        form.textContent?.includes("Continue with my CV"),
+      );
+      expect(
+        withCv?.querySelector<HTMLInputElement>('input[name="path"]')?.value,
+      ).toBe("cv");
+    });
+
+    // A document row exists the moment the file lands, long before extraction
+    // finishes. Continuing then carries the reader past their own CV.
+    it("cannot be pressed while the CV is still being read", () => {
+      render(
+        <OnboardingFlow
+          view={view({
+            cvOutcome: "rich",
+            cv: { present: true, kind: "docx", conceptCount: 0, ready: false },
+            currentStep: "cv",
+          })}
+        />,
+      );
+
+      expect(
+        screen.getByRole("button", { name: "Continue with my CV" }),
+      ).toBeDisabled();
+      expect(screen.getByRole("status")).toHaveTextContent(/Reading your CV/i);
+    });
+
+    it("can be pressed once the CV has been read", () => {
+      render(
+        <OnboardingFlow
+          view={view({
+            cvOutcome: "rich",
+            cv: { present: true, kind: "docx", conceptCount: 9, ready: true },
+            currentStep: "cv",
+          })}
+        />,
+      );
+
+      expect(
+        screen.getByRole("button", { name: "Continue with my CV" }),
+      ).toBeEnabled();
+      expect(screen.queryByText(/Reading your CV/i)).toBeNull();
     });
   });
 });
