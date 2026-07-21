@@ -16,7 +16,20 @@ export type OnboardingView = {
   path: OnboardingPath;
   cvOutcome: CvOutcome | null;
   /** Whether a CV exists and what came out of reading it. */
-  cv: { present: boolean; kind: "docx" | "pdf" | null; conceptCount: number };
+  cv: {
+    present: boolean;
+    kind: "docx" | "pdf" | null;
+    conceptCount: number;
+    /**
+     * Whether the CV has finished being read.
+     *
+     * A document row exists the moment the file lands, long before extraction
+     * finishes. Without this the step offered "Continue with my CV" while
+     * parsing was still running, so a reader could pass the CV behind before it
+     * had produced anything.
+     */
+    ready: boolean;
+  };
   complete: boolean;
   /** Answers given so far, so every step renders pre-filled. */
   answers: OnboardingAnswers;

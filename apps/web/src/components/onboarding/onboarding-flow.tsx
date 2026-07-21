@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 
 import {
+  pathForOutcome,
   previousOnboardingStep,
   stepsForPath,
   type OnboardingStep,
@@ -23,6 +24,7 @@ import {
   WorkingTimeField,
   WorkplaceField,
 } from "@/components/onboarding/onboarding-fields";
+import { CvReadingNotice } from "@/components/onboarding/cv-reading-notice";
 import { CvUploadCard } from "@/components/profile/cv-upload-card";
 import { ProfileEvidenceList } from "@/components/profile/profile-evidence-list";
 import { ActionFeedback } from "@/components/ui/action-feedback";
@@ -177,6 +179,7 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
                   generation={view.generation}
                   hasCurrentCv={view.cv.present}
                 />
+                <CvReadingNotice reading={view.cv.present && !view.cv.ready} />
               </div>
               <p className="max-w-prose text-sm leading-6 text-ink-secondary">
                 You can also skip this and tell us what you are looking for
@@ -344,16 +347,34 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
                 the confirm path with nothing to confirm would be a dead end. */}
                 {view.cv.present ? (
                   <form action={advance}>
-                    <input type="hidden" name="path" value={view.path} />
+                    {/* The path the CV itself implies, not the stored one. This
+                    posted `view.path`, so a reader who had earlier chosen "I do
+                    not have a CV yet" and then uploaded one was sent back down
+                    the aspiration branch — the button said "continue with my
+                    CV" and continued without it, past the confirmation step
+                    where the extracted evidence lives, to a page asking them to
+                    type it all in by hand. */}
+                    <input
+                      type="hidden"
+                      name="path"
+                      value={pathForOutcome(view.cvOutcome ?? "none")}
+                    />
                     <input type="hidden" name="step" value="cv" />
                     <input
                       type="hidden"
                       name="cvOutcome"
                       value={view.cvOutcome ?? "none"}
                     />
+                    {/* Disabled until the CV has actually been read. A document
+                    row exists the moment the file lands, so this used to be
+                    live while extraction was still running — pressing it then
+                    carried the reader past their own CV before it had produced
+                    anything to confirm. */}
                     <Button
                       type="submit"
-                      disabled={!view.canAdvance || advancePending}
+                      disabled={
+                        !view.canAdvance || advancePending || !view.cv.ready
+                      }
                     >
                       Continue with my CV
                     </Button>
