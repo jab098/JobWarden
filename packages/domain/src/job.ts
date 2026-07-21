@@ -78,9 +78,9 @@ export const normalisedJobSchema = z.object({
   compensationCurrency: z.literal("GBP").nullable(),
   compensationPeriod: z.enum(compensationPeriods),
   compensationProvenance: z.enum(compensationProvenances),
-  compensationObservedAt: z.iso.datetime().nullable(),
-  postedAt: z.iso.datetime().nullable(),
-  closesAt: z.iso.datetime().nullable(),
+  compensationObservedAt: z.iso.datetime({ offset: true }).nullable(),
+  postedAt: z.iso.datetime({ offset: true }).nullable(),
+  closesAt: z.iso.datetime({ offset: true }).nullable(),
   deduplicationKey: z.string().regex(/^[a-f0-9]{64}$/),
   contentHash: z.string().regex(/^[a-f0-9]{64}$/),
 });
