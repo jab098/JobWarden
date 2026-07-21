@@ -170,7 +170,7 @@ export const profileSuggestionSchema = z
     confidence: z.number().min(0).max(1),
     evidenceItemIds: z.array(z.string().uuid()).min(1).max(30),
     state: z.enum(profileSuggestionStates),
-    proposedAt: z.iso.datetime(),
+    proposedAt: z.iso.datetime({ offset: true }),
   })
   .strict()
   .superRefine(({ evidenceItemIds }, context) => {

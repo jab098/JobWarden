@@ -43,8 +43,8 @@ const candidateRowSchema = z.object({
   compensation_currency: z.literal("GBP").nullable(),
   compensation_period: z.enum(compensationPeriods),
   compensation_provenance: z.enum(compensationProvenances),
-  posted_at: z.iso.datetime().nullable(),
-  closes_at: z.iso.datetime().nullable(),
+  posted_at: z.iso.datetime({ offset: true }).nullable(),
+  closes_at: z.iso.datetime({ offset: true }).nullable(),
   description_text: z.string().max(100_000),
   job_locations: z.array(locationSchema).nullable(),
 });

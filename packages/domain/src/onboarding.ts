@@ -74,13 +74,23 @@ export function stepsForPath(path: OnboardingPath): readonly OnboardingStep[] {
   return path === "cv" ? cvPathSteps : aspirationPathSteps;
 }
 
+/**
+ * PostgreSQL returns a `timestamptz` with an offset — `...150188+00:00` — and
+ * `z.iso.datetime()` rejects an offset unless told to accept one. A completed
+ * onboarding row therefore failed to parse, `isOnboardingComplete` read false,
+ * and `nextOnboardingStep(null)` sent the reader to step one. Finishing setup
+ * returned them to the start of it.
+ *
+ * Every fixture in the suite was written with a trailing `Z`, which Postgres
+ * never emits, so nothing caught it.
+ */
 const onboardingStateSchema = z
   .object({
     path: z.enum(onboardingPaths),
     completedSteps: z
       .array(z.enum(onboardingSteps))
       .max(onboardingSteps.length),
-    completedAt: z.iso.datetime().nullable(),
+    completedAt: z.iso.datetime({ offset: true }).nullable(),
   })
   .strict();
 
