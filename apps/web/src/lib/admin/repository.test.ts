@@ -8,6 +8,7 @@ import {
   AdminRepositoryError,
   changeAccessRequestSetting,
   decideAccessRequest,
+  markEarlyAccessInvited,
   queueSourceIngestion,
   saveJobSource,
   type AdminRepository,
@@ -191,5 +192,71 @@ describe("administrator actions", () => {
       message: "The administrator operation is temporarily unavailable.",
     });
     expect(JSON.stringify(result)).not.toContain("sensitive database");
+  });
+});
+
+/**
+ * Task 29's only mutation. It shipped with no test on its origin gate at all —
+ * found by independent review. The gate is the CSRF-shaped check that a server
+ * action cannot be driven from another site.
+ */
+describe("marking an early-access signup invited", () => {
+  const signupId = "11111111-1111-4111-8111-111111111111";
+
+  function formFor(id: string): FormData {
+    const formData = new FormData();
+    formData.set("signupId", id);
+    return formData;
+  }
+
+  it("refuses a request that did not come from this site", async () => {
+    const repository = createRepository();
+
+    await expect(
+      markEarlyAccessInvited(
+        repository,
+        { ...context, requestOrigin: "https://attacker.example" },
+        formFor(signupId),
+      ),
+    ).resolves.toMatchObject({ kind: "forbidden" });
+
+    expect(repository.markEarlyAccessInvited).not.toHaveBeenCalled();
+  });
+
+  it("refuses an identifier that is not a uuid", async () => {
+    const repository = createRepository();
+
+    await expect(
+      markEarlyAccessInvited(repository, context, formFor("-".repeat(36))),
+    ).resolves.toMatchObject({ kind: "invalid" });
+
+    expect(repository.markEarlyAccessInvited).not.toHaveBeenCalled();
+  });
+
+  it("reports a signup that changed", async () => {
+    const repository = createRepository();
+    repository.markEarlyAccessInvited = vi.fn(async () => true);
+
+    await expect(
+      markEarlyAccessInvited(repository, context, formFor(signupId)),
+    ).resolves.toEqual({ kind: "success", message: "Marked as invited." });
+    expect(repository.markEarlyAccessInvited).toHaveBeenCalledWith(signupId);
+  });
+
+  // Already invited and "does not exist" are the same answer on purpose, so the
+  // surface must not claim the decision was newly recorded.
+  it("reports a signup that did not change, without claiming it did", async () => {
+    const repository = createRepository();
+    repository.markEarlyAccessInvited = vi.fn(async () => false);
+
+    const result = await markEarlyAccessInvited(
+      repository,
+      context,
+      formFor(signupId),
+    );
+    expect(result).toEqual({
+      kind: "success",
+      message: "That signup was already marked as invited.",
+    });
   });
 });

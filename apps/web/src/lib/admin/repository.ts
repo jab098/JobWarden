@@ -3,6 +3,7 @@ import "server-only";
 import {
   createSaveJobSourceInputSchema,
   decideAccessInputSchema,
+  markEarlyAccessInvitedInputSchema,
   requestSourceIngestionInputSchema,
   type SaveJobSourceInput,
 } from "@jobwarden/domain";
@@ -159,13 +160,20 @@ export async function markEarlyAccessInvited(
 ): Promise<AdminActionState> {
   if (!trusted(context)) return forbiddenState;
 
-  const signupId = value(formData, "signupId");
-  if (!/^[0-9a-fA-F-]{36}$/.test(signupId)) {
+  // A uuid schema rather than a length-and-charset regex: the regex it
+  // replaced accepted thirty-six hyphens, which reached the database as an
+  // invalid cast.
+  const parsed = markEarlyAccessInvitedInputSchema.safeParse({
+    signupId: value(formData, "signupId"),
+  });
+  if (!parsed.success) {
     return invalidState({ signupId: ["Choose a signup to mark invited."] });
   }
 
   try {
-    const changed = await repository.markEarlyAccessInvited(signupId);
+    const changed = await repository.markEarlyAccessInvited(
+      parsed.data.signupId,
+    );
     return {
       kind: "success",
       message: changed

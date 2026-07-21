@@ -55,7 +55,11 @@ describe("early access list", () => {
     expect(container.querySelector("img")).toBeNull();
   });
 
-  it("shows how many are waiting, oldest first", () => {
+  // Named for what it actually checks. The ordering guarantee lives in
+  // `list_early_access_signups`' `order by created_at asc` and is asserted
+  // against reverse-inserted fixtures in pgTAP 026; this component only maps
+  // the array it is given, so asserting order here would test Array.map.
+  it("shows how many are waiting and renders them in the given order", () => {
     render(
       <EarlyAccessList
         signups={signups}
@@ -86,10 +90,11 @@ describe("early access list", () => {
     expect(screen.getByText(/Nobody has joined/)).toBeTruthy();
   });
 
-  // The fictional preview must never reach a production mutation, so the
-  // read-only variant offers the control without an action behind it.
-  it("disables the invite control when read-only", () => {
-    render(<EarlyAccessList signups={signups} pending={2} readOnly />);
+  // Without an action there is nothing to submit to, so the control renders
+  // disabled. This previously passed a `readOnly` prop as well, which made the
+  // assertion unfalsifiable — omitting the action already forced the branch.
+  it("disables the invite control when no action is supplied", () => {
+    render(<EarlyAccessList signups={signups} pending={2} />);
     for (const button of screen.getAllByRole("button", {
       name: "Mark invited",
     })) {

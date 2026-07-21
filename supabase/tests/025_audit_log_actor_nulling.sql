@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(9);
+select plan(13);
 
 -- The audit foreign key's own nulling action, and the append-only rule that
 -- refused it until migration 202607220006.
@@ -131,6 +131,45 @@ select throws_ok(
   '42501',
   'audit_log is append-only',
   'nulling the actor cannot smuggle another column change with it'
+);
+
+-- The append-only rule survives `truncate`, which fires no row trigger.
+--
+-- The independent review of Task 29 found `service_role` could
+-- `truncate public.audit_log` and destroy the whole record in one statement:
+-- `202607170001_foundation.sql` revokes on all public tables from `public`,
+-- `anon` and `authenticated` but omits `service_role`, so Supabase's default
+-- `service_role=Dxtm` survived everywhere. Task 35 checked select/insert/
+-- update/delete and found none; nobody checked the other four letters.
+--
+-- These assert the verb rather than the ACL string, so they still hold if the
+-- grant is expressed differently.
+select ok(
+  not has_table_privilege('service_role', 'public.audit_log', 'TRUNCATE'),
+  'the service role cannot truncate the audit log'
+);
+select ok(
+  not has_table_privilege('service_role', 'public.user_roles', 'TRUNCATE'),
+  'the service role cannot truncate the administrator roll'
+);
+select ok(
+  not has_table_privilege('service_role', 'public.audit_log', 'TRIGGER'),
+  'the service role cannot attach a trigger to the audit log'
+);
+
+-- The default privilege matters as much as the revoke: without it the next
+-- table created in this schema arrives with the same hole.
+select is(
+  (
+    select count(*)::int
+    from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relkind = 'r'
+      and has_table_privilege('service_role', c.oid, 'TRUNCATE')
+  ),
+  0,
+  'no public table lets the service role truncate it'
 );
 
 select * from finish();

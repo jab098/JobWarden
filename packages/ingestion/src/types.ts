@@ -25,7 +25,18 @@ export type CompensationProvenance = "advertised" | "estimated" | "unknown";
 
 export type ProviderCompensation = {
   raw: string | null;
+  /**
+   * **Major units — pounds, not pence.**
+   *
+   * `normaliseProviderJob` multiplies this by 100 to reach the minor units the
+   * database stores, so an adapter that puts minor units here publishes a
+   * salary 100× too high under `advertised` provenance. Two adapters did
+   * exactly that before an independent review caught it. An adapter reading a
+   * figure out of free text must go through
+   * `advertisedCompensationFromText`, which owns the conversion.
+   */
   minimum: number | null;
+  /** Major units — pounds, not pence. See `minimum`. */
   maximum: number | null;
   currency: "GBP" | null;
   period: CompensationPeriod;

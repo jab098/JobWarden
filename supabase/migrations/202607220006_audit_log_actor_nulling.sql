@@ -23,11 +23,27 @@
 --   * only `actor_user_id` moving from non-null to null, which is exactly and
 --     only what `on delete set null` performs — re-attributing a row to a
 --     different actor, or restoring an actor to a nulled row, both still raise;
---   * only when every other column is byte-identical. `to_jsonb(row) - key`
---     compares the whole remaining row rather than a hand-written column list,
---     so a column added to this table in future is covered automatically. A
+--   * only when every other column is unchanged. `to_jsonb(row) - key` compares
+--     the whole remaining row rather than a hand-written column list, so a
+--     column added to this table in future is covered automatically. A
 --     hand-listed comparison would silently stop protecting new columns, which
 --     is the failure mode this shape exists to avoid.
+--
+--     An independent review noted this comparison is **semantic, not
+--     byte-level**: jsonb compares numbers numerically, so rewriting a metadata
+--     value from `1` to `1.0000` in the same statement is permitted and stores
+--     the new text. The values are numerically identical, so nothing an audit
+--     reader depends on changes — but the guarantee is "no other column changes
+--     value", not "no other column changes bytes", and the earlier wording
+--     overstated it.
+--
+-- The honest cost, recorded because the earlier version of this comment left it
+-- out: before this change nobody could de-attribute an audit row at all, and
+-- now anybody with direct database credentials can null every `actor_user_id`
+-- in one statement. That is a real reduction. It is judged acceptable because
+-- the same credentials can already drop the table, and because no reachable
+-- path short of them exists — an independent review confirmed that no
+-- `security definer` function anywhere updates or deletes `audit_log`.
 --
 -- Narrowing this trigger is a smaller change to the security posture than it
 -- looks, because the trigger is defence in depth rather than the barrier.

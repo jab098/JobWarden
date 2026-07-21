@@ -6,6 +6,7 @@ import {
   type LeverAdapterOptions,
   type JobSource,
   classifyCommitment,
+  classifyLeverWorkingTime,
   classifySalaryInterval,
   normaliseProviderJob,
   toCompensation,
@@ -163,7 +164,11 @@ describe("Lever read-only adapter", () => {
 
 describe("Lever commitment classification", () => {
   it.each([
-    ["Full-time", "permanent"],
+    // "Full-time" states working time, not contract type. This asserted
+    // "permanent" until an independent review found Lever was the one adapter
+    // asserting a contract the advert never stated.
+    ["Full-time", "unknown"],
+    ["Part-time", "unknown"],
     ["Contract", "contract"],
     ["Internship", "internship"],
     ["Apprenticeship", "apprenticeship"],
@@ -173,6 +178,17 @@ describe("Lever commitment classification", () => {
     ["Something Lever invented later", "unknown"],
   ])("reads %s as %s", (commitment, expected) => {
     expect(classifyCommitment(commitment)).toBe(expected);
+  });
+
+  // The working time is not discarded, it just stops masquerading as a
+  // contract type.
+  it.each([
+    ["Full-time", "full_time"],
+    ["Part-time", "part_time"],
+    ["Contract", "unknown"],
+    ["", "unknown"],
+  ])("reads the working time of %s as %s", (commitment, expected) => {
+    expect(classifyLeverWorkingTime(commitment)).toBe(expected);
   });
 
   it("never infers an IR35 status from a contract commitment", async () => {

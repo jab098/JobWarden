@@ -77,8 +77,27 @@ export function classifyCommitment(
     return "zero_hours";
   }
   if (value.includes("casual")) return "casual";
+  // "Full-time" states **working time, not contract type**, so it must not
+  // become `permanent` — that asserts a contract the advert never stated. This
+  // returned `permanent` until an independent review flagged it as the one
+  // adapter breaking the rule Ashby and Workable both follow. The working time
+  // is not lost: `classifyLeverWorkingTime` carries it.
+  return "unknown";
+}
+
+/**
+ * Working time, which is what Lever's `commitment` actually states when it says
+ * full- or part-time.
+ */
+export function classifyLeverWorkingTime(
+  commitment: string | null | undefined,
+): ProviderJob["workingTime"] {
+  const value = (commitment ?? "").trim().toLowerCase();
   if (value.includes("full-time") || value.includes("full time")) {
-    return "permanent";
+    return "full_time";
+  }
+  if (value.includes("part-time") || value.includes("part time")) {
+    return "part_time";
   }
   return "unknown";
 }
@@ -219,6 +238,7 @@ export class LeverAdapter implements ProviderAdapter {
             : new Date(posting.createdAt).toISOString(),
         metadataText: [],
         employmentType: classifyCommitment(posting.categories?.commitment),
+        workingTime: classifyLeverWorkingTime(posting.categories?.commitment),
         compensation: toCompensation(posting.salaryRange),
       })),
     };

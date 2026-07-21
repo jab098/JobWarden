@@ -41,19 +41,19 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 23   | Single landing destination and public legal footer                         | reviewed | Delivered by PR #23 (`25314de`); no platform setup was required                       |
 | 24   | CV upload client                                                           | reviewed | Delivered by PR #24 (`976065b`)                                                       |
 | 25   | Location and radius, and slices 25a–25c                                    | reviewed | Delivered by PRs #25–#28; see project status for the per-slice record                 |
-| 26   | Settings/sources/support, and 26a card surface                             | shipped  | Delivered at `3aa4283` and PR #30 (`58a80fd`); 26a had no independent review pass     |
+| 26   | Settings/sources/support, and 26a card surface                             | reviewed | 26a independently reviewed 2026-07-21; no defect found                                |
 | 26b  | Owner surface complaints, early-access dialog                              | shipped  | Delivered by PR #31 (`53d8fbe`); the dialog needs Turnstile keys and the migration    |
 | 27   | Onboarding hydration defect                                                | reviewed | Not reproducible; the report was a false negative. Regression test delivered          |
 | 28   | Repair the history secret scan                                             | reviewed | Proven by a planted secret on a scratch branch, since deleted                         |
-| 29   | Early access list operations                                               | shipped  | Delivered 2026-07-21; the list needs Turnstile keys before entries can arrive         |
+| 29   | Early access list operations                                               | reviewed | Review found a service-role truncate hole; fixed. Needs Turnstile keys                |
 | 30a  | Lever adapter (TypeScript only)                                            | reviewed | None; documented public board endpoint, no credential                                 |
-| 30b  | Provider vocabulary widening                                               | shipped  | None; `lever` accepted. Ashby joined in Task 31 and Workable in Task 32               |
-| 31   | Ashby adapter                                                              | shipped  | Delivered 2026-07-21; source ships disabled. No independent review pass yet           |
-| 32   | Workable adapter                                                           | shipped  | Delivered 2026-07-21; source ships disabled. No independent review pass yet           |
+| 30b  | Provider vocabulary widening                                               | reviewed | Independently reviewed 2026-07-21; Ashby joined in 31 and Workable in 32              |
+| 31   | Ashby adapter                                                              | reviewed | Review found a critical 100× salary defect; fixed. Source ships disabled              |
+| 32   | Workable adapter                                                           | reviewed | Review found hidden-location and ordering defects; fixed. Ships disabled              |
 | 33   | Emit `JobPosting` structured data                                          | blocked  | Owner decision: public job content, plus a redistribution grant per source            |
 | 34   | Read `JobPosting` schema from allowlisted career pages                     | pending  | None; per-employer compliance record before each page is allowlisted                  |
 | 35   | Make the live database gate pass                                           | reviewed | Delivered by PR #41 (`ab1515b`); 28 migrations, clean lint, 542 tests                 |
-| 36   | Entrance motion, admin in the hub                                          | shipped  | None                                                                                  |
+| 36   | Entrance motion, admin in the hub                                          | reviewed | Independently reviewed 2026-07-21; no defect found                                    |
 | 37   | Location string-shape recognition                                          | reviewed | Independent pass 2026-07-21; one notation gap closed, no code defect                  |
 | 38   | Official UK public-sector sources                                          | reviewed | Independent pass 2026-07-21; duplicate-control limit recorded, no code defect         |
 | 39   | Adzuna licence decision                                                    | blocked  | Owner: written licence and attribution terms from Adzuna                              |
