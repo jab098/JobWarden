@@ -254,17 +254,21 @@ export async function uploadCv(
     const invoked = await client.functions.invoke("extract-career-profile", {
       body: {
         cvDocumentId: documentId,
-        // The document id, not the file's SHA-256. `cv_extraction_runs` is
-        // unique on (user_id, idempotency_key), and the claim returns the
-        // existing run when the key matches — so keying on content meant a
-        // failed extraction could never be retried with the same file. The
-        // owner whose first CV failed re-uploaded it twice and got no run at
-        // all, silently.
+        // Keyed on the document, not the file's content, but still as a
+        // 64-character hex digest because that is the shape the function's
+        // request schema and the database check constraint both require. A
+        // bare uuid was rejected as an invalid request before any run existed.
         //
-        // A document id is the right granularity: every upload registers a new
-        // document, so a retry is a new attempt, while two invokes for the
-        // same document still deduplicate.
-        idempotencyKey: documentId,
+        // `cv_extraction_runs` is unique on (user_id, idempotency_key) and the
+        // claim returns the existing run when the key matches, so keying on
+        // content meant a failed extraction could never be retried with the
+        // same file — the owner whose first CV failed re-uploaded it and got
+        // no run at all. Every upload registers a new document, so hashing the
+        // document id makes a retry a new attempt while two invokes for one
+        // document still deduplicate.
+        idempotencyKey: await sha256Hex(
+          new TextEncoder().encode(documentId).buffer as ArrayBuffer,
+        ),
       },
     });
     extractionStarted = !invoked.error;

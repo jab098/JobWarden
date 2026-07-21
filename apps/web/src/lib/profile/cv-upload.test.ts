@@ -190,6 +190,11 @@ describe("uploadCv", () => {
   // it twice and got no run at all. The document id is the right granularity:
   // every upload registers a new document, so a retry is a new attempt, while
   // two invokes for one document still deduplicate.
+  // It used to send the file's SHA-256. `cv_extraction_runs` is unique on
+  // (user_id, idempotency_key) and the claim returns the existing run when the
+  // key matches, so keying on content meant a failed extraction could never be
+  // retried with the same file — the owner whose first CV failed re-uploaded
+  // it twice and got no run at all.
   it("keys extraction on the document, so a failed one can be retried", async () => {
     const { client, calls } = clientOf();
     await uploadCv(client, goodInput());
@@ -198,8 +203,47 @@ describe("uploadCv", () => {
     const body = calls[3]?.parameters ?? {};
     expect(sha256).toMatch(/^[a-f0-9]{64}$/u);
     expect(body.cvDocumentId).toBe(documentId);
-    expect(body.idempotencyKey).toBe(documentId);
+    // Derived from the document, so a second upload of the same bytes is a new
+    // attempt rather than a collision with the first one's failure.
     expect(body.idempotencyKey).not.toBe(sha256);
+  });
+
+  /**
+   * The key must satisfy the receiving contract, not merely be unique.
+   *
+   * A previous fix sent a bare uuid. It was unique, every client test passed,
+   * and the function rejected every request as invalid before any run was
+   * created — because its request schema requires a 64-character hex digest,
+   * and so does the `cv_extraction_runs` check constraint. Nothing asserted the
+   * two ends agreed, so the contract broke silently in the one place no client
+   * test looks.
+   */
+  it("sends a key the extraction function will actually accept", async () => {
+    const { client, calls } = clientOf();
+    await uploadCv(client, goodInput());
+
+    const key = calls[3]?.parameters?.idempotencyKey;
+
+    // supabase/functions/extract-career-profile/handler.ts
+    expect(key).toMatch(/^[a-f0-9]{64}$/u);
+    // The database check constraint on cv_extraction_runs.idempotency_key
+    expect(String(key).length).toBeGreaterThanOrEqual(16);
+    expect(String(key).length).toBeLessThanOrEqual(100);
+    expect(key).toMatch(/^[a-zA-Z0-9._:-]+$/u);
+  });
+
+  it("gives two documents different keys", async () => {
+    const first = clientOf();
+    await uploadCv(first.client, goodInput());
+    // Deliberately not the fixture default, which is what an earlier
+    // version of this test used — making both sides identical and the
+    // assertion meaningless.
+    const second = clientOf({}, "33333333-3333-4333-8333-333333333333");
+    await uploadCv(second.client, goodInput());
+
+    expect(first.calls[3]?.parameters?.idempotencyKey).not.toBe(
+      second.calls[3]?.parameters?.idempotencyKey,
+    );
   });
 
   it("rejects an invalid file before making any request", async () => {
