@@ -59,6 +59,29 @@ const ukWidePhrases = new Set([
 const ukPostcodePattern =
   /^(gir ?0aa|[a-z][0-9]{1,2} ?[0-9][a-z]{2}|[a-z][a-hj-y][0-9]{1,2} ?[0-9][a-z]{2}|[a-z][0-9][a-z] ?[0-9][a-z]{2}|[a-z][a-hj-y][0-9][a-z] ?[0-9][a-z]{2})$/u;
 
+/**
+ * Postcode areas that look British and are not in the United Kingdom.
+ *
+ * Jersey, Guernsey and the Isle of Man are Crown dependencies and Gibraltar is
+ * a British Overseas Territory. All four use UK-format postcodes, so the
+ * pattern above matches them, and all four are outside the UK for right-to-work
+ * purposes — a UK right to work does not carry to them.
+ *
+ * Task 37 pinned these territories as ineligible by *name* but missed them by
+ * *postcode*, which published them. None of these four areas is used anywhere
+ * in the UK, so excluding the area outright is exact rather than a heuristic.
+ *
+ * The four-letter overseas formats — FIQQ, ASCN, STHL, TDCU, BBND, PCRN, TKCA,
+ * SIQQ — already fail the pattern and need no entry here.
+ */
+const nonUkPostcodeAreas = new Set(["je", "gy", "im", "gx"]);
+
+function isUkPostcode(label: string): boolean {
+  if (!ukPostcodePattern.test(label)) return false;
+  const area = /^[a-z]{1,2}/u.exec(label)?.[0] ?? "";
+  return !nonUkPostcodeAreas.has(area);
+}
+
 const ukOfficialRegions = new Set([
   "east midlands",
   "east of england",
@@ -534,7 +557,7 @@ function isQualifiedUkLabel(label: string): boolean {
   return (
     ukNationAnchors.has(label) ||
     ukWidePhrases.has(label) ||
-    ukPostcodePattern.test(label) ||
+    isUkPostcode(label) ||
     ukOfficialRegions.has(label) ||
     // Derry and Newcastle are in this allowlist but not in the gazetteer, which
     // carries Londonderry and Newcastle upon Tyne, so it still earns its place.
