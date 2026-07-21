@@ -6,6 +6,10 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 **Next task: 30b, the provider vocabulary widening.** It is unblocked and, for the first time, lands on a green database gate. Read the roadmap's "Remaining work, in the order it should be done" for why it comes before 31 and 32.
 
+**A defect shipped in Task 37 was found and fixed on 2026-07-21, by reviewing merged work rather than by a report.** Crown dependency and British Overseas Territory postcodes — Jersey `JE`, Guernsey `GY`, Isle of Man `IM`, Gibraltar `GX` — **published as UK**. All four use UK-format postcodes, so the new postcode rule matched them. Task 37 had pinned those territories as ineligible by _name_ and never checked them by _postcode_, so its own test suite reported the boundary as protected while the rule breached it. None of those four areas is used anywhere in the UK, so they are now excluded outright rather than by heuristic, and both spellings are pinned by test alongside Irish Eircodes.
+
+Two lessons worth keeping. **A test that pins a boundary in one notation does not pin it in another** — the Task 37 suite was green and the boundary was open. And **the four tasks merged on 2026-07-21 went out without the independent review pass `AGENTS.md` requires**; this defect was the first thing a review pass found, which is the argument for running one.
+
 **Task 38 is done.** The Teaching Vacancies adapter is delivered and **ships disabled** until the owner enables it. Migration `202607220005_teaching_vacancies_provider.sql`; adapter `packages/ingestion/src/teaching-vacancies.ts`; pgTAP `024`. The live gate is green at 27 files and 572 tests.
 
 Four things from it that will otherwise be rediscovered the hard way:

@@ -509,6 +509,41 @@ describe("UK eligibility location shapes", () => {
     );
   });
 
+  // Crown dependencies and British Overseas Territories use UK-format
+  // postcodes. Task 37 pinned them as ineligible by name but missed them by
+  // postcode, which published them — a right-to-work boundary breached by the
+  // very rule that was meant to respect it. Both spellings are pinned now.
+  it.each([
+    ["Jersey", "JE2 3AB"],
+    ["Guernsey", "GY1 1AA"],
+    ["Isle of Man", "IM1 1AA"],
+    ["Gibraltar", "GX11 1AA"],
+    ["Jersey with a town", "St Helier, JE2 3AB"],
+  ])(
+    "does not publish the %s postcode %s, which is outside the UK",
+    (_territory, location) => {
+      expect(publishes(location)).toBe(false);
+    },
+  );
+
+  // Ireland is the neighbour most likely to appear in a feed JobWarden reads,
+  // and its Eircodes are close enough in shape to be worth pinning.
+  it.each(["D02 AF30", "A65 F4E2", "T12 X289", "Dublin, D02 AF30"])(
+    "does not publish the Irish Eircode %s",
+    (location) => {
+      expect(publishes(location)).toBe(false);
+    },
+  );
+
+  // The exclusion must not have cost real UK postcodes that merely start with
+  // a nearby letter.
+  it.each(["G1 1AA", "IG1 1AA", "GU1 1AA", "IP1 1AA", "S1 2AB"])(
+    "still publishes the UK postcode %s",
+    (location) => {
+      expect(publishes(location)).toBe(true);
+    },
+  );
+
   // Crown dependencies are outside the UK for right-to-work purposes. These
   // quarantining is correct and must not be "fixed" into eligibility.
   it.each([
