@@ -52,7 +52,7 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 32   | Workable adapter                                                           | pending  | None; documented public board endpoint, no credential                                 |
 | 33   | Emit `JobPosting` structured data                                          | blocked  | Owner decision: public job content, plus a redistribution grant per source            |
 | 34   | Read `JobPosting` schema from allowlisted career pages                     | pending  | None; per-employer compliance record before each page is allowlisted                  |
-| 35   | Make the live database gate pass                                           | reviewed | None; the gate passes — 28 migrations, clean lint, 542 tests                          |
+| 35   | Make the live database gate pass                                           | reviewed | Delivered by PR #41 (`ab1515b`); 28 migrations, clean lint, 542 tests                 |
 | 36   | Entrance motion, admin in the hub                                          | shipped  | None                                                                                  |
 
 ## Remaining work, in the order it should be done
