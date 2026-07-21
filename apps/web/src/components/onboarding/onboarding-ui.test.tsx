@@ -11,6 +11,7 @@ vi.mock("server-only", () => ({}));
 const actionMocks = vi.hoisted(() => ({
   advanceOnboardingAction: vi.fn(),
   completeOnboardingAction: vi.fn(),
+  goBackOnboardingAction: vi.fn(),
 }));
 vi.mock("@/app/(onboarding)/onboarding/actions", () => actionMocks);
 
@@ -451,5 +452,82 @@ describe("OnboardingFlow", () => {
 
     root?.unmount();
     container.remove();
+  });
+
+  // Requested by an owner who reached a later step, needed to replace the CV
+  // given at step 1, and found every answer final the moment it was given.
+  describe("going back", () => {
+    it("offers no way back from the first step", () => {
+      render(
+        <OnboardingFlow
+          view={view({
+            state: { path: "cv", completedSteps: [], completedAt: null },
+            currentStep: "cv",
+          })}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: /^Back to/ })).toBeNull();
+    });
+
+    it("names the step it returns to", () => {
+      render(
+        <OnboardingFlow
+          view={view({
+            state: {
+              path: "cv",
+              completedSteps: ["cv", "confirm_evidence"],
+              completedAt: null,
+            },
+            currentStep: "preferences",
+          })}
+        />,
+      );
+      expect(
+        screen.getByRole("button", { name: /^Back to/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("offers a way back from the review step", () => {
+      render(
+        <OnboardingFlow
+          view={view({
+            state: {
+              path: "cv",
+              completedSteps: [
+                "cv",
+                "confirm_evidence",
+                "preferences",
+                "notifications",
+                "review",
+              ],
+              completedAt: null,
+            },
+            currentStep: null,
+          })}
+        />,
+      );
+      expect(
+        screen.getByRole("button", { name: /^Back to/ }),
+      ).toBeInTheDocument();
+    });
+
+    // The fictional preview writes nothing, so it must not offer a control
+    // that would appear to rewind something.
+    it("offers no way back in the read-only preview", () => {
+      render(
+        <OnboardingFlow
+          view={view({
+            state: {
+              path: "cv",
+              completedSteps: ["cv", "confirm_evidence"],
+              completedAt: null,
+            },
+            currentStep: "preferences",
+            dataMode: "fixtures",
+          })}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: /^Back to/ })).toBeNull();
+    });
   });
 });

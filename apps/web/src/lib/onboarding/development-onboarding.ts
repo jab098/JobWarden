@@ -157,6 +157,11 @@ export function createDevelopmentOnboardingRepository(): OnboardingRepository {
         recordPreviewStep(journey, input.step, input.path, input.answers),
       );
     },
+
+    async revisit() {
+      // The preview writes nothing, so it cannot rewind anything either.
+      throw new Error("Unable to return to that step");
+    },
     async finish(): Promise<void> {
       const journey = await readPreviewJourney();
       if (journey === null) throw new PreviewOnboardingUnavailableError();

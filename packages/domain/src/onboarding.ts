@@ -109,6 +109,31 @@ export function nextOnboardingStep(
   return stepsForPath(state.path).find((step) => !completed.has(step)) ?? null;
 }
 
+/**
+ * The step a reader would return to from where they are now.
+ *
+ * `null` on the first step, and on a flow that has not started — there is
+ * nothing behind either, so no control is offered. On the review step, where
+ * `nextOnboardingStep` is `null`, the answer is the last step of the path.
+ *
+ * Going back is expressed as un-completing that step rather than storing a
+ * cursor: `nextOnboardingStep` already returns the earliest gap, so removing
+ * one step from `completedSteps` moves the reader there and re-answering it
+ * returns them to exactly where they were. No second notion of "where I am"
+ * exists to disagree with the first.
+ */
+export function previousOnboardingStep(
+  state: OnboardingState | null,
+): OnboardingStep | null {
+  if (state === null) return null;
+
+  const steps = stepsForPath(state.path);
+  const current = nextOnboardingStep(state);
+  const index = current === null ? steps.length : steps.indexOf(current);
+
+  return index <= 0 ? null : (steps[index - 1] ?? null);
+}
+
 export function isOnboardingComplete(state: OnboardingState | null): boolean {
   if (state === null || state.completedAt === null) return false;
   return nextOnboardingStep(state) === null;
