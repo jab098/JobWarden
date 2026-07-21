@@ -15,9 +15,23 @@ const metadataPrimitiveSchema = z.union([
   z.null(),
 ]);
 
+type MetadataPrimitive = z.infer<typeof metadataPrimitiveSchema>;
+
+/**
+ * Greenhouse also sends **objects** here, which this schema once refused.
+ *
+ * A pay-range field arrives as `{"unit": "USD", "min_value": "320000.0",
+ * "max_value": "400000.0"}`. Because the response is validated as a whole, one
+ * such field rejected the entire board: Datadog's 421 adverts and MongoDB's 392
+ * were discarded on every run, recorded only as `provider_invalid_response`.
+ *
+ * Accepted here so the board parses. Deliberately kept out of `metadataText` —
+ * see the note where that is built.
+ */
 const metadataValueSchema = z.union([
   metadataPrimitiveSchema,
   z.array(metadataPrimitiveSchema),
+  z.record(z.string(), metadataPrimitiveSchema),
 ]);
 
 const greenhouseResponseSchema = z.object({
@@ -55,8 +69,19 @@ function stablePrimitiveText(
   return String(value);
 }
 
-function stableMetadataValue(
+function isObjectMetadata(
   value: z.infer<typeof metadataValueSchema>,
+): value is Record<string, MetadataPrimitive> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Primitives and arrays only. Objects never reach here — they are filtered out
+ * where `metadataText` is built, and the type says so rather than leaving a
+ * future caller to discover it.
+ */
+function stableMetadataValue(
+  value: MetadataPrimitive | MetadataPrimitive[],
 ): string {
   return Array.isArray(value)
     ? value.map(stablePrimitiveText).join(", ")
@@ -108,10 +133,28 @@ export class GreenhouseAdapter implements ProviderAdapter {
         absoluteUrl: job.absolute_url,
         canonicalApplicationUrl: job.absolute_url,
         updatedAt: job.updated_at,
+        // Object-valued metadata is accepted by the schema but never rendered
+        // into text, because `metadataText` is where compensation evidence is
+        // looked for: `compensationEvidence` picks the first clause matching
+        // `£` or `GBP`, and whatever it picks becomes advertised compensation.
+        //
+        // Every object field observed on a live board is a pay range, and every
+        // GBP one is a placeholder — all 24 on MongoDB's board read
+        // `{"unit": "GBP", "min_value": "0.0", "max_value": "0.0"}` under names
+        // like "Baseline Budgeted Salary". Rendering those would advertise a
+        // £0 salary, which is worse than advertising nothing. The non-GBP ones
+        // cannot be used either: compensation is GBP-only.
+        //
+        // Nothing is lost for classification — employment type, working time,
+        // workplace and IR35 are read from the title and description, and no
+        // object field observed carries any of them. Revisit only if a board
+        // is found publishing a genuine non-zero GBP range this way, and then
+        // parse it as structured compensation rather than as loose text.
         metadataText: (job.metadata ?? [])
-          .map(
-            (metadata) =>
-              `${metadata.name}: ${stableMetadataValue(metadata.value)}`,
+          .flatMap((metadata) =>
+            isObjectMetadata(metadata.value)
+              ? []
+              : [`${metadata.name}: ${stableMetadataValue(metadata.value)}`],
           )
           .sort(compareText),
       })),
