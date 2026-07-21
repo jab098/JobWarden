@@ -2,19 +2,18 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(20);
+select plan(21);
 
 -- Task 30b. Lever joins the provider vocabulary as a per-employer
 -- applicant-tracking board, coverage_mode 'complete' like Greenhouse. Its
 -- adapter shipped in Task 30a but 'lever' was not a value the database would
 -- accept, so the adapter could not be configured as a source.
 --
--- Ashby joined in Task 31 alongside its adapter, and Workable is deliberately
--- still rejected. The vocabulary stays in lockstep with the adapters: the
--- database never accepts a provider the runtime cannot ingest, because a
--- source that can be configured but never run is a control that looks
--- configured and does nothing. Task 32 adds its own value alongside its
--- adapter, exactly as this one did.
+-- Ashby joined in Task 31 and Workable in Task 32, each alongside its adapter.
+-- The vocabulary stays in lockstep with the adapters: the database never
+-- accepts a provider the runtime cannot ingest, because a source that can be
+-- configured but never run is a control that looks configured and does
+-- nothing. The list is closed — an unlisted provider is still refused.
 --
 -- Reed is unchanged, and every assertion about it here is a regression guard
 -- on the constraint branch this task edited.
@@ -71,7 +70,9 @@ select throws_ok(
   'an Ashby board cannot be configured as incremental coverage'
 );
 
-select throws_ok(
+-- Task 32 flipped this. Workable's adapter shipped in
+-- `packages/ingestion/src/workable.ts`, so the vocabulary accepts it.
+select lives_ok(
   $$
     insert into public.job_sources (
       provider, board_token, employer_name, enabled, minimum_sync_interval,
@@ -79,13 +80,28 @@ select throws_ok(
       coverage_mode
     ) values (
       'workable', 'acme', 'Acme Ltd', false, interval '1 hour',
-      current_date, current_date, 'Workable has no adapter yet.',
+      current_date, current_date, 'Workable public account API, Task 32.',
       array['apply.workable.com'], 'complete'
+    )
+  $$,
+  'a Workable board is a supported complete-coverage source'
+);
+
+select throws_ok(
+  $$
+    insert into public.job_sources (
+      provider, board_token, employer_name, enabled, minimum_sync_interval,
+      terms_reviewed_at, robots_reviewed_at, compliance_notes, allowed_hosts,
+      coverage_mode
+    ) values (
+      'workable', 'acme-two', 'Acme Two Ltd', false, interval '1 hour',
+      current_date, current_date, 'Workable is a complete-coverage board.',
+      array['apply.workable.com'], 'incremental'
     )
   $$,
   '23514',
   null,
-  'Workable is rejected until its adapter ships in a later task'
+  'a Workable board cannot be configured as incremental coverage'
 );
 
 -- Coverage mode is constrained at the database boundary, not by convention.
@@ -247,18 +263,18 @@ select lives_ok(
   'an administrator can configure an Ashby board'
 );
 
-select throws_ok(
+-- Task 32 flipped this too. Workable is a per-employer board, so like
+-- Greenhouse, Lever and Ashby it is administrator configurable.
+select lives_ok(
   $$
     select public.upsert_job_source(
       null, 'workable', 'configured-acme', 'Configured Acme Ltd', false, 60,
       current_date, current_date, 'GET',
-      'Workable has no adapter yet.',
+      'Workable public account API, Task 32.',
       array['apply.workable.com']
     )
   $$,
-  '22023',
-  'unsupported source provider',
-  'an administrator cannot configure a Workable board before its adapter ships'
+  'an administrator can configure a Workable board'
 );
 
 select throws_ok(

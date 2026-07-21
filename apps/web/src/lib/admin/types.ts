@@ -14,7 +14,13 @@ export type AccessRequestView = {
 };
 
 export type JobSourceView = Omit<SaveJobSourceInput, "provider"> & {
-  provider: "greenhouse" | "lever" | "ashby" | "reed" | "teaching_vacancies";
+  provider:
+    | "greenhouse"
+    | "lever"
+    | "ashby"
+    | "workable"
+    | "reed"
+    | "teaching_vacancies";
   coverageMode: "complete" | "incremental";
   sourceId: string;
   lastSuccessfulSyncAt: string | null;
@@ -27,7 +33,13 @@ export type IngestionRunView = {
   runId: string;
   sourceId: string;
   employerName: string;
-  provider: "greenhouse" | "lever" | "ashby" | "reed" | "teaching_vacancies";
+  provider:
+    | "greenhouse"
+    | "lever"
+    | "ashby"
+    | "workable"
+    | "reed"
+    | "teaching_vacancies";
   triggerType: "scheduled" | "admin" | "manual";
   status: "running" | "succeeded" | "failed";
   responseComplete: boolean;
@@ -60,7 +72,13 @@ export type IngestionRequestView = {
   correlationId: string;
   sourceId: string;
   employerName: string;
-  provider: "greenhouse" | "lever" | "ashby" | "reed" | "teaching_vacancies";
+  provider:
+    | "greenhouse"
+    | "lever"
+    | "ashby"
+    | "workable"
+    | "reed"
+    | "teaching_vacancies";
   status: "pending" | "claimed" | "completed" | "cancelled";
   requestedAt: string;
 };
@@ -68,7 +86,13 @@ export type IngestionRequestView = {
 export type SourceHealthView = {
   sourceId: string;
   employerName: string;
-  provider: "greenhouse" | "lever" | "ashby" | "reed" | "teaching_vacancies";
+  provider:
+    | "greenhouse"
+    | "lever"
+    | "ashby"
+    | "workable"
+    | "reed"
+    | "teaching_vacancies";
   coverageMode: "complete" | "incremental";
   enabled: boolean;
   freshnessState: "fresh" | "stale" | "failed" | "never" | "disabled";

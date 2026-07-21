@@ -4,9 +4,9 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Start here if you are picking this up
 
-**Next task: 32, the Workable adapter.** Task 31 (Ashby) shipped on 2026-07-21 and is the template to copy: adapter, provider value, compliance record and disabled source in one slice. Two things Task 31 learned that will save Task 32 time — **prefix exported helpers by provider** (`toAshbyCompensation`, not `toCompensation`; the barrel re-exports every adapter and the collision is a typecheck failure that silently rebinds another adapter's tests first), and **generate the vocabulary migration rather than transcribing it**, per the instruction below. Task 29 (early-access list operations) is independent of the source work and can jump ahead if the owner wants the signup list sooner.
+**Next task: 29, early-access list operations.** The ATS source work is finished — Lever, Ashby and Workable all landed with their adapters, and the provider vocabulary is closed. Task 29 needs a new migration with two security-definer functions, so it wants the green live gate it now has. Task 34 (read `JobPosting` from allowlisted career pages) follows and is the strictest source path, since it reads a page rather than an API.
 
-**State as of 2026-07-21.** `main` is clean. Tasks 30b, 37, 38 and 31 were completed and merged on this date, along with two defect fixes. Tasks 37 and 38 have had their independent review pass, and the `auth.users` deletion defect is fixed. The live database gate is green at **32 migrations and 28 pgTAP files, 582 tests**. Nothing has ever been deployed anywhere; production readiness has not been started and is a separate thing from the local gate.
+**State as of 2026-07-21.** `main` is clean. Tasks 30b, 37, 38, 31 and 32 were completed and merged on this date, along with two defect fixes and the shared-transport refactor. Tasks 37 and 38 have had their independent review pass, and the `auth.users` deletion defect is fixed. The live database gate is green at **33 migrations and 28 pgTAP files, 583 tests**. Nothing has ever been deployed anywhere; production readiness has not been started and is a separate thing from the local gate.
 
 ### Before you write any SQL
 
@@ -16,11 +16,11 @@ This file is the durable cross-session recovery map. Update task status to `revi
 4. **Never `drop function` and recreate.** A drop resets the ACL to `EXECUTE` for `PUBLIC`. Always `create or replace`.
 5. **Do not hand-write the provider vocabulary migrations.** They are ~750 lines of definer SQL and were produced by extracting each live definition programmatically and substituting only the provider list, then diffing against the originals to prove the change. Re-run that approach; transcribing by hand is how a subtle hole gets in.
 
-### What Task 32 must flip — the pattern Task 31 established
+### The provider vocabulary is now closed
 
-Task 30b deliberately left `ashby` and `workable` pinned as **rejected** at three layers — the `job_sources_supported_provider` constraint, `upsert_job_source`, and the Edge Function row schema — with assertions in `023_provider_vocabulary.sql`, `packages/domain/src/admin.test.ts` and `supabase/functions/ingest-jobs/repository.test.ts`. The reasoning was that a provider value with no adapter lets an administrator configure a source that saves, enables, then fails at dispatch.
+Task 30b left `ashby` and `workable` pinned as **rejected** at three layers — the `job_sources_supported_provider` constraint, `upsert_job_source`, and the Edge Function row schema. Task 31 flipped `ashby` and Task 32 flipped `workable`, each alongside its adapter and never ahead of it.
 
-**Task 31 flipped `ashby` at all three, alongside its adapter, and `workable` is still rejected at all three.** Task 32 flips it the same way, never ahead of its adapter. Every site is listed in the Task 31 record below.
+**All five ATS providers now have adapters, so nothing is pinned rejected any more.** The list is closed rather than empty: an unlisted provider is still refused at every layer, and pgTAP `023` asserts that. A sixth provider would add its value alongside its adapter, exactly as 30b, 31 and 32 did — the reasoning being that a provider value with no adapter lets an administrator configure a source that saves, enables, then fails at dispatch.
 
 ### Lessons from 2026-07-21, in order of how much they will cost you
 
@@ -32,7 +32,7 @@ Task 30b deliberately left `ashby` and `workable` pinned as **rejected** at thre
 
 ### Open debt, none of it blocking Task 31
 
-- **Task 36, Task 26a, Task 30b and Task 31 shipped without an independent review pass.** Tasks 37 and 38 have now had one — see the review record below. Task 31 is the newest of these and the largest, so it is the one to review first.
+- **Task 36, Task 26a, Task 30b, Task 31 and Task 32 shipped without an independent review pass.** Tasks 37 and 38 have now had one — see the review record below. Tasks 31 and 32 are the newest and largest, and they share a shape, so reviewing them together is cheaper than reviewing either alone.
 - The **development administrator preview renders no hub rail**; closing it needs a shell refactor separating the rail's presentation from its live sign-out form.
 - **Task 26a left two owner-visible calls unsettled**: the `interviewing` stage dot is still interactive blue, and no gauge or ring component exists.
 - ~~**One schema defect is recorded and undecided — no `auth.users` row can be deleted.**~~ **Fixed 2026-07-21** by migration `202607220006_audit_log_actor_nulling.sql`. See the record below.
@@ -148,6 +148,7 @@ Task 37 fixed string **shapes**. Six non-settlement shapes still drop and two ar
 | 38. Official UK public-sector sources                                  | reviewed | Independent pass 2026-07-21; no code defect, duplicate-control limit now recorded    |
 | 39. Adzuna licence decision                                            | blocked  | Owner action; written licence and attribution terms required before any connector    |
 | 31. Ashby adapter                                                      | shipped  | Adapter, provider value and compliance record; ships disabled; no independent review |
+| 32. Workable adapter                                                   | shipped  | Closes the ATS vocabulary; groups multi-location rows; ships disabled; no review     |
 
 ## Last verification commands
 
@@ -245,6 +246,26 @@ Run to clear the review debt these two shipped with. Both are now `reviewed`. **
 **The unmet one is duplicate control, and it is unmeetable as built.** Acceptance asked for reconciliation with an existing source to be proven. Deduplication keys on the exact canonical application URL, and this adapter's canonical destination is the service's own advert page, so a teaching role also on the school's ATS board produces a different key and appears twice. Coding around it would mean fuzzy title/employer merging, which `AGENTS.md` forbids. Recorded as a known property in the source's compliance record rather than papered over.
 
 **Not reviewed here.** Tasks 30b, 36 and 26a still carry review debt.
+
+## Task 32 — Workable adapter, 2026-07-21
+
+Closes the ATS source work. Adapter, provider value and compliance record in one slice; the source **ships disabled**.
+
+**The access confirmation found a fork worth knowing about.** Most Workable API documentation describes `GET https://{subdomain}.workable.com/spi/v3/jobs`, which **requires a Bearer token with the `r_jobs` scope** — outside what this task may reach. A separate, genuinely public endpoint is documented in Workable's own careers-page help article: `GET https://www.workable.com/api/accounts/{subdomain}?details=true`, no key. Two live boards answered an unauthenticated request with `200`. `robots.txt` permits `/api`; note it **disallows `/j/`**, the advert permalink, which is a second reason this adapter reads the API and never the advert page. Workable states 10 requests per 10 seconds and no attribution, retention, redistribution or removal terms — recorded as "none stated" rather than as permitted.
+
+**The defining trap was found by probing, not by reading, and no documentation mentions it.** Workable serves a **multi-location advert as one row per location, every row sharing one `shortcode` and one `application_url`**. One live board returned **six rows for two actual adverts** — a single advert repeated five times for Leicester, Coventry, London, Northampton and Royal Tunbridge Wells. Emitting those as six jobs would give five of them an identical canonical deduplication key and let them overwrite one another **non-deterministically**, so whichever row happened to land last would decide the listing's location. The adapter groups rows by `shortcode` and joins their locations with `/`, which is exactly the multi-location shape Task 37 taught the classifier to split. The classifier's all-labels rule then does the right thing on its own: an advert spanning Leicester and Coventry publishes, one spanning London and Paris quarantines.
+
+**That grouping was watched failing.** Under a mutation that emits one job per row, five assertions fail — including the UK-and-abroad case, which without grouping publishes its London half while sharing a deduplication key with its Paris half.
+
+**Two provider properties worth remembering.** Workable publishes **no compensation field of any kind**, on the job or the account, so every listing from this source is `unknown` provenance — a property of the provider rather than a gap in the adapter, and pinned by a test so nobody later "fixes" it by inventing a figure. And `telecommuting` is a bare boolean with **no country attached**, so it can never be UK evidence; a remote Workable role publishes only if its stated locations carry UK evidence.
+
+**The migration was generated, not transcribed**, by the same method as Task 31: extract each live definition with `pg_get_functiondef`, substitute the provider list, diff against the extraction. Exactly seven changed lines across six functions, each adding only `'workable'`. The six objects were re-confirmed by querying the database at slice start rather than carried forward from the Task 31 record.
+
+**This adapter is the first written on the shared transport** rather than a copy of the loop, so it is roughly 250 lines rather than 450.
+
+**Verification.** `pnpm verify` green at **1,591 tests**, of which 20 are the adapter's; `pnpm verify:live` green at **33 migrations, 28 pgTAP files, 583 tests** with clean `db lint`; `pnpm check:supabase` at 33 migrations and 34 forced-RLS tables; clean secret scan and production audit.
+
+**No independent review pass.** Task 32 carries the same review debt as 31, 30b, 36 and 26a.
 
 ## Task 31 — Ashby adapter, 2026-07-21
 

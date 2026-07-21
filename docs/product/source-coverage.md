@@ -136,6 +136,27 @@ Each service below was checked against its own current interface rather than aga
 
 Northern Ireland's official service is named as coverage layer 1 in this document and was not reached in this pass. It needs its own dated record before any implementation.
 
+### Workable public account API — implemented 2026-07-21, ships disabled
+
+Task 32's access-confirmation step. Confirmed against [Workable's own help documentation](https://help.workable.com/hc/en-us/articles/115012771647-Using-the-Workable-API-to-create-a-careers-page) and against two live boards on 2026-07-21, not against a summary.
+
+- **Official interface:** `GET https://www.workable.com/api/accounts/{subdomain}?details=true`. Workable's own careers-page article documents this and the sibling `/locations` and `/departments` endpoints as usable **without an API key**. `?details=true` is what includes the job descriptions.
+- **Authentication:** none, confirmed by unauthenticated `200` responses from two boards. **This is not the endpoint most Workable documentation describes.** The API reference's `GET https://{subdomain}.workable.com/spi/v3/jobs` **requires a Bearer token with the `r_jobs` scope** and must not be used — a credentialed endpoint is outside what this task may reach.
+- **robots.txt:** fetched 2026-07-21. Disallows `/user_password_resets`, `/admin`, `/auth/google` and `/j/` for all agents. **`/api` and `/api/accounts` are not disallowed.** Note that `/j/` — the advert permalink — _is_ disallowed, which is another reason this adapter reads the API and never the advert page.
+- **Rate limits:** Workable's API documentation states **10 requests per 10 seconds**, returning `429` on exceed. One request per board per run sits far below that. Unlike Reed, a `429` here is treated as transient and retried under the shared bounded backoff, because the caller is anonymous, uncredentialed, and nowhere near the stated ceiling.
+- **Terms:** the provider states **no** attribution, retention, redistribution, caching or removal obligations for these public endpoints. Recorded explicitly as "none stated" rather than as "permitted"; treat unstated as unstated, and re-check before any change to what the adapter requests.
+- **Per-employer, not national.** Each board is an individual source with its own compliance record and allowed hosts, like Greenhouse, Lever and Ashby, and is administrator-configurable.
+- **Coverage:** one request returns the whole board, so coverage is **complete** and the two-consecutive-omissions closure rule applies.
+- **Response fields, confirmed live:** `name`, `description`, and `jobs[]` carrying `title`, `shortcode`, `code`, `employment_type`, `telecommuting`, `department`, `url`, `shortlink`, `application_url`, `published_on`, `created_at`, `country`, `city`, `state`, `education`, `experience`, `function`, `industry`, `locations[]`, `description`.
+
+Five implementation facts worth carrying into any future change, so they are not rediscovered:
+
+1. **A multi-location advert is served as one row per location, all sharing one `shortcode`.** This is the defining shape of this source and it was found by probing, not by reading. One live board returned **six rows for two actual adverts** — a single advert repeated five times for Leicester, Coventry, London, Northampton and Royal Tunbridge Wells, each row carrying a one-element `locations` array. Every duplicate row also carries an **identical `application_url`**, so emitting them as separate jobs would give five rows the same canonical deduplication key and let them overwrite one another non-deterministically. The adapter therefore **groups rows by `shortcode` and joins their locations**, which is what Task 37's multi-location splitting already handles.
+2. **There is no compensation field of any kind.** Not in the job, not in the account. Compensation from this source is always `unknown`, never estimated, and that is a property of the provider rather than a gap in the adapter.
+3. **`telecommuting` is never UK evidence.** It is a bare boolean with no country attached, so a remote role carries no explicit UK permission and must not publish on the strength of it.
+4. **`country` and `locations[].countryCode` are provider assertions, not evidence**, following the precedent recorded for Lever and Ashby. `city` and `state` are places the advert itself names, so those are what become location evidence.
+5. **`employment_type` states working time, not contract type.** `"Full-time"` must not be read as permanent, and IR35 is never inferred from any of it.
+
 ### Ashby public job posting API — implemented 2026-07-21, ships disabled
 
 Task 31's access-confirmation step. Confirmed against [Ashby's own documentation](https://developers.ashbyhq.com/docs/public-job-posting-api) and against a live board on 2026-07-21, not against a summary.

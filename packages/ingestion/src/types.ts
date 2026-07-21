@@ -16,6 +16,7 @@ export type JobSource = JobSourceBase &
     | { provider: "greenhouse" }
     | { provider: "lever" }
     | { provider: "ashby" }
+    | { provider: "workable" }
     | { provider: "reed"; boardToken: "gb-discovery" }
     | { provider: "teaching_vacancies"; boardToken: "gb-discovery" }
   );
