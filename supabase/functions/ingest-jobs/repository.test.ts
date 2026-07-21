@@ -135,7 +135,31 @@ describe("Supabase ingestion repository", () => {
     ]);
   });
 
-  it.each(["ashby", "workable"])(
+  it("claims an Ashby board with its own board token, as a per-employer source", async () => {
+    const ashbyRow = {
+      ...claimedRow,
+      provider: "ashby",
+      board_token: "fictional-ashby-board",
+      allowed_hosts: ["jobs.ashbyhq.com"],
+    };
+    const fake = client({
+      claim_ingestion_requests: { data: [ashbyRow], error: null },
+    });
+
+    await expect(
+      createSupabaseIngestionRepository(fake.client).claim(1),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        source: expect.objectContaining({
+          provider: "ashby",
+          boardToken: "fictional-ashby-board",
+          allowedHosts: ["jobs.ashbyhq.com"],
+        }),
+      }),
+    ]);
+  });
+
+  it.each(["workable"])(
     "rejects a %s row, because the vocabulary stays in lockstep with the adapters",
     async (provider) => {
       const fake = client({

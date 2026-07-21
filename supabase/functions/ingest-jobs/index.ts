@@ -1,5 +1,6 @@
 import {
   AdapterError,
+  AshbyAdapter,
   GreenhouseAdapter,
   LeverAdapter,
   ReedAdapter,
@@ -18,6 +19,7 @@ const handler = createIngestionHandler({
   createAdapter: (source, environment) => {
     if (source.provider === "greenhouse") return new GreenhouseAdapter();
     if (source.provider === "lever") return new LeverAdapter();
+    if (source.provider === "ashby") return new AshbyAdapter();
     if (source.provider === "teaching_vacancies") {
       return new TeachingVacanciesAdapter();
     }

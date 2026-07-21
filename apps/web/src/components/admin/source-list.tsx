@@ -103,7 +103,8 @@ export function SourceList({
               {!readOnly &&
               saveAction &&
               (source.provider === "greenhouse" ||
-                source.provider === "lever") ? (
+                source.provider === "lever" ||
+                source.provider === "ashby") ? (
                 <Disclosure
                   label="Edit source configuration"
                   className="mt-4"

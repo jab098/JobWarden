@@ -2,18 +2,19 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(19);
+select plan(20);
 
 -- Task 30b. Lever joins the provider vocabulary as a per-employer
 -- applicant-tracking board, coverage_mode 'complete' like Greenhouse. Its
 -- adapter shipped in Task 30a but 'lever' was not a value the database would
 -- accept, so the adapter could not be configured as a source.
 --
--- Ashby and Workable are deliberately still rejected. The vocabulary stays in
--- lockstep with the adapters: the database never accepts a provider the
--- runtime cannot ingest, because a source that can be configured but never
--- run is a control that looks configured and does nothing. Tasks 31 and 32
--- each add their own value alongside their adapter.
+-- Ashby joined in Task 31 alongside its adapter, and Workable is deliberately
+-- still rejected. The vocabulary stays in lockstep with the adapters: the
+-- database never accepts a provider the runtime cannot ingest, because a
+-- source that can be configured but never run is a control that looks
+-- configured and does nothing. Task 32 adds its own value alongside its
+-- adapter, exactly as this one did.
 --
 -- Reed is unchanged, and every assertion about it here is a regression guard
 -- on the constraint branch this task edited.
@@ -32,7 +33,10 @@ select lives_ok(
   'a Lever board is a supported complete-coverage source'
 );
 
-select throws_ok(
+-- Task 31 flipped this. Ashby's adapter shipped in
+-- `packages/ingestion/src/ashby.ts`, so the vocabulary accepts it — the
+-- lockstep rule is satisfied by the adapter landing, not by the value waiting.
+select lives_ok(
   $$
     insert into public.job_sources (
       provider, board_token, employer_name, enabled, minimum_sync_interval,
@@ -40,13 +44,31 @@ select throws_ok(
       coverage_mode
     ) values (
       'ashby', 'acme', 'Acme Ltd', false, interval '1 hour',
-      current_date, current_date, 'Ashby has no adapter yet.',
+      current_date, current_date, 'Ashby public job posting API, Task 31.',
       array['jobs.ashbyhq.com'], 'complete'
+    )
+  $$,
+  'an Ashby board is a supported complete-coverage source'
+);
+
+-- One documented request returns the whole board, so Ashby is complete like
+-- Greenhouse and Lever. The mode is constrained at the boundary rather than by
+-- convention, so an incremental Ashby source cannot be configured at all.
+select throws_ok(
+  $$
+    insert into public.job_sources (
+      provider, board_token, employer_name, enabled, minimum_sync_interval,
+      terms_reviewed_at, robots_reviewed_at, compliance_notes, allowed_hosts,
+      coverage_mode
+    ) values (
+      'ashby', 'acme-two', 'Acme Two Ltd', false, interval '1 hour',
+      current_date, current_date, 'Ashby is a complete-coverage board.',
+      array['jobs.ashbyhq.com'], 'incremental'
     )
   $$,
   '23514',
   null,
-  'Ashby is rejected until its adapter ships in a later task'
+  'an Ashby board cannot be configured as incremental coverage'
 );
 
 select throws_ok(
@@ -211,18 +233,18 @@ select lives_ok(
   'an administrator can configure a Lever board'
 );
 
-select throws_ok(
+-- Task 31 flipped this too. Ashby is a per-employer board, so unlike Reed and
+-- Teaching Vacancies it is administrator configurable through the source form.
+select lives_ok(
   $$
     select public.upsert_job_source(
       null, 'ashby', 'configured-acme', 'Configured Acme Ltd', false, 60,
       current_date, current_date, 'GET',
-      'Ashby has no adapter yet.',
+      'Ashby public job posting API, Task 31.',
       array['jobs.ashbyhq.com']
     )
   $$,
-  '22023',
-  'unsupported source provider',
-  'an administrator cannot configure an Ashby board before its adapter ships'
+  'an administrator can configure an Ashby board'
 );
 
 select throws_ok(

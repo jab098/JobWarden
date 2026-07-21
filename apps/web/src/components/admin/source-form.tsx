@@ -31,11 +31,16 @@ function SourceFields({ source }: { source?: JobSourceView }) {
         <select
           id={`provider-${source?.sourceId ?? "new"}`}
           name="provider"
-          defaultValue={source?.provider === "lever" ? "lever" : "greenhouse"}
+          defaultValue={
+            source?.provider === "lever" || source?.provider === "ashby"
+              ? source.provider
+              : "greenhouse"
+          }
           className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <option value="greenhouse">Greenhouse</option>
           <option value="lever">Lever</option>
+          <option value="ashby">Ashby</option>
         </select>
       </div>
       <div className="space-y-2">
