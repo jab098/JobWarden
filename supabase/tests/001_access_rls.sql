@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(21);
+select plan(25);
 
 insert into auth.users (
   id,
@@ -308,6 +308,56 @@ select is(
   ),
   0,
   'audit failure rolls back the administrator role write'
+);
+
+-- The bootstrap deadlock, found by an owner following the runbook for the
+-- first time. `bootstrap_admin` granted the role and left `access_requests`
+-- at `pending`, so the first administrator was refused by every product
+-- surface — including `/admin/access`, the only screen that could have
+-- approved them. There was no way out through the product.
+select is(
+  (
+    select status
+    from public.access_requests
+    where user_id = '10000000-0000-4000-8000-000000000005'
+  ),
+  'approved',
+  'bootstrapping an administrator also approves their own access request'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.audit_log
+    where resource_id = '10000000-0000-4000-8000-000000000005'
+      and action = 'access.decided'
+      and metadata ->> 'method' = 'admin_bootstrap'
+  ),
+  1,
+  'the self-approval is audited exactly once, even across a rerun'
+);
+
+-- The two axes stay separate, and the approval reaches exactly one row. It is
+-- granted from `pending` only, so a suspended account is never quietly
+-- reinstated, and no other waiting user is swept up with it.
+select is(
+  (
+    select status
+    from public.access_requests
+    where user_id = '10000000-0000-4000-8000-000000000003'
+  ),
+  'suspended',
+  'bootstrapping an administrator does not reinstate a suspended account'
+);
+
+select is(
+  (
+    select status
+    from public.access_requests
+    where user_id = '10000000-0000-4000-8000-000000000006'
+  ),
+  'pending',
+  'bootstrapping an administrator leaves other pending users pending'
 );
 
 select * from finish();

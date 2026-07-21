@@ -39,6 +39,7 @@ export const requiredMigrationFiles = [
   "202607220009_early_access_operations.sql",
   "202607220010_service_role_least_privilege.sql",
   "202607220011_early_access_no_overwrite.sql",
+  "202607220012_bootstrap_admin_approves.sql",
 ];
 
 const publicTables = [
