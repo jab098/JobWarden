@@ -4,9 +4,60 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Start here if you are picking this up
 
-**Next task: 34, read `JobPosting` from allowlisted career pages.** It is the last buildable source path and the strictest, because it reads a page rather than an API — and it cannot start until the owner has allowlisted at least one employer career page, since a page is never read merely because it happened to carry markup. **Everything else outstanding is owner platform setup**, listed under "What is left" below.
+**The active work is production setup, not a roadmap task.** A live Supabase project now exists and the owner is part-way through `docs/setup/production-setup.md`. Resume there, at **step 6 (deploy)**.
 
-**State as of 2026-07-21.** `main` is clean. Tasks 30b, 37, 38, 31, 32 and 29 were completed and merged on this date, along with two defect fixes and the shared-transport refactor. Tasks 37 and 38 have had their independent review pass, and the `auth.users` deletion defect is fixed. The live database gate is green at **33 migrations and 28 pgTAP files, 583 tests**. Nothing has ever been deployed anywhere; production readiness has not been started and is a separate thing from the local gate.
+### Verify this first — it is untested
+
+The most recent change, PR #68, fixed a defect that returned a reader to step one of onboarding after they finished it. **Nobody has confirmed the fix in the browser.** The database already records that owner's onboarding as complete, so the check is simply whether `/home` now loads instead of bouncing to `/onboarding`:
+
+```sh
+pnpm --filter @jobwarden/web dev
+# sign in, then open http://localhost:3000/home
+```
+
+If it bounces, read `career_onboarding_state` for that owner and compare what `parseOnboardingState` does with the row — that is where the bug lived.
+
+### What is already true of the live project
+
+Confirmed by querying it on 2026-07-21, not remembered:
+
+| Step                              | State                                                                   |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| Supabase project, London region   | done, CLI linked                                                        |
+| 38 migrations pushed              | done — `supabase db push`                                               |
+| Google OAuth provider             | done, sign-in works end to end                                          |
+| Administrator bootstrap           | done — the owner is `admin` **and** `approved`                          |
+| Private `career-documents` bucket | done — created by migration, not by hand                                |
+| CV uploads switched on            | done — `private.app_settings.career_cv_uploads_enabled` is true         |
+| `extract-career-profile` deployed | done, with the `SITE_URL` secret set to `http://localhost:3000`         |
+| A real CV uploaded and extracted  | done — 9 evidence items from 6,436 characters                           |
+| Onboarding completed              | recorded in the database; **browser behaviour unverified since PR #68** |
+
+**Not started:** a domain, the Cloudflare deployment, Turnstile keys, Resend, Sentry, and the two other Edge Functions (`ingest-jobs`, `send-digests`) are undeployed. **No job source is configured, so `jobs` is empty** — nothing will appear in any feed until step 8 of the runbook.
+
+### When the deployment happens, change `SITE_URL`
+
+The Edge Function answers a CORS preflight for exactly one origin. It is set to `http://localhost:3000`. **CV upload will work locally and silently stop working on the deployed site** unless `supabase secrets set SITE_URL=https://your-real-origin` runs too. The runbook says this at both the storage step and the deploy step.
+
+### Nine defects came out of one real setup, and they share a cause
+
+Every one lived in a path that only a real account, a real Google identity or a real CV could reach. The suite was green throughout.
+
+1. `bootstrap:admin` never loaded the `.env.local` the runbook tells you to fill in, so the documented sequence could not work.
+2. It then discarded its own error messages and printed only "failed".
+3. `bootstrap_admin` granted the administrator role without approving the account, and the approval screen is behind the gate — the first owner could not administer their way in.
+4. The extraction function answered no CORS preflight, so every browser upload threw before the function ran, and the caller swallowed the rejection.
+5. The DOCX gate refused any relationship pointing outside the package — which is every hyperlink, so every CV with an email or a portfolio link was rejected as an unsafe archive.
+6. A failed extraction could never be retried, because the idempotency key was the file's content hash.
+7. "Continue with my CV" posted the stored path, so a reader who had once chosen "no CV" was sent down the no-CV branch past their own extracted evidence.
+8. Nothing waited for extraction to finish, so that control was live while parsing ran.
+9. **Zod's `z.iso.datetime()` rejects the numeric offset PostgreSQL sends**, so a completed onboarding row failed to parse and returned the reader to step one. The same defect sat unexposed in the jobs feed, target feed and application tracker, where `last_seen_at` is not nullable — the feed would have failed on every row the moment a source was enabled.
+
+**The common cause is worth more than the list.** Fixtures were written to a shape the real system never produces — a trailing `Z` no database emits, DOCX files with no hyperlinks, an environment loaded by nothing. Green tests measured agreement with those fixtures, not with reality. When something behaves oddly here, **read the row, the header or the wire format before reasoning forward from the code**; three of the fixes above took longer than they needed to because the previous fix was assumed to be the last one instead of the run's `error_code` being re-read each time.
+
+### Roadmap work, when production setup is done
+
+**Task 34 — read `JobPosting` from allowlisted career pages** is the only buildable task left, and it too waits on the owner: a page is never read merely because it happened to carry markup, so an employer career page must be allowlisted first. Everything else on the roadmap is owner action or deliberately closed.
 
 ### Before you write any SQL
 
@@ -93,11 +144,11 @@ Task 37 fixed string **shapes**. Six non-settlement shapes still drop and two ar
 - The build order for the remaining work is in the roadmap under "Remaining work, in the order it should be done". Task numbers record when work was specified, not when it should be built. Task 35 came first and is done, so the SQL work it was gating — 30b, then 31 and 32, then 29 — is now unblocked and lands on a green gate
 - A full-history secret scan was run manually on 2026-07-20: 181 commits, 4.27 MB, **no leaks**. Worth knowing because the workflow's scan covers incoming commits per pull request, not the whole history, so nothing had ever checked the back catalogue on a pull request
 - Remote branches were pruned on or before 2026-07-21: only `main` and the deliberate `codex/task-10-prerebase-backup` remain, and the `.worktrees/` leftovers from Tasks 1–8 are gone. `git branch -a` and `git worktree list` are honest again
-- Active task: none. **Task 31 is next**, and its access confirmation is already merged so it starts with no research. Tasks 30b, 37 and 38 were completed and merged on 2026-07-21, together with a fix for Crown dependency postcodes publishing as UK. Task 33 and Task 39 are blocked on owner decisions, and Task 21 still needs owner platform setup
+- Active task: **production setup**, resuming at step 6 of `docs/setup/production-setup.md`. Every roadmap task is done, owner-gated, or deliberately closed; Task 34 is the only buildable one and waits on the owner allowlisting a career page
 - **Task 35 found four real production defects, not the test artefacts it was expected to find.** Three are fixed; the fourth is recorded below and deliberately left for an owner decision. The `service_role` permission failures that motivated the task were the one thing that _was_ a test artefact, and the evidence is in the Task 35 record below. No grant was added to any product table
 - **Fixed 2026-07-21 — this bullet is kept because the reasoning is still worth reading, but the defect is closed by migration `202607220006_audit_log_actor_nulling.sql`. The description below is of the defect as it stood.** Known schema defect, since fixed: no `auth.users` row could be deleted. `audit_log.actor_user_id` is `on delete set null`, but the `audit_log_append_only` trigger fires `before update or delete` and raises unconditionally, so the foreign key's own nulling action is blocked by the trigger. Because `handle_new_user` writes an `access.requested` audit row for every account at signup, every account has at least one referencing row, and the delete always fails with `audit_log is append-only`. This is **not** a broken promise to users: the privacy policy scopes deletion to career profile data, and `delete_career_profile_data()` delivers that correctly (pgTAP 007 tests 53–54 now prove it). It does mean a compromised, duplicate, or test account cannot be removed, and identity-level erasure would fail. The `on delete set null` shows deletion was intended to work and leave the record unattributed; the trigger defeats that intent. A fix would narrow the trigger to permit exactly that transition — `actor_user_id` moving non-null to null with every other column unchanged — but that narrows a security invariant and was not done inside a task scoped to making the gate pass. `supabase/tests/011_career_profile_concurrency.sql` works around it in its own teardown and says so
-- **The local database gate is green; production readiness has not been started.** These are separate things and the distinction matters. Docker (installed 2026-07-20) unlocked the _local_ database gate, which Task 35 then made pass. It did nothing for production. No Supabase project, no Google OAuth client, no Cloudflare deployment, no Resend account, no Turnstile keys, and no domain exist. Nothing has ever been deployed anywhere. `docs/setup/production-setup.md` is the runbook and none of its steps have been executed
-- **The hub cannot be exercised in a production build at all today**, and this was confirmed rather than assumed on 2026-07-20: `next build` succeeds, but `next start` refuses every hub request with `Development access bypass is forbidden outside local development`. That is `check:production`'s fail-closed guard working exactly as designed — the only way into the hub is the development bypass, and the bypass is correctly forbidden outside `NODE_ENV=development`. So no production-build behaviour of the hub can be observed until Task 21 activates real authentication: not performance, not prefetching, not caching, not anything. That makes Task 21 worth more than its position in the order suggests
+- ~~**The local database gate is green; production readiness has not been started.**~~ **Superseded 2026-07-21.** A real Supabase project exists in the London region with all migrations pushed, Google OAuth connected, an approved administrator, private CV storage, and one Edge Function deployed. Runbook steps 1–5 are done and step 6 (deploy) is next. Still absent: a domain, the Cloudflare deployment, Turnstile keys, Resend, Sentry, and the `ingest-jobs` and `send-digests` functions
+- ~~**The hub cannot be exercised in a production build at all today.**~~ **Superseded 2026-07-21.** Real authentication now exists, and the hub has been used end to end against a live Supabase project with a real Google identity — sign-in, the access gate, administration, CV upload, extraction, and onboarding. The `check:production` fail-closed guard is unchanged and still refuses the development bypass outside `NODE_ENV=development`; what changed is that there is now a real way in. Deployed-build behaviour — performance, prefetching, caching — is still unobserved, because step 6 of the runbook has not run
 - Do not optimise hub navigation against what local development shows. **Next.js disables `<Link>` prefetching entirely in development**, so the "first visit to each page is slow, then instant" pattern seen locally is the signature of prefetch being off and will likely disappear in production on its own. If it survives deployment, the fix is `prefetch={true}` on the rail links, because the hub is `force-dynamic` and Next's default prefetch reaches only as far as the nearest `loading.tsx` — it prefetches the skeleton, not the data. The cost is seven dynamic route renders per hub landing, five of them for pages the reader never opens, so scope it to the routes people actually move between. Measure after Task 21; it cannot be measured before
 - Before starting a source task (37, 38, 31 or 32), read the run record on a real source: `/admin/ingestion` names the places recognition is missing, and widening recognition is cheaper stock than a new adapter. That list is also how Task 37 should be sized — the probe recorded in its roadmap section measured which string _shapes_ fail, not how much feed volume each one represents
 - Outstanding on 26a: no independent review pass was run, and two owner-visible calls were deferred rather than settled. The `interviewing` stage dot is still the interactive blue, and no gauge or ring component exists because nothing on the hub has a real ratio to show. Both are recorded in PR #30
@@ -126,7 +177,7 @@ Task 37 fixed string **shapes**. Six non-settlement shapes still drop and two ar
 | 18. Onboarding gate and state machine                                  | reviewed | Independent review clean; gate fails closed in every direction                      |
 | 19. Guided setup and first-run population                              | reviewed | Independent review clean; writes the profile before unlocking                       |
 | 20. Administrator audit log and operational health                     | reviewed | Independent review clean; no new data is collected                                  |
-| 21. Authentication activation                                          | pending  | Owner-approved 2026-07-19; needs owner platform setup                               |
+| 21. Authentication activation                                          | done     | Live Supabase project, Google OAuth, approved administrator; runbook steps 1–5 done |
 | 22. Search Jobs, route naming, and onboarding follow-ups               | reviewed | Delivered by PR #22; independent review APPROVED at `0fa46de`                       |
 | 23. Single landing destination and public legal footer                 | reviewed | Delivered by PR #23; independent review APPROVED at `25314de`                       |
 | 24. CV upload client                                                   | reviewed | Delivered by PR #24; independent review APPROVED at `976065b`                       |
@@ -290,6 +341,24 @@ Task 35 had checked `select`/`insert`/`update`/`delete` and correctly found `ser
 
 The enumeration property held under four separate attacks, including a timing probe: 200 collision calls ran _faster_ than 200 fresh inserts, and the signed-in non-administrator path raises inside the function before any argument validation, so page-size and identifier errors cannot be used as a side channel. UK eligibility held under 26 adversarial inputs across both new adapters — nothing published without real evidence. The transport extraction is behaviour-preserving, and Reed's deliberate refusal to retry HTTP 429 was verified intact by mutation. Both vocabulary migrations were verified generated rather than transcribed by mechanical diff.
 
+## Live setup fixes, 2026-07-21 — PRs #60 to #68
+
+Nine defects, found by running `docs/setup/production-setup.md` against a real Supabase project with a real Google identity and a real CV. Recorded per fix so none is rediscovered.
+
+| PR  | Fix                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #60 | `bootstrap:admin` ran as bare `node`, so it never loaded the `.env.local` the runbook tells you to fill in, and its catch discarded every error message it threw. It now uses `--env-file-if-exists` and prints the reason                                                                                                                                                                                                                                       |
+| #61 | `bootstrap_admin` granted the administrator role without approving the account. The approval screen sits behind the gate, so the first owner could not administer their way in. It now approves the bootstrapped identity's own request, from `pending` only, audited                                                                                                                                                                                            |
+| #62 | `extract-career-profile` answered no CORS preflight — Supabase adds none — so every browser upload threw before the function ran, and `.catch(() => undefined)` hid it. `withCors` answers it for one exact configured origin, and the caller now reports `extractionStarted`. Also: no vitest config included `supabase/functions/_shared`, so that directory's tests had never run                                                                             |
+| #65 | The DOCX gate refused any relationship pointing outside the package, which is every hyperlink — so every CV carrying an email or a portfolio link was rejected as `unsafe_archive`. External relationships are skipped rather than fatal, which is safe because the parser never dereferences one. Also fixed the retry that could not happen: the idempotency key was the file's content hash, so a failed extraction could never be retried with the same file |
+| #66 | My own regression from #65: the new key was a bare uuid and the function's schema requires a 64-character hex digest, so every upload was rejected before a run existed. Now `sha256(documentId)`, with a test asserting the client's key against the function's own regex                                                                                                                                                                                       |
+| #67 | "Continue with my CV" posted the **stored** path, so a reader who had once chosen "no CV" was sent down the no-CV branch, past the confirmation step holding their extracted evidence. It now posts the path the CV implies. Nothing waited for extraction either, so the control was live while parsing ran; it now waits, with a polling notice in between                                                                                                     |
+| #68 | **`z.iso.datetime()` rejects the numeric offset PostgreSQL sends.** A completed onboarding row failed to parse, so finishing setup returned the reader to step one. The same defect sat unexposed in the jobs feed, target feed and application tracker — `last_seen_at` is not nullable, so the feed would have failed on every row the moment a source was enabled                                                                                             |
+
+Two earlier PRs in the same run: #63 added back navigation to onboarding, because every answer was final the moment it was given; #64 corrected that control's label and its accessible name.
+
+**What they have in common is the lesson.** Each fixture encoded a shape the real system never produces — a trailing `Z` no database emits, a DOCX with no hyperlinks, an environment file loaded by nothing. The suite was green throughout, because it measured agreement with those fixtures rather than with reality. Read the row, the response header, or the wire format before reasoning forward from the code.
+
 ## What is left, 2026-07-21
 
 **One buildable task, and everything else is the owner's.**
@@ -298,7 +367,7 @@ The enumeration property held under four separate attacks, including a timing pr
 
 **Owner platform setup, in the order that unblocks the most:**
 
-1. **Task 21 — authentication activation.** Supabase project and Google OAuth, runbook steps 1–4. This is the gate on everything: no production behaviour of any surface has ever been observed, because `next start` refuses every hub request until real authentication exists.
+1. ~~**Task 21 — authentication activation.**~~ **Done 2026-07-21.** A real Supabase project, Google OAuth, and an approved administrator all exist, and the hub has been used against them. Runbook steps 1–5 are complete; resume at step 6.
 2. **Cloudflare Turnstile keys** (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, free). Until these exist the landing dialog correctly refuses entries, so **the Task 29 queue stays empty by design**.
 3. **Resend account, sending domain and DNS** for the digest function.
 4. **Find an Apprenticeship API key** — free, self-service, and the cheapest coverage still available.

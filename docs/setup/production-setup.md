@@ -2,7 +2,26 @@
 
 **This is the only document you need to take JobWarden from "built" to "live".**
 
-Everything in the product has been built and reviewed against fictional data. Nothing below has been executed, because none of these accounts existed while the product was being built — that was the deliberate plan. Each step says what it unblocks and how to prove it worked.
+Each step says what it unblocks and how to prove it worked.
+
+> ## Progress, 2026-07-21
+>
+> **Steps 1 to 5 are done on a real Supabase project. Resume at step 6.**
+>
+> Confirmed by querying the project rather than from memory: 38 migrations
+> pushed, Google sign-in working end to end, the owner bootstrapped as an
+> administrator **and** approved, the private `career-documents` bucket in
+> place, CV uploads switched on, `extract-career-profile` deployed with its
+> `SITE_URL` secret, and a real CV uploaded and extracted to 9 evidence items.
+>
+> **Not started:** a domain, the Cloudflare deployment, Turnstile, Resend,
+> Sentry, and the `ingest-jobs` and `send-digests` functions. **No job source is
+> configured, so the feed is empty** — that is step 8, not a defect.
+>
+> **Running these steps for the first time found nine defects**, every one in a
+> path that only a real account or a real CV could reach. They are listed in
+> `docs/project-status.md`. Expect to find more: this document had never been
+> executed before, and the parts below step 6 still have not been.
 
 Work through the steps **in order**. Later steps depend on values produced by earlier ones.
 
