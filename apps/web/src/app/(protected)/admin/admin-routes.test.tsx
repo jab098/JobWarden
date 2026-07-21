@@ -44,6 +44,7 @@ import {
   decideAccessAction,
   setAccessRequestsEnabledAction,
 } from "./access/actions";
+import EarlyAccessPage from "./early-access/page";
 import IngestionPage from "./ingestion/page";
 import { requestIngestionAction } from "./ingestion/actions";
 import AdminLayout from "./layout";
@@ -65,6 +66,10 @@ function repository(): AdminRepository {
     listIngestionRequests: vi
       .fn()
       .mockResolvedValue(snapshot.ingestionRequests),
+    listEarlyAccessSignups: vi
+      .fn()
+      .mockResolvedValue({ signups: [], pending: 0 }),
+    markEarlyAccessInvited: vi.fn().mockResolvedValue(true),
     decideAccess: vi.fn().mockResolvedValue(undefined),
     setAccessRequestsEnabled: vi.fn().mockResolvedValue(undefined),
     saveSource: vi
@@ -174,6 +179,14 @@ describe("administrator route boundaries", () => {
     expect(adminRepository.listIngestionRequests).toHaveBeenCalledWith(20);
     expect(
       screen.getByRole("heading", { level: 1, name: "Ingestion" }),
+    ).toBeInTheDocument();
+
+    rerender(await EarlyAccessPage());
+    expect(adminRepository.listEarlyAccessSignups).toHaveBeenCalledWith({
+      limit: 50,
+    });
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Early access" }),
     ).toBeInTheDocument();
   });
 

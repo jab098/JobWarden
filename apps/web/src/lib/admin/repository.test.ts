@@ -37,6 +37,8 @@ function createRepository(): AdminRepository {
     setAccessRequestsEnabled: vi.fn(async () => undefined),
     saveSource: vi.fn(async () => ({ sourceId })),
     listAuditLog: vi.fn(async () => []),
+    listEarlyAccessSignups: vi.fn(async () => ({ signups: [], pending: 0 })),
+    markEarlyAccessInvited: vi.fn(async () => true),
     getOperationalHealth: vi.fn(async () => ({
       deliveries: {
         sentToday: 12,

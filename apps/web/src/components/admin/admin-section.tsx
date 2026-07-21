@@ -6,6 +6,7 @@ import {
   FileClock,
   HeartPulse,
   Import,
+  MailPlus,
   Rss,
   UserCheck,
   type LucideIcon,
@@ -37,6 +38,7 @@ const links: ReadonlyArray<{
   { href: "/admin/ingestion", label: "Ingestion", icon: Import },
   { href: "/admin/health", label: "Health", icon: HeartPulse },
   { href: "/admin/audit", label: "Audit", icon: FileClock },
+  { href: "/admin/early-access", label: "Early access", icon: MailPlus },
 ];
 
 export function AdminSection({
