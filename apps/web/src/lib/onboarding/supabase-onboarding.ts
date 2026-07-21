@@ -163,6 +163,18 @@ export function createSupabaseOnboardingRepository(
       }
     },
 
+    async revisit(step) {
+      try {
+        data(
+          await supabaseClient.rpc("revisit_onboarding_step", {
+            target_step: step,
+          }),
+        );
+      } catch {
+        throw new Error("Unable to return to that step");
+      }
+    },
+
     async finish() {
       const view = await this.getView();
       if (!view.hasSignal) {

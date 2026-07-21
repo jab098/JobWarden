@@ -3,10 +3,15 @@
 import { useActionState } from "react";
 import Link from "next/link";
 
-import { stepsForPath, type OnboardingStep } from "@jobwarden/domain";
+import {
+  previousOnboardingStep,
+  stepsForPath,
+  type OnboardingStep,
+} from "@jobwarden/domain";
 import {
   advanceOnboardingAction,
   completeOnboardingAction,
+  goBackOnboardingAction,
 } from "@/app/(onboarding)/onboarding/actions";
 import {
   ChoiceField,
@@ -76,8 +81,15 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
     completeOnboardingAction,
     initialState,
   );
+  const [goBackState, goBack, goBackPending] = useActionState(
+    goBackOnboardingAction,
+    initialState,
+  );
 
   const steps = stepsForPath(view.path);
+  // Null on the first step and before a flow has started, which is what
+  // decides whether a back control exists at all.
+  const previousStep = previousOnboardingStep(view.state);
   const step = view.currentStep;
   const readOnly = view.dataMode === "fixtures";
   const position = step === null ? steps.length : steps.indexOf(step) + 1;
@@ -377,8 +389,26 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
               </form>
             ) : null}
 
+            {/* Its own form: nesting it inside the step form would be invalid
+            HTML and the browser would drop it, exactly as the evidence list
+            comment above warns. `previousStep` is null on the first step and
+            before a flow has started, so no control appears where there is
+            nothing behind. The server recomputes the target from the reader's
+            own state and ignores anything posted, so this cannot be used to
+            jump to an arbitrary step. */}
+            {previousStep !== null && !readOnly ? (
+              <form action={goBack}>
+                <Button type="submit" variant="ghost" disabled={goBackPending}>
+                  {goBackPending
+                    ? "Going back…"
+                    : `Back to ${stepTitles[previousStep].toLowerCase()}`}
+                </Button>
+              </form>
+            ) : null}
+
             <ActionFeedback state={advanceState} />
             <ActionFeedback state={completeState} />
+            <ActionFeedback state={goBackState} />
           </div>
 
           {readOnly ? (

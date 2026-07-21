@@ -1,6 +1,10 @@
 "use server";
 
-import { onboardingPaths, onboardingSteps } from "@jobwarden/domain";
+import {
+  onboardingPaths,
+  onboardingSteps,
+  previousOnboardingStep,
+} from "@jobwarden/domain";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -88,6 +92,36 @@ export async function advanceOnboardingAction(
     });
     revalidatePath("/onboarding");
     return { kind: "success", message: "Saved." };
+  } catch (error) {
+    return mapError(error);
+  }
+}
+
+/**
+ * Return to the previous step so its answers can be changed.
+ *
+ * The step is not taken from the form. A reader can only go back to the step
+ * immediately behind where they are, computed from their own stored state, so
+ * a crafted field cannot rewind them to an arbitrary point in the flow.
+ */
+export async function goBackOnboardingAction(
+  _previousState: OnboardingActionState,
+): Promise<OnboardingActionState> {
+  if (!isTrustedMutationOrigin(await getOnboardingMutationContext())) {
+    return forbidden;
+  }
+
+  try {
+    const repository = await getOnboardingRepository();
+    const view = await repository.getView();
+    const target = previousOnboardingStep(view.state);
+    if (target === null) {
+      return { kind: "invalid", message: "There is no earlier step." };
+    }
+
+    await repository.revisit(target);
+    revalidatePath("/onboarding");
+    return { kind: "success", message: "Returned to the previous step." };
   } catch (error) {
     return mapError(error);
   }

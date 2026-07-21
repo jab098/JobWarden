@@ -40,6 +40,7 @@ export const requiredMigrationFiles = [
   "202607220010_service_role_least_privilege.sql",
   "202607220011_early_access_no_overwrite.sql",
   "202607220012_bootstrap_admin_approves.sql",
+  "202607220013_revisit_onboarding_step.sql",
 ];
 
 const publicTables = [

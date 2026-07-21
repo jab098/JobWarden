@@ -6,6 +6,7 @@ import {
   nextOnboardingStep,
   onboardingSteps,
   parseOnboardingState,
+  previousOnboardingStep,
   stepsForPath,
   type OnboardingState,
 } from "./onboarding.ts";
@@ -227,5 +228,79 @@ describe("parseOnboardingState", () => {
     // user rather than letting them past.
     expect(parseOnboardingState(input)).toBeNull();
     expect(isOnboardingComplete(parseOnboardingState(input))).toBe(false);
+  });
+});
+
+describe("previousOnboardingStep", () => {
+  // Going back is un-completing a step, so it must agree exactly with
+  // `nextOnboardingStep` — the two together are the whole notion of "where am
+  // I", and a disagreement would strand a reader between them.
+  it("offers nothing on the first step", () => {
+    expect(
+      previousOnboardingStep({
+        path: "cv",
+        completedSteps: [],
+        completedAt: null,
+      }),
+    ).toBeNull();
+  });
+
+  it("offers nothing before a flow has started", () => {
+    expect(previousOnboardingStep(null)).toBeNull();
+  });
+
+  it("offers the step just behind the current one", () => {
+    expect(
+      previousOnboardingStep({
+        path: "cv",
+        completedSteps: ["cv", "confirm_evidence"],
+        completedAt: null,
+      }),
+    ).toBe("confirm_evidence");
+  });
+
+  it("offers the last step of the path from the review step", () => {
+    const steps = stepsForPath("aspiration");
+    expect(
+      previousOnboardingStep({
+        path: "aspiration",
+        completedSteps: [...steps],
+        completedAt: null,
+      }),
+    ).toBe(steps[steps.length - 1]);
+  });
+
+  it("follows the aspiration path rather than the cv one", () => {
+    expect(
+      previousOnboardingStep({
+        path: "aspiration",
+        completedSteps: ["cv"],
+        completedAt: null,
+      }),
+    ).toBe("cv");
+  });
+
+  // The round trip: going back and re-answering returns the reader to exactly
+  // where they were, which is the property that makes this safe to offer.
+  it("returns the reader to where they were once the step is re-answered", () => {
+    const before: OnboardingState = {
+      path: "cv",
+      completedSteps: ["cv", "confirm_evidence"],
+      completedAt: null,
+    };
+    const wasOn = nextOnboardingStep(before);
+    const back = previousOnboardingStep(before);
+
+    const afterGoingBack: OnboardingState = {
+      ...before,
+      completedSteps: before.completedSteps.filter((step) => step !== back),
+    };
+    expect(nextOnboardingStep(afterGoingBack)).toBe(back);
+
+    const afterReanswering: OnboardingState = {
+      ...before,
+      completedSteps: [...afterGoingBack.completedSteps, back!],
+    };
+    expect(nextOnboardingStep(afterReanswering)).toBe(wasOn);
   });
 });
