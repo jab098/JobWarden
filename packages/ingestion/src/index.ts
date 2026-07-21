@@ -1,4 +1,5 @@
 export * from "./advertised-compensation.ts";
+export * from "./adzuna.ts";
 export * from "./ashby.ts";
 export * from "./greenhouse.ts";
 export * from "./hash.ts";
