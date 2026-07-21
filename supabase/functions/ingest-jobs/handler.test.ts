@@ -609,8 +609,9 @@ describe("shared ingestion Edge Function handler", () => {
   it("marks a runaway response incomplete without writing jobs", async () => {
     const claim = source(1);
     const harness = repositoryHarness([claim]);
-    const jobs = Array.from({ length: MAX_RECEIVED_PER_SOURCE + 1 }, (_, index) =>
-      providerJob(index + 1),
+    const jobs = Array.from(
+      { length: MAX_RECEIVED_PER_SOURCE + 1 },
+      (_, index) => providerJob(index + 1),
     );
     const handler = createIngestionHandler(
       dependencies({ harness, adapterFor: () => adapter(jobs) }),
@@ -665,8 +666,9 @@ describe("shared ingestion Edge Function handler", () => {
     // though only 48 were UK-eligible and the write limit is 500.
     const claim = source(1);
     const harness = repositoryHarness([claim]);
-    const jobs = Array.from({ length: MAX_ELIGIBLE_PER_SOURCE + 200 }, (_, index) =>
-      providerJob(index + 1),
+    const jobs = Array.from(
+      { length: MAX_ELIGIBLE_PER_SOURCE + 200 },
+      (_, index) => providerJob(index + 1),
     );
     const handler = createIngestionHandler(
       dependencies({ harness, adapterFor: () => adapter(jobs) }),

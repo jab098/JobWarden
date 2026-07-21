@@ -436,7 +436,11 @@ describe("object-valued metadata", () => {
           jobWithMetadata([
             {
               name: "Pay Transparency Range",
-              value: { unit: "USD", min_value: "320000.0", max_value: "400000.0" },
+              value: {
+                unit: "USD",
+                min_value: "320000.0",
+                max_value: "400000.0",
+              },
             },
             { name: "Department", value: "Engineering" },
           ]),

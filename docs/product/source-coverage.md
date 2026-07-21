@@ -19,9 +19,38 @@ No single source contains every UK vacancy. Coverage must be layered, measured, 
 3. **Employer applicant-tracking systems**
    - Greenhouse first, followed by candidates such as Lever and Ashby where their documented public job-posting APIs permit collection.
    - Each employer board is an individual source with its own compliance record and allowed application hosts.
+   - **The allowed application host must be read from the board, never assumed.** It is set by the employer, not the platform, and getting it wrong quarantines every advert on that board while the run still reports success. See [Application hosts vary per employer](#application-hosts-vary-per-employer).
 4. **Specialist UK boards**
    - Sector, region, contract, part-time, charity, public-service, graduate, and apprenticeship boards can fill measurable gaps.
    - A board is added only when access is permitted and the connector can meet JobWarden's reliability and provenance standards.
+
+## Application hosts vary per employer
+
+Measured on 2026-07-21 by probing all 46 configured Greenhouse boards, after an earlier revision of the ingestion runbook told the reader to use `boards.greenhouse.io` for every board.
+
+**That instruction was wrong for most of them, and wrong in the worst way.** `allowed_hosts` gates the application URL, so a mismatch quarantines every advert on the board as `invalid_application_url` — while the run itself reports success. Nothing turns red; the board simply contributes nothing forever.
+
+The host is chosen by the employer, not by the platform. Across 46 boards there were **19 distinct hosts**:
+
+| Shape                         | Examples                                                                                                            |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `job-boards.greenhouse.io`    | the common default — Monzo, Graphcore, Intercom, GitLab                                                             |
+| `job-boards.eu.greenhouse.io` | Gymshark, Speechmatics, TrueLayer                                                                                   |
+| `boards.greenhouse.io`        | Figma, Glossier, Cloudflare — still live, but a minority                                                            |
+| the employer's own site       | `stripe.com`, `databricks.com`, `careers.datadoghq.com`, `jobs.elastic.co`, `careers.airbnb.com`, `www.mongodb.com` |
+| an unrelated third party      | `wayve.firststage.co`, `app.careerpuck.com`                                                                         |
+
+Read it from the board before adding the source:
+
+```sh
+curl -s "https://boards-api.greenhouse.io/v1/boards/<token>/jobs" \
+  | python3 -c "import json,sys;from urllib.parse import urlparse;\
+print({urlparse(j['absolute_url']).netloc for j in json.load(sys.stdin)['jobs']})"
+```
+
+The same holds for Lever, Ashby and Workable. Each is a per-employer board, so each carries its own application host, and none of them can be filled in from a template.
+
+There is also **no directory of Greenhouse boards**. Expanding coverage is always probe-and-verify against `boards-api.greenhouse.io`: confirm the board exists, count the UK roles, and read the host. Of roughly 180 well-known UK-hiring employers probed, about 135 had no public board at all — so a list written from memory would be mostly wrong, and confidently so.
 
 ## Non-negotiable source rules
 
