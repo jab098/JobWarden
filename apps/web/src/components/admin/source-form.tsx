@@ -32,7 +32,9 @@ function SourceFields({ source }: { source?: JobSourceView }) {
           id={`provider-${source?.sourceId ?? "new"}`}
           name="provider"
           defaultValue={
-            source?.provider === "lever" || source?.provider === "ashby"
+            source?.provider === "lever" ||
+            source?.provider === "ashby" ||
+            source?.provider === "workable"
               ? source.provider
               : "greenhouse"
           }
@@ -41,6 +43,7 @@ function SourceFields({ source }: { source?: JobSourceView }) {
           <option value="greenhouse">Greenhouse</option>
           <option value="lever">Lever</option>
           <option value="ashby">Ashby</option>
+          <option value="workable">Workable</option>
         </select>
       </div>
       <div className="space-y-2">

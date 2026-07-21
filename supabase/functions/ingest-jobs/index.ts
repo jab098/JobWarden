@@ -5,6 +5,7 @@ import {
   LeverAdapter,
   ReedAdapter,
   TeachingVacanciesAdapter,
+  WorkableAdapter,
 } from "@jobwarden/ingestion";
 
 import { readRuntimeEnvironment } from "../_shared/env.ts";
@@ -20,6 +21,7 @@ const handler = createIngestionHandler({
     if (source.provider === "greenhouse") return new GreenhouseAdapter();
     if (source.provider === "lever") return new LeverAdapter();
     if (source.provider === "ashby") return new AshbyAdapter();
+    if (source.provider === "workable") return new WorkableAdapter();
     if (source.provider === "teaching_vacancies") {
       return new TeachingVacanciesAdapter();
     }

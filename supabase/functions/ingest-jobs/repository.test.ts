@@ -159,21 +159,44 @@ describe("Supabase ingestion repository", () => {
     ]);
   });
 
-  it.each(["workable"])(
-    "rejects a %s row, because the vocabulary stays in lockstep with the adapters",
-    async (provider) => {
-      const fake = client({
-        claim_ingestion_requests: {
-          data: [{ ...claimedRow, provider }],
-          error: null,
-        },
-      });
+  it("claims a Workable board with its own board token, as a per-employer source", async () => {
+    const workableRow = {
+      ...claimedRow,
+      provider: "workable",
+      board_token: "fictional-workable-board",
+      allowed_hosts: ["apply.workable.com"],
+    };
+    const fake = client({
+      claim_ingestion_requests: { data: [workableRow], error: null },
+    });
 
-      await expect(
-        createSupabaseIngestionRepository(fake.client).claim(1),
-      ).rejects.toMatchObject({ name: "IngestionRepositoryError" });
-    },
-  );
+    await expect(
+      createSupabaseIngestionRepository(fake.client).claim(1),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        source: expect.objectContaining({
+          provider: "workable",
+          boardToken: "fictional-workable-board",
+          allowedHosts: ["apply.workable.com"],
+        }),
+      }),
+    ]);
+  });
+
+  // The vocabulary is closed. A provider with no adapter is still refused here,
+  // which is the assertion that keeps the database and the runtime in lockstep.
+  it("rejects a row naming a provider with no adapter", async () => {
+    const fake = client({
+      claim_ingestion_requests: {
+        data: [{ ...claimedRow, provider: "indeed" }],
+        error: null,
+      },
+    });
+
+    await expect(
+      createSupabaseIngestionRepository(fake.client).claim(1),
+    ).rejects.toMatchObject({ name: "IngestionRepositoryError" });
+  });
 
   it("rejects malformed database rows without returning their content", async () => {
     const fake = client({

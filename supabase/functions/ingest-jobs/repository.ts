@@ -26,6 +26,7 @@ const claimedRowSchema = z
       "greenhouse",
       "lever",
       "ashby",
+      "workable",
       "reed",
       "teaching_vacancies",
     ]),

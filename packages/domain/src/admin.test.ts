@@ -46,9 +46,14 @@ describe("administrator source validation", () => {
     ).toBe(true);
   });
 
+  it("accepts a Workable board, whose adapter shipped in Task 32", () => {
+    expect(
+      schema.safeParse({ ...validSource(), provider: "workable" }).success,
+    ).toBe(true);
+  });
+
   it.each([
     ["another provider", { provider: "indeed" }],
-    ["Workable, whose adapter has not shipped", { provider: "workable" }],
     [
       "Reed, which is a pinned singleton, not an admin board",
       {
