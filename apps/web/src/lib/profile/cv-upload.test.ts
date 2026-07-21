@@ -146,7 +146,11 @@ describe("uploadCv", () => {
     const { client, calls } = clientOf();
     const outcome = await uploadCv(client, goodInput());
 
-    expect(outcome).toEqual({ kind: "uploaded", documentId });
+    expect(outcome).toEqual({
+      kind: "uploaded",
+      documentId,
+      extractionStarted: true,
+    });
     expect(calls.map((call) => call.step)).toEqual([
       "begin_career_cv_upload",
       "upload",
@@ -269,7 +273,13 @@ describe("uploadCv", () => {
     }
   });
 
-  it("still reports success when extraction cannot be reached", async () => {
+  // The upload really did succeed, so it is still reported as uploaded — but
+  // `extractionStarted` now carries the truth. This test used to assert the
+  // outcome was indistinguishable from a working extraction, which is why a
+  // missing CORS preflight went unnoticed: the request threw on every browser
+  // upload, the rejection was discarded, and the surface said "we are reading
+  // it now" while nothing was.
+  it("reports that extraction did not start when the request is rejected", async () => {
     const { client } = clientOf();
     const failing: CvUploadClient = {
       ...client,
@@ -280,6 +290,25 @@ describe("uploadCv", () => {
     expect(await uploadCv(failing, goodInput())).toEqual({
       kind: "uploaded",
       documentId,
+      extractionStarted: false,
+    });
+  });
+
+  // A CORS preflight failure surfaces exactly like the network rejection above,
+  // which is the shape that actually reached an owner.
+  it("reports that extraction did not start when invoke returns an error", async () => {
+    const { client } = clientOf();
+    const failing: CvUploadClient = {
+      ...client,
+      functions: {
+        invoke: () =>
+          Promise.resolve({ data: null, error: new Error("Failed to fetch") }),
+      },
+    };
+    expect(await uploadCv(failing, goodInput())).toEqual({
+      kind: "uploaded",
+      documentId,
+      extractionStarted: false,
     });
   });
 });

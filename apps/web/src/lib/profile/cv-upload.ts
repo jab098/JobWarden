@@ -37,7 +37,21 @@ export type CvUploadRejection =
   "unsupported_type" | "empty_file" | "too_large" | "content_mismatch";
 
 export type CvUploadOutcome =
-  | { kind: "uploaded"; documentId: string }
+  | {
+      kind: "uploaded";
+      documentId: string;
+      /**
+       * Whether the extraction request was actually accepted.
+       *
+       * The upload and the extraction are separate steps, and the second can
+       * fail while the first succeeded. This used to be discarded with
+       * `.catch(() => undefined)`, so a failed request left the document at
+       * `uploaded` for ever while the surface said "we are reading it now".
+       * That is exactly how a missing CORS preflight went unnoticed until an
+       * owner uploaded their first real CV.
+       */
+      extractionStarted: boolean;
+    }
   | { kind: "rejected"; reason: CvUploadRejection }
   /** The profile moved under us. The caller refreshes and offers a retry. */
   | { kind: "stale" }
@@ -227,14 +241,23 @@ export async function uploadCv(
   const documentId = registered.data;
   if (typeof documentId !== "string") return { kind: "failed" };
 
-  // Extraction is fire-and-forget by design: the document is registered and the
-  // profile page polls its lifecycle status. A failure here leaves a document
-  // in `uploaded` that the user can retry, not a lost upload.
-  await client.functions
-    .invoke("extract-career-profile", {
+  // Extraction is still fire-and-forget — a failure here leaves a document in
+  // `uploaded` that the user can retry, not a lost upload — but the outcome is
+  // now reported rather than discarded, so the surface can stop claiming the
+  // CV is being read when nothing is reading it.
+  //
+  // Both shapes count as failure: `invoke` returns `{ error }` for an HTTP
+  // fault and throws outright for a network or CORS one, and it was the second
+  // that went unseen.
+  let extractionStarted = false;
+  try {
+    const invoked = await client.functions.invoke("extract-career-profile", {
       body: { cvDocumentId: documentId, idempotencyKey: sha256 },
-    })
-    .catch(() => undefined);
+    });
+    extractionStarted = !invoked.error;
+  } catch {
+    extractionStarted = false;
+  }
 
-  return { kind: "uploaded", documentId };
+  return { kind: "uploaded", documentId, extractionStarted };
 }

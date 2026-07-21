@@ -23,6 +23,13 @@ const environmentSchema = z.object({
   CAREER_PROFILE_AI_MODEL: z.string().min(3).max(200).default("disabled"),
   CLOUDFLARE_ACCOUNT_ID: optionalSecret,
   CLOUDFLARE_API_TOKEN: optionalSecret,
+  // The one browser origin allowed to call this function. Optional so an
+  // existing deployment keeps working, and validated as an exact origin by
+  // `withCors` rather than trusted here.
+  SITE_URL: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().max(2_048).optional(),
+  ),
 });
 
 export function readCareerRuntimeEnvironment(
@@ -47,6 +54,7 @@ export function readCareerRuntimeEnvironment(
     result.data.CLOUDFLARE_ACCOUNT_ID !== undefined &&
     result.data.CLOUDFLARE_API_TOKEN !== undefined;
   return {
+    siteUrl: result.data.SITE_URL,
     supabaseUrl: parsedUrl.origin,
     anonKey: result.data.SUPABASE_ANON_KEY,
     serviceRoleKey: result.data.SUPABASE_SERVICE_ROLE_KEY,

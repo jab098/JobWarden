@@ -44,7 +44,19 @@ const resultCopy: Record<
   failed: "The upload did not finish. Try again.",
 };
 
+/**
+ * The upload succeeded but nothing is reading the file. Saying so is the whole
+ * point: the previous copy claimed the CV was being read whatever happened, so
+ * a failed extraction request looked identical to a working one and simply
+ * never finished.
+ */
+const extractionNotStartedCopy =
+  "CV uploaded, but processing did not start. Your file is saved — try again, and tell your administrator if it keeps happening.";
+
 function messageFor(outcome: CvUploadOutcome): string {
+  if (outcome.kind === "uploaded" && !outcome.extractionStarted) {
+    return extractionNotStartedCopy;
+  }
   return outcome.kind === "rejected"
     ? rejectionCopy[outcome.reason]
     : resultCopy[outcome.kind];
