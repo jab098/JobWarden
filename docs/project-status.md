@@ -4,9 +4,9 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Start here if you are picking this up
 
-**Next task: 29, early-access list operations.** The ATS source work is finished — Lever, Ashby and Workable all landed with their adapters, and the provider vocabulary is closed. Task 29 needs a new migration with two security-definer functions, so it wants the green live gate it now has. Task 34 (read `JobPosting` from allowlisted career pages) follows and is the strictest source path, since it reads a page rather than an API.
+**Next task: 34, read `JobPosting` from allowlisted career pages.** It is the last buildable source path and the strictest, because it reads a page rather than an API — and it cannot start until the owner has allowlisted at least one employer career page, since a page is never read merely because it happened to carry markup. **Everything else outstanding is owner platform setup**, listed under "What is left" below.
 
-**State as of 2026-07-21.** `main` is clean. Tasks 30b, 37, 38, 31 and 32 were completed and merged on this date, along with two defect fixes and the shared-transport refactor. Tasks 37 and 38 have had their independent review pass, and the `auth.users` deletion defect is fixed. The live database gate is green at **33 migrations and 28 pgTAP files, 583 tests**. Nothing has ever been deployed anywhere; production readiness has not been started and is a separate thing from the local gate.
+**State as of 2026-07-21.** `main` is clean. Tasks 30b, 37, 38, 31, 32 and 29 were completed and merged on this date, along with two defect fixes and the shared-transport refactor. Tasks 37 and 38 have had their independent review pass, and the `auth.users` deletion defect is fixed. The live database gate is green at **33 migrations and 28 pgTAP files, 583 tests**. Nothing has ever been deployed anywhere; production readiness has not been started and is a separate thing from the local gate.
 
 ### Before you write any SQL
 
@@ -30,7 +30,7 @@ Task 30b left `ashby` and `workable` pinned as **rejected** at three layers — 
 4. **Schema.org `JobPosting` fields are not trustworthy.** Teaching Vacancies serves an hourly rate with `unitText: "YEAR"`, and `baseSalary.value.value` is free text, not a number. Any source carrying this schema deserves the same suspicion — **including Task 34**.
 5. **The project guardrail rejected an adapter's own doc comment** for the word "pricing" while it explained a licence restriction. That is the guardrail working. Reword the comment; do not weaken the guardrail.
 
-### Open debt, none of it blocking Task 31
+### Open debt
 
 - **Task 36, Task 26a, Task 30b, Task 31 and Task 32 shipped without an independent review pass.** Tasks 37 and 38 have now had one — see the review record below. Tasks 31 and 32 are the newest and largest, and they share a shape, so reviewing them together is cheaper than reviewing either alone.
 - The **development administrator preview renders no hub rail**; closing it needs a shell refactor separating the rail's presentation from its live sign-out form.
@@ -147,6 +147,7 @@ Task 37 fixed string **shapes**. Six non-settlement shapes still drop and two ar
 | 37. Location string-shape recognition                                  | reviewed | Independent pass 2026-07-21; boundary held under 53 probes, one notation gap closed  |
 | 38. Official UK public-sector sources                                  | reviewed | Independent pass 2026-07-21; no code defect, duplicate-control limit now recorded    |
 | 39. Adzuna licence decision                                            | blocked  | Owner action; written licence and attribution terms required before any connector    |
+| 29. Early access list operations                                       | shipped  | Administrator queue and auditable invite mark; needs Turnstile keys to receive rows  |
 | 31. Ashby adapter                                                      | shipped  | Adapter, provider value and compliance record; ships disabled; no independent review |
 | 32. Workable adapter                                                   | shipped  | Closes the ATS vocabulary; groups multi-location rows; ships disabled; no review     |
 
@@ -246,6 +247,44 @@ Run to clear the review debt these two shipped with. Both are now `reviewed`. **
 **The unmet one is duplicate control, and it is unmeetable as built.** Acceptance asked for reconciliation with an existing source to be proven. Deduplication keys on the exact canonical application URL, and this adapter's canonical destination is the service's own advert page, so a teaching role also on the school's ATS board produces a different key and appears twice. Coding around it would mean fuzzy title/employer merging, which `AGENTS.md` forbids. Recorded as a known property in the source's compliance record rather than papered over.
 
 **Not reviewed here.** Tasks 30b, 36 and 26a still carry review debt.
+
+## What is left, 2026-07-21
+
+**One buildable task, and everything else is the owner's.**
+
+**Buildable:** Task 34 — read `JobPosting` from allowlisted career pages. It cannot start until the owner allowlists at least one employer career page, because a page is never read merely because it carries markup.
+
+**Owner platform setup, in the order that unblocks the most:**
+
+1. **Task 21 — authentication activation.** Supabase project and Google OAuth, runbook steps 1–4. This is the gate on everything: no production behaviour of any surface has ever been observed, because `next start` refuses every hub request until real authentication exists.
+2. **Cloudflare Turnstile keys** (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, free). Until these exist the landing dialog correctly refuses entries, so **the Task 29 queue stays empty by design**.
+3. **Resend account, sending domain and DNS** for the digest function.
+4. **Find an Apprenticeship API key** — free, self-service, and the cheapest coverage still available.
+5. **NHSBSA contact** for NHS Jobs terms in writing.
+6. **Adzuna written licence** (Task 39) if that source is ever wanted.
+7. **Task 33** stays closed. It needs a decision to serve job content publicly outside the private beta **and** a redistribution grant per source.
+
+**Engineering debt that is not a task:** five slices shipped without the independent review `AGENTS.md` requires — 26a, 30b, 31, 32 and 36. The development administrator preview renders no hub rail. Task 26a left the `interviewing` stage dot interactive blue and no gauge component. Six non-settlement location shapes still drop, two of them one-line fixes, and the next round should be sized from the real unrecognised-location list on `/admin/ingestion`.
+
+## Task 29 — Early access list operations, 2026-07-21
+
+The early-access list has existed since Task 26b with no way to read it; the owner was reading it with SQL. `/admin/early-access` now shows the pending queue oldest first and marks somebody invited.
+
+**The enumeration property is structural, not a promise.** `mark_early_access_invited` takes the row's `uuid` and never an email, so there is no argument a caller could supply to ask "is this address on the list?" — the question cannot be put to the function at all, let alone answered. The administrator gate is the second barrier rather than the only one, and a pgTAP assertion pins the signature so a future change cannot quietly re-key it on an address.
+
+**Idempotent, and deliberately indistinguishable.** Marking a row that is already invited and marking an id that does not exist both return `false` without raising. Reporting them differently would be a small oracle; reporting them identically also means a double click is quiet and writes no duplicate audit entry.
+
+**The audit entry carries the row id and never the email.** The id identifies the decision completely, and a stranger's address in a log that is never erased is data the product has no reason to keep there. A pgTAP assertion checks the metadata for the address.
+
+**Free text is rendered as text.** `hoping_for` is whatever a stranger typed. The database returns it as stored — escaping belongs at the boundary that renders it — and the component renders it through React with no markup path. The test feeds it `<img src=x onerror=...>` and asserts both that the characters reach the page and that **no element was created from them**; it was watched failing under a `dangerouslySetInnerHTML` mutation.
+
+**No product data appears.** These people have no account, so there is nothing of theirs to show beyond what they typed into the dialog.
+
+**The queue will be empty until the owner adds Turnstile keys**, because the landing dialog cannot accept an entry without them. That is the intended state, not a defect.
+
+**Verification.** `pnpm verify` green; `pnpm verify:live` green at **34 migrations, 29 pgTAP files, 605 tests**; `pnpm check:supabase` at 34 migrations and 34 forced-RLS tables.
+
+**No independent review pass.** Task 29 joins the same debt as 26a, 30b, 31, 32 and 36.
 
 ## Task 32 — Workable adapter, 2026-07-21
 

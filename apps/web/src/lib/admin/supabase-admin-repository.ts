@@ -332,6 +332,22 @@ const auditLogSchema = z
   )
   .max(200);
 
+// The queue as the database returns it. Bounded to the page size the read
+// enforces, so a response larger than that is a shape failure rather than
+// something to render.
+const earlyAccessSchema = z
+  .array(
+    z.object({
+      id: z.string().uuid(),
+      email: z.string().min(3).max(320),
+      name: z.string().max(120).nullable(),
+      hoping_for: z.string().max(1000).nullable(),
+      heard_from: z.string().max(50).nullable(),
+      created_at: z.string().min(1),
+    }),
+  )
+  .max(200);
+
 const operationalHealthSchema = z.object({
   deliveries: z.object({
     sentToday: z.number().int().nonnegative(),
@@ -600,6 +616,46 @@ export function createSupabaseAdminRepository(
       } catch {
         throw unavailable();
       }
+    },
+
+    async listEarlyAccessSignups({ limit }) {
+      const [listed, counted] = await Promise.all([
+        supabase.rpc("list_early_access_signups", {
+          max_entries: limit,
+          after_created_at: null,
+        }),
+        supabase.rpc("count_early_access_pending"),
+      ]);
+      if (listed.error) throw mapDatabaseError(listed.error);
+      if (counted.error) throw mapDatabaseError(counted.error);
+
+      try {
+        return {
+          signups: earlyAccessSchema.parse(listed.data ?? []).map((row) => ({
+            id: row.id,
+            email: row.email,
+            name: row.name,
+            hopingFor: row.hoping_for,
+            heardFrom: row.heard_from,
+            createdAt: row.created_at,
+          })),
+          pending: z
+            .number()
+            .int()
+            .nonnegative()
+            .parse(counted.data ?? 0),
+        };
+      } catch {
+        throw unavailable();
+      }
+    },
+
+    async markEarlyAccessInvited(signupId) {
+      const response = await supabase.rpc("mark_early_access_invited", {
+        target_id: signupId,
+      });
+      if (response.error) throw mapDatabaseError(response.error);
+      return z.boolean().parse(response.data ?? false);
     },
 
     async getOperationalHealth() {

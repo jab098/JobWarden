@@ -139,6 +139,21 @@ export type AuditLogEntry = {
   createdAt: string;
 };
 
+/**
+ * One waiting early-access signup.
+ *
+ * `hopingFor` is free text a stranger wrote. It is carried as a plain string
+ * and rendered as text, never as markup.
+ */
+export type EarlyAccessSignup = {
+  id: string;
+  email: string;
+  name: string | null;
+  hopingFor: string | null;
+  heardFrom: string | null;
+  createdAt: string;
+};
+
 export type OperationalHealth = {
   deliveries: {
     sentToday: number;

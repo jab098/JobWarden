@@ -17,6 +17,7 @@ import type {
   JobSourceView,
   SourceHealthView,
   AuditLogEntry,
+  EarlyAccessSignup,
   OperationalHealth,
 } from "./types";
 
@@ -54,6 +55,10 @@ export interface AdminRepository {
     limit: number;
     before: string | null;
   }): Promise<AuditLogEntry[]>;
+  listEarlyAccessSignups(input: {
+    limit: number;
+  }): Promise<{ signups: EarlyAccessSignup[]; pending: number }>;
+  markEarlyAccessInvited(signupId: string): Promise<boolean>;
   getOperationalHealth(): Promise<OperationalHealth>;
 }
 
@@ -130,6 +135,43 @@ export async function decideAccessRequest(
   try {
     await repository.decideAccess(parsed.data);
     return { kind: "success", message: "Access decision recorded." };
+  } catch (error) {
+    return mapRepositoryError(error);
+  }
+}
+
+/**
+ * Marking an early-access signup invited.
+ *
+ * Keyed on the row id, never an email — the database function has no argument
+ * that could ask "is this address on the list?", and this surface does not
+ * supply one either.
+ *
+ * The database is idempotent here: a signup that was already invited, or an id
+ * that does not exist, both return `false` without raising. Those are reported
+ * identically on purpose, so a repeated click is quiet and no caller learns
+ * anything from the difference.
+ */
+export async function markEarlyAccessInvited(
+  repository: AdminRepository,
+  context: MutationContext,
+  formData: FormData,
+): Promise<AdminActionState> {
+  if (!trusted(context)) return forbiddenState;
+
+  const signupId = value(formData, "signupId");
+  if (!/^[0-9a-fA-F-]{36}$/.test(signupId)) {
+    return invalidState({ signupId: ["Choose a signup to mark invited."] });
+  }
+
+  try {
+    const changed = await repository.markEarlyAccessInvited(signupId);
+    return {
+      kind: "success",
+      message: changed
+        ? "Marked as invited."
+        : "That signup was already marked as invited.",
+    };
   } catch (error) {
     return mapRepositoryError(error);
   }
