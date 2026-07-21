@@ -4,7 +4,8 @@ import { normaliseProviderJob } from "@jobwarden/ingestion";
 import type { NormalisationResult } from "@jobwarden/ingestion";
 
 import {
-  MAX_JOBS_PER_SOURCE,
+  MAX_ELIGIBLE_PER_SOURCE,
+  MAX_RECEIVED_PER_SOURCE,
   MAX_SOURCES_PER_INVOCATION,
   type ClaimedIngestion,
   type DropBreakdown,
@@ -279,7 +280,7 @@ async function processSource(options: {
     const { jobs } = fetchResult;
     receivedCount = jobs.length;
 
-    if (jobs.length > MAX_JOBS_PER_SOURCE) {
+    if (jobs.length > MAX_RECEIVED_PER_SOURCE) {
       return finaliseFailure({
         ...options,
         startedAt,
@@ -289,7 +290,7 @@ async function processSource(options: {
         unchangedCount,
         retryCount: 0,
         drops,
-        errorCode: "source_job_cap_reached",
+        errorCode: "source_received_cap_reached",
       });
     }
 
@@ -308,6 +309,22 @@ async function processSource(options: {
     }
 
     eligibleCount = eligibleJobs.length;
+    // Checked here, on what will actually be written, rather than on the
+    // provider's whole response. `upsert_ingested_jobs` refuses a batch above
+    // this, and it refuses it by throwing, so the run fails cleanly instead.
+    if (eligibleJobs.length > MAX_ELIGIBLE_PER_SOURCE) {
+      return finaliseFailure({
+        ...options,
+        startedAt,
+        receivedCount,
+        eligibleCount,
+        upsertedCount,
+        unchangedCount,
+        retryCount: 0,
+        drops,
+        errorCode: "source_job_cap_reached",
+      });
+    }
     if (eligibleJobs.length > 0) {
       const outcomes = await options.repository.upsertJobs(
         options.claim.sourceRunId,
