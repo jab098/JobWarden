@@ -134,3 +134,24 @@ Each service below was checked against its own current interface rather than aga
 ### JobApplyNI — not yet reviewed
 
 Northern Ireland's official service is named as coverage layer 1 in this document and was not reached in this pass. It needs its own dated record before any implementation.
+
+### Ashby public job posting API — reviewed 2026-07-21
+
+Task 31's access-confirmation step. Confirmed against [Ashby's own documentation](https://developers.ashbyhq.com/docs/public-job-posting-api) and against a live board on 2026-07-21, not against a summary.
+
+- **Official interface:** `GET https://api.ashbyhq.com/posting-api/job-board/{board}?includeCompensation=true`. One request returns the whole board, so coverage is **complete** like Greenhouse and Lever, and the two-consecutive-omissions closure rule applies.
+- **Authentication:** none. Ashby documents this as a public endpoint for published postings; the more capable endpoints that do need a key are a separate customer API JobWarden does not use.
+- **Terms and rate limits:** Ashby's page states none for this endpoint. Treat that as unstated rather than unlimited: keep the bounded retries and the per-source minimum interval, and stop on any provider signal.
+- **Per-employer, not national.** Each board is an individual source with its own compliance record and allowed hosts, exactly like Greenhouse and Lever, and is administrator-configurable.
+- **Response fields, confirmed live:** `id`, `title`, `department`, `team`, `employmentType`, `location`, `secondaryLocations`, `publishedAt`, `isListed`, `isRemote`, `workplaceType`, `address.postalAddress`, `jobUrl`, `applyUrl`, `descriptionHtml`, `descriptionPlain`, `compensation`.
+
+Five implementation facts worth carrying into the slice, so they are not rediscovered:
+
+1. **`isListed` must be honoured.** A posting with `isListed: false` is not on the employer's board and must not be published.
+2. **`isRemote` and `workplaceType` are never UK evidence.** The live sample's first posting is `isRemote: true`, `workplaceType: "Remote"`, `location: "Remote - European Union"` — remote, and explicitly _not_ the UK. Remote work needs explicit UK permission, and this field is exactly the trap that rule exists for.
+3. **`address.postalAddress` is frequently empty strings rather than absent** — `postalCode: ""`, `addressLocality: ""`, `addressCountry: "European Union"`. Empty strings must be treated as missing, and `addressCountry` is a provider assertion rather than evidence, following the precedent recorded in the Lever adapter.
+4. **`employmentType` uses Ashby's own vocabulary** (`"FullTime"`), not the schema.org tokens Teaching Vacancies uses. It states working time, not contract type, so it must not be read as permanent.
+5. **`compensation` is a nested object** — `compensationTierSummary`, `scrapeableCompensationSalarySummary`, `compensationTiers`, `summaryComponents` — and needs `includeCompensation=true`. Summaries are free text, so the same discipline Teaching Vacancies needed applies: parse deterministically, keep advertised and unknown distinct, and never estimate.
+6. **`secondaryLocations` is deliberately not used for eligibility.** The primary `location` is what the advert headlines. Reading secondary locations changes what a listing's location means, so it is its own decision rather than a detail of this slice.
+
+- **Decision:** approved for implementation as an employer-board adapter. Each Ashby board still needs its own dated employer entry and allowlisted hosts before it is enabled, and the source ships disabled.
