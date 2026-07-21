@@ -6,6 +6,8 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 **Next task: 30b, the provider vocabulary widening.** It is unblocked and, for the first time, lands on a green database gate. Read the roadmap's "Remaining work, in the order it should be done" for why it comes before 31 and 32.
 
+**Task 30b is planned but not implemented.** [Its plan](superpowers/plans/2026-07-21-task-30b-provider-vocabulary.md) is written, reviewed against the live schema and merged. Start there rather than from the roadmap section, because **the roadmap's site list is partly stale**: it names provider guards in `202607170003` and `202607180002` that are all already superseded by later `create or replace` definitions. The plan carries the corrected map of the eight live objects that actually need widening, and records that `request_source_ingestion`, `get_job_source_health` and `finish_source_ingestion` contain no provider literal at all. Also note the vocabulary needs `ashby` and `workable` added alongside `lever`, so Tasks 31 and 32 never reopen definer SQL.
+
 **The build order after 30b changed on 2026-07-21.** Tasks 37 (location string-shape recognition) and 38 (official UK public-sector sources) were specified and inserted **ahead of** the Ashby and Workable adapters. If you are holding an older mental model in which 31 and 32 are "the real coverage work", drop it — that phrasing was wrong and is corrected below. A new roadmap section, "Rejected source approaches", records six ingestion ideas that fail against constraints this programme already holds; read it before proposing an ingestion change, because the most commonly re-proposed ones are already there with their reasons.
 
 Before writing any SQL, know these three things, because they changed on 2026-07-21 and most of the file below was written when they were not true:
@@ -46,6 +48,7 @@ One schema defect is recorded and undecided — no `auth.users` row can be delet
 - [Ingestion drop visibility plan](superpowers/plans/2026-07-20-ingestion-drop-visibility.md)
 - [Production setup runbook](setup/production-setup.md)
 - [Privacy policy](privacy/privacy-policy.md)
+- [Task 30b implementation plan](superpowers/plans/2026-07-21-task-30b-provider-vocabulary.md)
 - [Canonical Tasks 7–17 roadmap](product/roadmap.md)
 - [Free-tier services and cost boundaries](architecture/free-tier-services.md)
 - [Current architecture record](superpowers/specs/2026-07-17-jobwarden-foundation-design.md#architecture); dedicated architecture decision records are scheduled for Task 16 under `architecture/decisions/`
