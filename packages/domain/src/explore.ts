@@ -265,10 +265,7 @@ const conceptAliases: Readonly<Record<string, readonly string[]>> = {
 
 /** The concept itself, plus any catalogue skill it is an accepted name for. */
 function creditedConcepts(normalizedConcept: string): readonly string[] {
-  return [
-    normalizedConcept,
-    ...(conceptAliases[normalizedConcept] ?? []),
-  ];
+  return [normalizedConcept, ...(conceptAliases[normalizedConcept] ?? [])];
 }
 
 export function evaluateExplorePathways(

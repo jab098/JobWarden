@@ -394,7 +394,6 @@ describe("careerPathways taxonomy", () => {
   });
 });
 
-
 /**
  * The concepts a real CV actually produced on a live project, not invented for
  * this test. They are mostly product names, because that is what CVs say and
@@ -435,16 +434,33 @@ describe("named products credited to the capability they are", () => {
     label: "Alias-only pathway",
     summary: "Exists to prove the alias mechanism, not to be suggested.",
     coreSkills: [
-      { normalizedConcept: "consent and privacy", label: "Consent and privacy", weight: 3, significant: true },
-      { normalizedConcept: "tag management", label: "Tag management", weight: 3, significant: true },
-      { normalizedConcept: "bi dashboard delivery", label: "BI dashboard delivery", weight: 2, significant: false },
+      {
+        normalizedConcept: "consent and privacy",
+        label: "Consent and privacy",
+        weight: 3,
+        significant: true,
+      },
+      {
+        normalizedConcept: "tag management",
+        label: "Tag management",
+        weight: 3,
+        significant: true,
+      },
+      {
+        normalizedConcept: "bi dashboard delivery",
+        label: "BI dashboard delivery",
+        weight: 2,
+        significant: false,
+      },
     ],
   };
 
   it("credits an aliased skill using the reader's own evidence, never an invented one", () => {
-    const [suggestion] = evaluateExplorePathways(realEvidence, [], [
-      aliasOnlyPathway,
-    ]);
+    const [suggestion] = evaluateExplorePathways(
+      realEvidence,
+      [],
+      [aliasOnlyPathway],
+    );
     expect(suggestion).toBeDefined();
 
     const tagManagement = suggestion!.matchedSkills.find(
@@ -473,7 +489,9 @@ describe("named products credited to the capability they are", () => {
 
   it("leaves the 70% threshold intact", () => {
     // One aliased tool cannot carry a seven-skill pathway on its own.
-    const onlyTealium = [confirmedSkill("tealium", "Tealium", { category: "tool" })];
+    const onlyTealium = [
+      confirmedSkill("tealium", "Tealium", { category: "tool" }),
+    ];
     expect(evaluateExplorePathways(onlyTealium, [])).toHaveLength(0);
   });
 

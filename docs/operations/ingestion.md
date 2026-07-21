@@ -13,7 +13,7 @@ The runtime is implemented and fixture-tested locally. It is not live until the 
 - Cron sends one authenticated `POST` to `ingest-jobs`.
 - The function enqueues due sources, then processes at most four rows from the same queue used by administrator requests. It claims one row immediately before processing so untouched work never holds an expiring lease.
 - The worker uses a 120-second internal deadline, stops claiming when fewer than 90 seconds remain, and reserves 15 seconds for persistence/finalisation beneath the hosted function ceiling.
-- A source response may contain at most 500 jobs. Eligible jobs are written in one transactional batch per source. Each claim has a five-minute lease and at most three attempts.
+- At most **500 eligible** jobs are written per source, in one transactional batch, because `upsert_ingested_jobs` refuses a larger batch. A separate and much higher ceiling of 5,000 **received** adverts bounds normalisation work; the two report different error codes. This distinction is deliberate: the ceiling used to count the whole provider response, which discarded Databricks' 780 worldwide adverts and Stripe's 522 even though only 48 and 39 were UK-eligible. Each claim has a five-minute lease and at most three attempts.
 - A source failure is isolated. Failed, incomplete, capped, or lease-expired responses cannot increment omissions or close jobs.
 
 The schedule is four shared invocations per weekday, not four invocations per user. Current Supabase documentation lists 500,000 monthly Edge Function invocations on the Free plan, but the owner must recheck [Edge Function pricing](https://supabase.com/docs/guides/functions/pricing), [Cron guidance](https://supabase.com/docs/guides/cron), and [function limits](https://supabase.com/docs/guides/functions/limits) before deployment.
@@ -71,7 +71,24 @@ Docker or a compatible container runtime is required by the Supabase CLI for the
 
 The repository deliberately does not ship a real board token or silently contact a third-party source. Run this only after an owner has reviewed a public Greenhouse board's terms and robots policy and recorded the evidence.
 
-1. Through `/admin/sources`, create one disabled source with provider `greenhouse`, its exact public board token and employer name, `boards.greenhouse.io` as the allowed host, a minimum interval of at least 60 minutes, both review dates, and compliance notes containing the reviewed URLs and decision.
+1. Through `/admin/sources`, create one disabled source with provider `greenhouse`, its exact public board token and employer name, **the allowed host read from that board's own `absolute_url`** (see the warning below — it is not the same for every board), a minimum interval of at least 60 minutes, both review dates, and compliance notes containing the reviewed URLs and decision.
+
+> **The application host varies per employer. Do not assume one.**
+>
+> This step used to say `boards.greenhouse.io`. That is wrong for most boards, and getting it wrong is silent: every advert is quarantined as `invalid_application_url` while the run still reports success.
+>
+> Probing all 46 configured boards on 2026-07-21 found **19 distinct hosts**. `job-boards.greenhouse.io` is the common one; `job-boards.eu.greenhouse.io` serves several UK and EU employers; `boards.greenhouse.io` survives on a few. Many employers point at their own site instead — `stripe.com`, `databricks.com`, `careers.datadoghq.com`, `jobs.elastic.co`, `wayve.firststage.co`, `app.careerpuck.com`.
+>
+> Read it from the board before adding the source:
+>
+> ```sh
+> curl -s "https://boards-api.greenhouse.io/v1/boards/<token>/jobs" \
+>   | python3 -c "import json,sys;from urllib.parse import urlparse;\
+> print({urlparse(j['absolute_url']).netloc for j in json.load(sys.stdin)['jobs']})"
+> ```
+>
+> The same applies to Lever, Ashby and Workable: each is a per-employer board with its own application host.
+
 2. Enable only that row, then request one run through `/admin/ingestion`. Do not use direct table inserts or invent a fixture board token.
 3. Invoke the local function once with the authenticated `curl` command above. Inspect the queue/run/job queries in **Routine inspection**, plus:
 
@@ -134,6 +151,9 @@ Do this only when the owner chooses to activate Task 8. Authentication setup can
 
 1. Keep every production `job_sources.enabled` value false.
 2. Invoke with no bearer value and with an invalid value; both must return the same `401 {"error":"unauthorised"}` body.
+
+   **This proof cannot run before `INGESTION_CRON_SECRET` is set.** `readEnvironment()` runs ahead of the authentication check, so an unconfigured function answers `503 {"error":"runtime_unavailable"}` to everything, valid bearer included. That is correct fail-closed behaviour, not a defect — but it is indistinguishable from a broken deployment if you expect a 401 here. Set the secret first, then run this step.
+
 3. Add one reviewed public Greenhouse source through `/admin/sources` using the exact setup fields in **Optional reviewed-provider smoke test**. No real source is bundled with the repository.
 4. Invoke once and inspect `ingestion_requests`, `ingestion_runs`, `ingestion_source_runs`, `jobs`, and `audit_log` using the queries below.
 5. Repeat the same payload and prove identity/content idempotency.
