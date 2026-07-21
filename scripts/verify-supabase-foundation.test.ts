@@ -84,6 +84,32 @@ describe("Supabase foundation static verifier", () => {
     );
   });
 
+  it("keeps the revoke rule on when a multi-word argument type makes the signature unreadable", () => {
+    // `character varying` and `bit varying` both end in `varying`, so reducing
+    // an argument to its last token would make them compare equal and let a
+    // drop of one silence the rule for the other. An unreadable signature must
+    // fail closed.
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+    files.set(
+      requiredMigrationFiles[1],
+      `
+        drop function if exists public.widened(bit varying);
+
+        create function public.widened(label character varying)
+        returns boolean
+        language sql stable security definer
+        set search_path = ''
+        as $$ select true $$;
+      `,
+    );
+
+    expect(verifyFoundationSql(files)).toContain(
+      "security-definer function public.widened is dropped and recreated, so it must revoke public and anon execution again afterwards",
+    );
+  });
+
   it("skips the revoke rule for a function that is dropped and not recreated", () => {
     const files = new Map(
       requiredMigrationFiles.map((file) => [file, "select 1;"]),

@@ -2,6 +2,20 @@
 
 This file is the durable cross-session recovery map. Update task status to `reviewed` only after an independent review is clean.
 
+## Start here if you are picking this up
+
+**Next task: 30b, the provider vocabulary widening.** It is unblocked and, for the first time, lands on a green database gate. Read the roadmap's "Remaining work, in the order it should be done" for why it comes before 31 and 32.
+
+Before writing any SQL, know these three things, because they changed on 2026-07-21 and most of the file below was written when they were not true:
+
+1. **The live database gate passes and you are expected to keep it passing.** `npx supabase start`, then `pnpm verify:live`, then `npx supabase stop`. It applies 28 migrations, lints, and runs 25 pgTAP files. Before Task 35 no migration had ever been executed against a real database; that is no longer an excuse available to you.
+2. **30b's whole reason for waiting was that its privilege assertions could not run.** They now do. Task 25c's `anon`-executable hole reached `main` because 850 lines of definer SQL were written against a check that never executed. Run the gate as you go, not at the end.
+3. **The three verification traps** are listed under "Last verification commands". The one that will bite you is that `pnpm verify` does not run the script tests.
+
+Two pieces of debt that are not yours but are open: **Task 36 and Task 26a shipped without an independent review pass**, and the development administrator preview still renders no hub rail because closing that needs a shell refactor that separates the rail's presentation from its live sign-out form. Neither blocks 30b.
+
+One schema defect is recorded and undecided — no `auth.users` row can be deleted. See the bullet below. Do not stumble into it and assume it is new.
+
 ## Source of truth
 
 - [Approved foundation design](superpowers/specs/2026-07-17-jobwarden-foundation-design.md)
@@ -65,7 +79,7 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 1. Monorepo, persistent standards, and invariant guardrails            | reviewed | Commits `5563920` and `dc021a6`; independent review clean                          |
 | 2. UK job domain and access state machine                              | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean                      |
 | 3. Greenhouse adapter and normalisation pipeline                       | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean                       |
-| 4. Supabase schema, RLS, mutations, and database tests                 | reviewed | Review clean; real Supabase reset/pgTAP pending Docker                             |
+| 4. Supabase schema, RLS, mutations, and database tests                 | reviewed | Review clean; reset and pgTAP now execute green since Task 35                      |
 | 5. Supabase authentication and route gates                             | reviewed | Code retained; live OAuth and operational setup deferred                           |
 | 6. Responsive app shell and UK jobs feed                               | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally                        |
 | 7. Administrator operations                                            | reviewed | Delivered by PR #8; final code review clean at `4a1efdd`                           |
@@ -97,13 +111,19 @@ This file is the durable cross-session recovery map. Update task status to `revi
 | 28. Repair the history secret scan                                     | reviewed | Delivered by PR #34; proven to catch a planted secret, not merely to run           |
 | 33. Emit `JobPosting` structured data                                  | blocked  | Stopped before implementation; needs owner decisions, not engineering              |
 | 30a. Lever adapter (TypeScript only)                                   | reviewed | Adapter and 26 tests; dispatches to nothing until 30b, so inert in every path      |
-| 30b. Provider vocabulary widening                                      | pending  | 850 lines of definer SQL across seven functions; waits for Docker                  |
+| 30b. Provider vocabulary widening                                      | next     | 850 lines of definer SQL across seven functions; unblocked, gate is green          |
 | 36. Entrance motion, administration inside the hub                     | shipped  | Owner request from a reference video; no independent review pass                   |
 | 35. Make the live database gate pass                                   | complete | `verify:live` exits zero, lint clean, 537 tests; awaiting independent review       |
 
 ## Last verification commands
 
-Run from the repository root:
+Run from the repository root.
+
+Three traps worth knowing before you rely on the output:
+
+- **`pnpm verify` does not run the two script test files.** They are the line below starting `pnpm vitest run scripts/`, and they are the only cover for `scripts/verify-supabase-foundation.mjs` and for several assertions about pgTAP file _content_. A change to a test file under `supabase/tests/` can break them while `pnpm verify` stays green. Run them.
+- **Never pipe `pnpm verify:live` into `tail` or `grep`.** The pipeline returns the last command's status, so a failing gate reports success. Redirect to a file and check `$?`.
+- **`pnpm verify:live` needs the local stack up**: `npx supabase start` first, `npx supabase stop` when finished. It resets with `--no-seed`, so anything that must exist in a real database belongs in a migration, not in `supabase/seed.sql`.
 
 ```sh
 pnpm install
@@ -125,6 +145,7 @@ pnpm audit --prod
 gitleaks git --staged --no-banner --redact
 git diff --check
 pnpm verify
+npx supabase start && pnpm verify:live; npx supabase stop
 ```
 
 Task 3 passed 56 focused ingestion tests and the workspace passed 177 tests. The reviewed pipeline uses the documented read-only Greenhouse endpoint, validates the complete response before trust, retries only bounded transient failures, strips non-visible or unsafe provider content before every classifier, allowlists HTTPS application hosts, publishes only explicit UK eligibility, and hashes stable normalised content. The final independent full-diff review found no critical, important, or minor issues.
@@ -135,7 +156,7 @@ Task 5 passed 58 focused web tests and the 235-test workspace verification, incl
 
 Task 6 passed independent full-range review with no remaining critical, important, or minor findings and was delivered by PR #5 at merge commit `7878d47`. The fail-closed, server-only development mode uses explicitly fictional UK fixtures and cannot enable outside `NODE_ENV=development`; production continues to use the caller's cookie-bound Supabase client and existing RLS. URL-backed filters cover employment type, working time, workplace, IR35, literal title/employer search, and stable pagination. The responsive editorial workspace provides a desktop rail, accessible mobile navigation and filter sheets, one jobs list, manual employer-site applications, job detail, and designed loading, empty, no-results, error, and not-found states without pricing, payments, AI scoring, or auto-apply. Compensation preserves minor-unit precision without inventing range semantics, IR35 labels do not reinterpret `not_applicable`, and deep out-of-range pages return directly to the last available page. Small warm-surface text meets WCAG AA contrast and valid long source tokens cannot force mobile horizontal overflow. The web suite passed 128 tests across 15 files and the workspace passed 305 tests across 23 files; lint, typecheck, axe checks, the production build, dependency audit, exact-range secret scan, and production fail-closed probe passed. Hydrated browser verification passed `/`, `/jobs`, a filtered URL, and a detail route at 1440 px and true 390 px with meaningful content, no error overlays, no console errors, no horizontal overflow, working mobile sheets, visible keyboard focus, and a 1,000-character unbroken-token regression probe. The frozen install and complete verification were repeated successfully on the merge commit. Live Supabase queries and OAuth remain intentionally unverified until the deferred service setup is resumed.
 
-Task 7 delivered audited access decisions, lawful Greenhouse source configuration, bounded ingestion visibility, and a globally coalesced manual-ingestion request queue. Production `/admin` still requires server-derived administrator access; mutation forms cannot supply actor or role authority, exact-origin validation fails closed, and the caller-bound Supabase client remains subject to RLS/RPC checks. The separate `/development/admin-preview` uses deeply immutable fictional data, imports no production repository or mutation action, exposes no usable production privilege, and is forbidden outside exact local development mode. The editorial operations workspace passed automated accessibility coverage and true 1440 px / 390 px browser checks without horizontal document overflow or a framework error overlay. Independent review findings covering strict Origin parsing, PostgreSQL day intervals, confirmation lifecycles, stable live regions, colour contrast, and fictional fixtures were remediated; the final re-review found no remaining critical, important, or minor issues. The workspace passed 393 tests across 32 files, formatting, lint, typechecking, guardrails, a normal production build, the static four-migration/ten-forced-RLS-table Supabase check, production dependency audit, and a 51-commit Gitleaks scan. A production build with `JOBWARDEN_DEV_ACCESS_BYPASS=true` failed closed with the expected forbidden-bypass error. Docker is not installed, so the real Supabase reset and pgTAP suite—including `supabase/tests/004_admin_operations.sql`—did not run and remain mandatory before live deployment. No owner platform setup is required for the completed fictional/local Task 7 slice.
+Task 7 delivered audited access decisions, lawful Greenhouse source configuration, bounded ingestion visibility, and a globally coalesced manual-ingestion request queue. Production `/admin` still requires server-derived administrator access; mutation forms cannot supply actor or role authority, exact-origin validation fails closed, and the caller-bound Supabase client remains subject to RLS/RPC checks. The separate `/development/admin-preview` uses deeply immutable fictional data, imports no production repository or mutation action, exposes no usable production privilege, and is forbidden outside exact local development mode. The editorial operations workspace passed automated accessibility coverage and true 1440 px / 390 px browser checks without horizontal document overflow or a framework error overlay. Independent review findings covering strict Origin parsing, PostgreSQL day intervals, confirmation lifecycles, stable live regions, colour contrast, and fictional fixtures were remediated; the final re-review found no remaining critical, important, or minor issues. The workspace passed 393 tests across 32 files, formatting, lint, typechecking, guardrails, a normal production build, the static four-migration/ten-forced-RLS-table Supabase check, production dependency audit, and a 51-commit Gitleaks scan. A production build with `JOBWARDEN_DEV_ACCESS_BYPASS=true` failed closed with the expected forbidden-bypass error. Docker was not installed at the time, so the real Supabase reset and pgTAP suite—including `supabase/tests/004_admin_operations.sql`—did not run then; Task 35 has since made them run green, and `004` passes its full 20-test plan. No owner platform setup is required for the completed fictional/local Task 7 slice.
 
 Task 8 delivered a custom-bearer-protected Supabase Edge Function, a shared scheduled/administrator queue with just-in-time claims up to a four-source invocation cap, a 120-second internal deadline, transactional job batches, five-minute leases and a three-attempt ceiling, GMT/BST-safe London scheduling, service-role-only RPCs, source-isolated Greenhouse execution, a 500-job response ceiling, a 36-assertion pgTAP specification, and a complete operations guide through PR #9. Focused function verification passed 34 tests across four files; the unchanged repository suite passed 393 tests across 32 files, for 427 automated tests total. Function typechecking, a pinned Deno 2 deployment-graph check, the five-migration static Supabase verifier, guardrails, formatting, lint, both dependency audits, the exact-range secret scan, and the production web build passed. The final independent re-review of `7df2818..8556997` found no remaining Critical, Important, or Minor issues. Docker remains unavailable, so `supabase db reset` and the real pgTAP suite through `005_shared_ingestion_runtime.sql` are still mandatory before any live source is enabled. No owner platform setup is required until the runtime is activated.
 

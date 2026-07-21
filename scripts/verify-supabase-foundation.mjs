@@ -113,11 +113,22 @@ function argumentTypeList(text) {
   const inner = text.slice(open + 1, close).trim();
   if (inner === "") return [];
 
-  return inner.split(",").map((part) => {
+  const types = inner.split(",").map((part) => {
     const withoutDefault = part.split(/\s+default\s+/i)[0].trim();
+
+    // Multi-word types (`character varying`, `double precision`, `timestamp
+    // with time zone`) cannot be reduced to a final token: `character varying`
+    // and `bit varying` would both collapse to `varying` and compare equal,
+    // which would let a drop of one silence the revoke rule for the other. Fail
+    // closed instead of guessing — an unreadable signature must never be the
+    // thing that switches a security check off.
+    if (/\b(varying|precision|zone)\b/i.test(withoutDefault)) return null;
+
     const tokens = withoutDefault.split(/\s+/);
     return tokens[tokens.length - 1].toLowerCase();
   });
+
+  return types.some((type) => type === null) ? null : types;
 }
 
 function sameArgumentTypes(left, right) {
