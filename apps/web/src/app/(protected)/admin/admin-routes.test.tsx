@@ -50,6 +50,7 @@ import { requestIngestionAction } from "./ingestion/actions";
 import AdminLayout from "./layout";
 import AdminPage from "./page";
 import SourcesPage from "./sources/page";
+import { markEarlyAccessInvitedAction } from "./early-access/actions";
 import { saveSourceAction } from "./sources/actions";
 
 const snapshot = getDevelopmentAdminSnapshot();
@@ -229,13 +230,22 @@ describe("administrator route boundaries", () => {
       (await requestIngestionAction({ kind: "idle" }, ingestion)).kind,
     ).toBe("success");
 
-    expect(mocks.headers).toHaveBeenCalledTimes(4);
+    // Task 29's mutation was absent from this exact array, which is how an
+    // independent review noticed its origin gate had no coverage at all.
+    const invite = new FormData();
+    invite.set("signupId", "11111111-1111-4111-8111-111111111111");
+    expect(
+      (await markEarlyAccessInvitedAction({ kind: "idle" }, invite)).kind,
+    ).toBe("success");
+
+    expect(mocks.headers).toHaveBeenCalledTimes(5);
     expect(mocks.revalidatePath.mock.calls).toEqual([
       ["/admin/access"],
       ["/admin/access"],
       ["/admin/sources"],
       ["/admin/ingestion"],
       ["/admin/ingestion"],
+      ["/admin/early-access"],
     ]);
   });
 });

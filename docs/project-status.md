@@ -32,7 +32,7 @@ Task 30b left `ashby` and `workable` pinned as **rejected** at three layers — 
 
 ### Open debt
 
-- **Task 36, Task 26a, Task 30b, Task 31 and Task 32 shipped without an independent review pass.** Tasks 37 and 38 have now had one — see the review record below. Tasks 31 and 32 are the newest and largest, and they share a shape, so reviewing them together is cheaper than reviewing either alone.
+- ~~Six slices shipped without an independent review pass.~~ **All reviewed 2026-07-21** — see the record below. **There is no outstanding review debt.**
 - The **development administrator preview renders no hub rail**; closing it needs a shell refactor separating the rail's presentation from its live sign-out form.
 - **Task 26a left two owner-visible calls unsettled**: the `interviewing` stage dot is still interactive blue, and no gauge or ring component exists.
 - ~~**One schema defect is recorded and undecided — no `auth.users` row can be deleted.**~~ **Fixed 2026-07-21** by migration `202607220006_audit_log_actor_nulling.sql`. See the record below.
@@ -104,52 +104,52 @@ Task 37 fixed string **shapes**. Six non-settlement shapes still drop and two ar
 
 ## Task progress
 
-| Task                                                                   | Status   | Notes                                                                                |
-| ---------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------ |
-| 1. Monorepo, persistent standards, and invariant guardrails            | reviewed | Commits `5563920` and `dc021a6`; independent review clean                            |
-| 2. UK job domain and access state machine                              | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean                        |
-| 3. Greenhouse adapter and normalisation pipeline                       | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean                         |
-| 4. Supabase schema, RLS, mutations, and database tests                 | reviewed | Review clean; reset and pgTAP now execute green since Task 35                        |
-| 5. Supabase authentication and route gates                             | reviewed | Code retained; live OAuth and operational setup deferred                             |
-| 6. Responsive app shell and UK jobs feed                               | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally                          |
-| 7. Administrator operations                                            | reviewed | Delivered by PR #8; final code review clean at `4a1efdd`                             |
-| 8. Shared ingestion runtime                                            | reviewed | Delivered by PR #9; final code review clean at `8556997`                             |
-| 9. UK coverage and compensation                                        | reviewed | Delivered by PR #10; merge commit `44a3580` verified locally                         |
-| 10. Career profile, onboarding, and CV extraction                      | reviewed | Delivered by PR #11; merge commit `06b5a9c` verified locally                         |
-| 11. Target Feed and explainable fit scores                             | reviewed | Delivered by PR #12; merge commit `c86a14d` verified locally                         |
-| 12. Explore and career pathways                                        | reviewed | Delivered by PR #13; merge commit `124216f` verified locally                         |
-| 13. Application tracker and follow-ups                                 | reviewed | Delivered by PR #14; merge commit `9e66b32` verified locally                         |
-| 14. Scheduled updates and notifications                                | reviewed | Delivered by PR #15; merge commit `41ab43f` verified locally                         |
-| 15. Evidence-bound CV tailoring                                        | reviewed | Delivered by PR #16; merge commit `ed75c9d` verified locally                         |
-| 16. Privacy, production access, deployment, and full-path verification | reviewed | Delivered by PR #18; merge commit `46dacb4`; live setup pending                      |
-| 17. Home activity dashboard                                            | reviewed | Delivered by PR #17; merge commit `2246b49` verified locally                         |
-| 18. Onboarding gate and state machine                                  | reviewed | Independent review clean; gate fails closed in every direction                       |
-| 19. Guided setup and first-run population                              | reviewed | Independent review clean; writes the profile before unlocking                        |
-| 20. Administrator audit log and operational health                     | reviewed | Independent review clean; no new data is collected                                   |
-| 21. Authentication activation                                          | pending  | Owner-approved 2026-07-19; needs owner platform setup                                |
-| 22. Search Jobs, route naming, and onboarding follow-ups               | reviewed | Delivered by PR #22; independent review APPROVED at `0fa46de`                        |
-| 23. Single landing destination and public legal footer                 | reviewed | Delivered by PR #23; independent review APPROVED at `25314de`                        |
-| 24. CV upload client                                                   | reviewed | Delivered by PR #24; independent review APPROVED at `976065b`                        |
-| 25. Location and radius                                                | reviewed | Delivered by PR #25; review found a wrong seeded coordinate, fixed at `ca625e8`      |
-| 25a. job_locations ingestion writer                                    | reviewed | Delivered by PR #26 at `7ffed39`; review caught a false UK remote-permission claim   |
-| 25b. UK eligibility classifier                                         | reviewed | Delivered by PR #27 at `94913bf`; review rejected the first design and was right     |
-| 25c. Ingestion drop visibility                                         | reviewed | Delivered by PR #28 at `6ad2e07`; review caught an RPC left open to anon             |
-| 26. Settings, sources, and support pages                               | shipped  | Delivered directly on `main` at `3aa4283`; not recorded here at the time             |
-| 26a. Card surface, graphite data, and viewport-scaled frame            | shipped  | Delivered by PR #30 at `58a80fd`; verified green, no independent review pass         |
-| 26b. Owner surface complaints and the early-access dialog              | shipped  | Delivered by PR #31 at `53d8fbe`; dialog needs Turnstile keys and `202607220001`     |
-| 27. Onboarding hydration defect                                        | reviewed | Not reproducible at the commit that reported it; regression test delivered instead   |
-| 28. Repair the history secret scan                                     | reviewed | Delivered by PR #34; proven to catch a planted secret, not merely to run             |
-| 33. Emit `JobPosting` structured data                                  | blocked  | Stopped before implementation; needs owner decisions, not engineering                |
-| 30a. Lever adapter (TypeScript only)                                   | reviewed | Adapter and 26 tests; dispatches to nothing until 30b, so inert in every path        |
-| 36. Entrance motion, administration inside the hub                     | shipped  | Owner request from a reference video; no independent review pass                     |
-| 35. Make the live database gate pass                                   | reviewed | Delivered by PR #41 at `ab1515b`; 542 tests, lint clean, review APPROVED             |
-| 30b. Provider vocabulary widening                                      | shipped  | `lever` accepted; Ashby/Workable rejected until their adapters ship; 561 tests       |
-| 37. Location string-shape recognition                                  | reviewed | Independent pass 2026-07-21; boundary held under 53 probes, one notation gap closed  |
-| 38. Official UK public-sector sources                                  | reviewed | Independent pass 2026-07-21; no code defect, duplicate-control limit now recorded    |
-| 39. Adzuna licence decision                                            | blocked  | Owner action; written licence and attribution terms required before any connector    |
-| 29. Early access list operations                                       | shipped  | Administrator queue and auditable invite mark; needs Turnstile keys to receive rows  |
-| 31. Ashby adapter                                                      | shipped  | Adapter, provider value and compliance record; ships disabled; no independent review |
-| 32. Workable adapter                                                   | shipped  | Closes the ATS vocabulary; groups multi-location rows; ships disabled; no review     |
+| Task                                                                   | Status   | Notes                                                                               |
+| ---------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------- |
+| 1. Monorepo, persistent standards, and invariant guardrails            | reviewed | Commits `5563920` and `dc021a6`; independent review clean                           |
+| 2. UK job domain and access state machine                              | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean                       |
+| 3. Greenhouse adapter and normalisation pipeline                       | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean                        |
+| 4. Supabase schema, RLS, mutations, and database tests                 | reviewed | Review clean; reset and pgTAP now execute green since Task 35                       |
+| 5. Supabase authentication and route gates                             | reviewed | Code retained; live OAuth and operational setup deferred                            |
+| 6. Responsive app shell and UK jobs feed                               | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally                         |
+| 7. Administrator operations                                            | reviewed | Delivered by PR #8; final code review clean at `4a1efdd`                            |
+| 8. Shared ingestion runtime                                            | reviewed | Delivered by PR #9; final code review clean at `8556997`                            |
+| 9. UK coverage and compensation                                        | reviewed | Delivered by PR #10; merge commit `44a3580` verified locally                        |
+| 10. Career profile, onboarding, and CV extraction                      | reviewed | Delivered by PR #11; merge commit `06b5a9c` verified locally                        |
+| 11. Target Feed and explainable fit scores                             | reviewed | Delivered by PR #12; merge commit `c86a14d` verified locally                        |
+| 12. Explore and career pathways                                        | reviewed | Delivered by PR #13; merge commit `124216f` verified locally                        |
+| 13. Application tracker and follow-ups                                 | reviewed | Delivered by PR #14; merge commit `9e66b32` verified locally                        |
+| 14. Scheduled updates and notifications                                | reviewed | Delivered by PR #15; merge commit `41ab43f` verified locally                        |
+| 15. Evidence-bound CV tailoring                                        | reviewed | Delivered by PR #16; merge commit `ed75c9d` verified locally                        |
+| 16. Privacy, production access, deployment, and full-path verification | reviewed | Delivered by PR #18; merge commit `46dacb4`; live setup pending                     |
+| 17. Home activity dashboard                                            | reviewed | Delivered by PR #17; merge commit `2246b49` verified locally                        |
+| 18. Onboarding gate and state machine                                  | reviewed | Independent review clean; gate fails closed in every direction                      |
+| 19. Guided setup and first-run population                              | reviewed | Independent review clean; writes the profile before unlocking                       |
+| 20. Administrator audit log and operational health                     | reviewed | Independent review clean; no new data is collected                                  |
+| 21. Authentication activation                                          | pending  | Owner-approved 2026-07-19; needs owner platform setup                               |
+| 22. Search Jobs, route naming, and onboarding follow-ups               | reviewed | Delivered by PR #22; independent review APPROVED at `0fa46de`                       |
+| 23. Single landing destination and public legal footer                 | reviewed | Delivered by PR #23; independent review APPROVED at `25314de`                       |
+| 24. CV upload client                                                   | reviewed | Delivered by PR #24; independent review APPROVED at `976065b`                       |
+| 25. Location and radius                                                | reviewed | Delivered by PR #25; review found a wrong seeded coordinate, fixed at `ca625e8`     |
+| 25a. job_locations ingestion writer                                    | reviewed | Delivered by PR #26 at `7ffed39`; review caught a false UK remote-permission claim  |
+| 25b. UK eligibility classifier                                         | reviewed | Delivered by PR #27 at `94913bf`; review rejected the first design and was right    |
+| 25c. Ingestion drop visibility                                         | reviewed | Delivered by PR #28 at `6ad2e07`; review caught an RPC left open to anon            |
+| 26. Settings, sources, and support pages                               | shipped  | Delivered directly on `main` at `3aa4283`; not recorded here at the time            |
+| 26a. Card surface, graphite data, and viewport-scaled frame            | reviewed | Independent pass 2026-07-21; no defect, container utilities verified in built CSS   |
+| 26b. Owner surface complaints and the early-access dialog              | shipped  | Delivered by PR #31 at `53d8fbe`; dialog needs Turnstile keys and `202607220001`    |
+| 27. Onboarding hydration defect                                        | reviewed | Not reproducible at the commit that reported it; regression test delivered instead  |
+| 28. Repair the history secret scan                                     | reviewed | Delivered by PR #34; proven to catch a planted secret, not merely to run            |
+| 33. Emit `JobPosting` structured data                                  | blocked  | Stopped before implementation; needs owner decisions, not engineering               |
+| 30a. Lever adapter (TypeScript only)                                   | reviewed | Adapter and 26 tests; dispatches to nothing until 30b, so inert in every path       |
+| 36. Entrance motion, administration inside the hub                     | reviewed | Independent pass 2026-07-21; `Reveal` fails visible on every path, no defect        |
+| 35. Make the live database gate pass                                   | reviewed | Delivered by PR #41 at `ab1515b`; 542 tests, lint clean, review APPROVED            |
+| 30b. Provider vocabulary widening                                      | reviewed | Independent pass 2026-07-21; bodies diffed against predecessors, no defect          |
+| 37. Location string-shape recognition                                  | reviewed | Independent pass 2026-07-21; boundary held under 53 probes, one notation gap closed |
+| 38. Official UK public-sector sources                                  | reviewed | Independent pass 2026-07-21; no code defect, duplicate-control limit now recorded   |
+| 39. Adzuna licence decision                                            | blocked  | Owner action; written licence and attribution terms required before any connector   |
+| 29. Early access list operations                                       | reviewed | Independent pass found a service-role truncate hole; fixed. Needs Turnstile keys    |
+| 31. Ashby adapter                                                      | reviewed | Independent pass found a **critical** 100× salary defect; fixed and pinned          |
+| 32. Workable adapter                                                   | reviewed | Independent pass found hidden-location and ordering defects; both fixed             |
 
 ## Last verification commands
 
@@ -248,6 +248,48 @@ Run to clear the review debt these two shipped with. Both are now `reviewed`. **
 
 **Not reviewed here.** Tasks 30b, 36 and 26a still carry review debt.
 
+## Independent review of the six unreviewed slices, 2026-07-21
+
+All six — 26a, 30b, 36, 31, 32 and 29 — plus the shared-transport refactor and the audit-trigger fix. **Review debt is now zero.**
+
+Three were reviewed by the session that had not written them. **Tasks 31, 32 and 29 were reviewed by separate agents given the diff and the specification but none of the implementing session's reasoning**, because self-review of code written an hour earlier is a re-read, not a review. That distinction paid for itself immediately: the three self-written slices produced every serious finding, and the reviewer of Tasks 31 and 32 found a **critical defect the implementing session had convinced itself was correct**.
+
+### The critical one: advertised salaries published 100× too high
+
+`ProviderCompensation.minimum`/`maximum` are **major units** — `normaliseProviderJob` multiplies by 100 to reach the minor units the database stores. `parseCompensation` returns **minor units**. Ashby and Teaching Vacancies both passed one straight into the other, so **a £50,000 advert published as £5,000,000 under `advertised` provenance** — the strongest claim the product makes, over a figure no advert stated. Confirmed end to end: the same salary published as 5,000,000 minor units from Lever and 500,000,000 from Ashby.
+
+**The test enforced the defect.** Ashby's compensation test asserted `5_500_000` with a confident comment claiming minor units were "the convention in this codebase". They are the convention in the _database_, not at that boundary. The comment was written after checking Teaching Vacancies' test — which was pinning the same bug. **Verifying against a sibling instead of the contract is what let this ship twice.** Correcting the adapter failed exactly that one assertion out of 172.
+
+Fixed at the root rather than per adapter: `ProviderCompensation` now documents the unit where the mistake was made, and `advertisedCompensationFromText` owns the conversion so an adapter reading a salary out of free text cannot repeat it. `published-compensation.test.ts` asserts the **published** figure across Lever, Ashby and Teaching Vacancies against each other, with Lever as the control — the test whose absence allowed four green adapter suites to hide one wrong number.
+
+### The security one: `service_role` could truncate the audit log
+
+The append-only trigger is `before update or delete for each row`. **`truncate` fires neither.** `202607170001_foundation.sql` revokes on all public tables from `public`, `anon` and `authenticated` but omits `service_role`, so Supabase's default `service_role=Dxtm` survived on **all 34 public tables** — including `audit_log`, and including `user_roles`, meaning anything holding the service key could have removed every administrator. Confirmed by running it: `truncate public.audit_log` as `service_role` succeeded and emptied the table, while `delete` as the far more privileged `postgres` was correctly refused.
+
+Task 35 had checked `select`/`insert`/`update`/`delete` and correctly found `service_role` held none of them. Nobody checked the other four letters. Fixed by `202607220010_service_role_least_privilege.sql`, which revokes `truncate, references, trigger, maintain` and sets the matching default privilege so the next table created does not reopen it. Four pgTAP assertions pin it, including one that no public table anywhere grants the service role `TRUNCATE`.
+
+### Everything else found and fixed
+
+- **Workable published a location the employer had hidden.** When _every_ stated location on a row was hidden, the filter emptied and control fell through to the top-level `city`/`state`, which restates the same place. The neighbouring bug lost a row entirely when a stated location carried no usable name. Both fixed and pinned; the previously-passing mixed-hidden test never touched either path.
+- **Workable's joined location depended on provider row order**, so the same advert produced a different `contentHash` between runs and churned its location row. Now sorted.
+- **Workable was missing from `transport.test.ts`.** Pointing its transport at `"Greenhouse"` passed all 172 tests — the exact failure that file exists to catch. Added, and mutation-verified.
+- **Lever read `Full-time` as `permanent`**, the one adapter breaking the rule Ashby and Workable both follow, asserting a contract type no advert stated. Its own test pinned the wrong behaviour. Now `unknown`, with the working time carried properly instead.
+- **Task 29's `readOnly` prop had no caller and its test could not fail** — `readOnly || !inviteAction` was already true whenever the action was omitted, which is how the test called it. Prop deleted; the action's absence is the honest signal.
+- **Task 29's origin gate had no test at all.** The only mutation the task adds was absent from the exact-array revalidation assertion, which is how the reviewer spotted it. Four tests now cover the origin refusal, the identifier check, and both outcomes. The identifier check moved from a regex that accepted thirty-six hyphens to a uuid schema.
+- **An anonymous caller could overwrite an existing signup's name and free text**, keeping that person's place at the front of the queue. First writer now wins per field, while a later submission still fills blanks.
+- **pgTAP 026 never exercised the `authenticated` grant** — dropping it would have left all 22 assertions green while the page broke in production.
+- Two comments overstated their guarantees: the audit trigger's "byte-identical" is semantic rather than byte-level, and the record omitted the honest cost that anyone with database credentials can now de-attribute the whole log in one statement. Both corrected.
+
+### Found, not fixed
+
+- **26a shipped 49 files and 565 lines with no test changes at all.** Its headline change redefined `--container-page` and `--container-list`, the exact tokens `docs/standards/frontend-traps.md` warns about. I verified the rendered result rather than the source — the built CSS emits `.max-w-page{max-width:clamp(64rem,80vw,94rem)}` — so **there is no defect**. But nothing in the suite would notice if a future Tailwind upgrade stopped emitting those utilities, which is a failure this repository has already paid for once.
+- **The early-access list is personal data the privacy policy does not disclose**, with no stated retention and no erasure route short of SQL. Pre-existing from Task 26b, but Task 29 turns a dormant table into a queue an administrator reads and acts on. **This is an owner decision, not an engineering one**, and it should be settled before the list is opened — which needs Turnstile keys anyway.
+- `list_early_access_signups`' `after_created_at` cursor is not wired to any caller. Left in place deliberately: removing a parameter changes the signature, and a signature change on a security-definer function means a drop-and-recreate, which is the ACL trap. Not worth that risk for a cosmetic gain.
+
+### What survived attack
+
+The enumeration property held under four separate attacks, including a timing probe: 200 collision calls ran _faster_ than 200 fresh inserts, and the signed-in non-administrator path raises inside the function before any argument validation, so page-size and identifier errors cannot be used as a side channel. UK eligibility held under 26 adversarial inputs across both new adapters — nothing published without real evidence. The transport extraction is behaviour-preserving, and Reed's deliberate refusal to retry HTTP 429 was verified intact by mutation. Both vocabulary migrations were verified generated rather than transcribed by mechanical diff.
+
 ## What is left, 2026-07-21
 
 **One buildable task, and everything else is the owner's.**
@@ -264,7 +306,7 @@ Run to clear the review debt these two shipped with. Both are now `reviewed`. **
 6. **Adzuna written licence** (Task 39) if that source is ever wanted.
 7. **Task 33** stays closed. It needs a decision to serve job content publicly outside the private beta **and** a redistribution grant per source.
 
-**Engineering debt that is not a task:** five slices shipped without the independent review `AGENTS.md` requires — 26a, 30b, 31, 32 and 36. The development administrator preview renders no hub rail. Task 26a left the `interviewing` stage dot interactive blue and no gauge component. Six non-settlement location shapes still drop, two of them one-line fixes, and the next round should be sized from the real unrecognised-location list on `/admin/ingestion`.
+**Engineering debt that is not a task:** the development administrator preview renders no hub rail. Task 26a left the `interviewing` stage dot interactive blue and no gauge component. Six non-settlement location shapes still drop, two of them one-line fixes, and the next round should be sized from the real unrecognised-location list on `/admin/ingestion`.
 
 ## Task 29 — Early access list operations, 2026-07-21
 
@@ -284,8 +326,6 @@ The early-access list has existed since Task 26b with no way to read it; the own
 
 **Verification.** `pnpm verify` green; `pnpm verify:live` green at **34 migrations, 29 pgTAP files, 605 tests**; `pnpm check:supabase` at 34 migrations and 34 forced-RLS tables.
 
-**No independent review pass.** Task 29 joins the same debt as 26a, 30b, 31, 32 and 36.
-
 ## Task 32 — Workable adapter, 2026-07-21
 
 Closes the ATS source work. Adapter, provider value and compliance record in one slice; the source **ships disabled**.
@@ -304,8 +344,6 @@ Closes the ATS source work. Adapter, provider value and compliance record in one
 
 **Verification.** `pnpm verify` green at **1,591 tests**, of which 20 are the adapter's; `pnpm verify:live` green at **33 migrations, 28 pgTAP files, 583 tests** with clean `db lint`; `pnpm check:supabase` at 33 migrations and 34 forced-RLS tables; clean secret scan and production audit.
 
-**No independent review pass.** Task 32 carries the same review debt as 31, 30b, 36 and 26a.
-
 ## Task 31 — Ashby adapter, 2026-07-21
 
 Adapter, provider value and compliance record in one slice. The source **ships disabled**: no migration inserts a row, so an administrator must configure and enable a board.
@@ -323,8 +361,6 @@ Adapter, provider value and compliance record in one slice. The source **ships d
 **`ponytail:` debt raised rather than paid.** The Lever adapter's marker named the ceiling — "if Ashby and Workable also duplicate it, five copies is where extracting a shared transport pays" — and this slice reached it. Extracting was deliberately not folded in: the honest extraction is of the three single-request whole-board adapters (Greenhouse, Lever, Ashby), since Reed and Teaching Vacancies paginate, and refactoring reviewed security-sensitive transport code is its own task with its own review. **Raise it before Task 32 adds the sixth copy.**
 
 **Verification.** `pnpm verify` green at **1,554 tests**, of which 22 are the adapter's; `pnpm verify:live` green at **32 migrations, 28 pgTAP files, 582 tests** with clean `db lint`; `pnpm check:supabase` at 32 migrations and 34 forced-RLS tables; clean secret scan and production audit.
-
-**No independent review pass.** Task 31 carries the same review debt as 30b, 36 and 26a, and is the largest of them.
 
 ## Schema fix — the `auth.users` deletion defect, 2026-07-21
 

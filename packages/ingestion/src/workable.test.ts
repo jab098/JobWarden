@@ -166,6 +166,50 @@ describe("Workable adapter", () => {
     expect(normalised.outcome).not.toBe("eligible");
   });
 
+  // Found by independent review: when EVERY location on a row was hidden, the
+  // filter left an empty list and control fell through to the top-level
+  // city/state, which restates the same place — publishing exactly what
+  // `hidden` asks it not to. The mixed case below passed throughout.
+  it("contributes nothing when every stated location is hidden", () => {
+    expect(
+      toWorkableLocation([
+        row({
+          city: "London",
+          state: "England",
+          locations: [{ city: "London", region: "England", hidden: true }],
+        }) as never,
+      ]),
+    ).toBe("");
+  });
+
+  // The neighbouring bug: a row whose nested location carries no usable name
+  // used to suppress its own top-level fallback and vanish entirely.
+  it("falls back to the top level when a stated location has no usable name", () => {
+    expect(
+      toWorkableLocation([
+        row({
+          city: "Bristol",
+          state: "England",
+          locations: [{ city: null, region: null }],
+        }) as never,
+      ]),
+    ).toBe("Bristol, England");
+  });
+
+  // Provider row order must not change the evidence, or the same advert gets a
+  // new contentHash on every refresh and churns its location row.
+  it("produces the same location whatever order the rows arrive in", () => {
+    const forwards = toWorkableLocation([
+      row({ locations: [{ city: "Coventry", region: "England" }] }) as never,
+      row({ locations: [{ city: "Leicester", region: "England" }] }) as never,
+    ]);
+    const backwards = toWorkableLocation([
+      row({ locations: [{ city: "Leicester", region: "England" }] }) as never,
+      row({ locations: [{ city: "Coventry", region: "England" }] }) as never,
+    ]);
+    expect(forwards).toBe(backwards);
+  });
+
   it("drops a hidden location rather than publishing on it", () => {
     expect(
       toWorkableLocation([

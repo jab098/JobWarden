@@ -5,6 +5,7 @@ import {
   GreenhouseAdapter,
   LeverAdapter,
   TeachingVacanciesAdapter,
+  WorkableAdapter,
   type JobSource,
   type ProviderAdapter,
 } from "./index";
@@ -80,6 +81,21 @@ const cases: Case[] = [
       provider: "teaching_vacancies",
       boardToken: "gb-discovery",
       allowedHosts: ["teaching-vacancies.service.gov.uk"],
+    },
+  },
+  // Added by independent review. Task 32 put a fifth adapter on the shared
+  // transport and did not add it here, so pointing Workable's transport at
+  // "Greenhouse" passed the entire suite — the exact failure this file exists
+  // to catch. Every adapter added to the transport belongs in this list.
+  {
+    name: "Workable",
+    adapter: (fetchImpl) =>
+      new WorkableAdapter({ fetch: fetchImpl, sleep: async () => {} }),
+    source: {
+      ...base,
+      provider: "workable",
+      boardToken: "fictional",
+      allowedHosts: ["apply.workable.com"],
     },
   },
 ];

@@ -107,8 +107,10 @@ describe("Teaching Vacancies adapter", () => {
     expect(jobs[1]!.compensation).toMatchObject({
       provenance: "advertised",
       period: "year",
-      minimum: 3165000,
-      maximum: 4360700,
+      // Major units. This asserted 3165000 while the adapter published
+      // £3,165,000 for a £31,650 job; see advertised-compensation.ts.
+      minimum: 31650,
+      maximum: 43607,
     });
   });
 

@@ -1,5 +1,6 @@
-import { parseCompensation } from "@jobwarden/domain";
 import { z } from "zod";
+
+import { advertisedCompensationFromText } from "./advertised-compensation.ts";
 
 import { AdapterError, BoundedJsonTransport } from "./transport.ts";
 import type { BoundedTransportOptions } from "./transport.ts";
@@ -143,33 +144,16 @@ function compensation(
   observedAt: string,
 ): ProviderCompensation {
   const rawValue = baseSalary?.value?.value;
-  const raw = typeof rawValue === "number" ? String(rawValue) : rawValue;
-  const trimmed = raw?.trim();
-
-  if (!trimmed) {
-    return {
-      raw: null,
-      minimum: null,
-      maximum: null,
-      currency: null,
-      period: "unknown",
-      provenance: "unknown",
-      observedAt: null,
-    };
-  }
-
-  const parsed = parseCompensation(trimmed);
-  return {
-    // The employer stated this, so it is advertised even where the shared
-    // parser cannot resolve a figure from it. Nothing here is ever estimated.
-    raw: trimmed,
-    minimum: parsed.minimum,
-    maximum: parsed.maximum,
-    currency: parsed.currency,
-    period: parsed.period,
-    provenance: "advertised",
+  // `baseSalary.value.value` is free text, not a number, and its sibling
+  // `unitText` is unreliable — an hourly rate is served with unitText "YEAR".
+  // Neither is trusted: the text goes to the shared deterministic parser, which
+  // infers the period from the words the employer actually wrote.
+  // `advertisedCompensationFromText` owns the minor-to-major unit conversion;
+  // this function used to do it wrong and published every salary 100× too high.
+  return advertisedCompensationFromText(
+    typeof rawValue === "number" ? String(rawValue) : rawValue,
     observedAt,
-  };
+  );
 }
 
 function toProviderJob(

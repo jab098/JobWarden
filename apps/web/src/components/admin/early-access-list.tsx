@@ -62,12 +62,17 @@ export function EarlyAccessList({
   signups,
   pending,
   inviteAction,
-  readOnly = false,
 }: {
   signups: EarlyAccessSignup[];
   pending: number;
+  /**
+   * Absent means the control renders disabled. There is no separate `readOnly`
+   * prop: it had no caller, and the test that covered it could not fail —
+   * `readOnly || !inviteAction` is already true whenever the action is omitted,
+   * so the branch rendered whatever `readOnly` did. An independent review
+   * caught it. The action's absence is the honest signal.
+   */
   inviteAction?: AdminFormAction;
-  readOnly?: boolean;
 }) {
   return (
     <section aria-labelledby="early-access-heading" className="space-y-5">
@@ -143,7 +148,7 @@ export function EarlyAccessList({
               </div>
 
               <div className="min-w-0 lg:justify-self-end">
-                {readOnly || !inviteAction ? (
+                {!inviteAction ? (
                   <Button type="button" variant="secondary" size="sm" disabled>
                     Mark invited
                   </Button>

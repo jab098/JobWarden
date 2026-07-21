@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(22);
+select plan(28);
 
 -- Task 29. Administrator-only operations over the early-access list.
 --
@@ -184,6 +184,69 @@ select is(
   ),
   0,
   'the audit entry does not carry the email address'
+);
+
+-- The positive grant, which nothing asserted. Dropping `grant execute ... to
+-- authenticated` left all 22 assertions green while `/admin/early-access` broke
+-- in production, because every other assertion here is a negative one.
+select ok(
+  has_function_privilege(
+    'authenticated', 'public.list_early_access_signups(integer, timestamptz)',
+    'EXECUTE'
+  ),
+  'signed-in callers can reach the queue read, which the administrator gate then judges'
+);
+select ok(
+  has_function_privilege(
+    'authenticated', 'public.mark_early_access_invited(uuid)', 'EXECUTE'
+  ),
+  'signed-in callers can reach the invite mark, which the administrator gate then judges'
+);
+select ok(
+  not has_function_privilege(
+    'anon', 'public.count_early_access_pending()', 'EXECUTE'
+  ),
+  'anonymous callers cannot count the queue'
+);
+
+-- The public join path is anonymous by design, so a second submission for an
+-- address already on the list must not let a stranger rewrite what the first
+-- person said. Found by independent review: `coalesce(excluded.x, stored.x)`
+-- let the incoming value win, and `created_at` was preserved, so attacker text
+-- kept the real person's place at the front of the queue.
+set local role anon;
+select public.join_early_access(
+  'first@example.test', 'Real Person', 'What I actually wrote', 'friend'
+);
+select public.join_early_access(
+  'first@example.test', 'Overwriter', 'Replacement text', 'other'
+);
+reset role;
+
+select is(
+  (select name from public.early_access_signups where email = 'first@example.test'),
+  'Real Person',
+  'a later submission cannot replace a name already on the list'
+);
+select is(
+  (select hoping_for from public.early_access_signups where email = 'first@example.test'),
+  'What I actually wrote',
+  'a later submission cannot replace free text already on the list'
+);
+
+-- The documented intent survives: a later submission still fills a blank.
+set local role anon;
+select public.join_early_access('second@example.test', null, null, null);
+select public.join_early_access(
+  'second@example.test', 'Filled In Later', 'Added later', 'search'
+);
+reset role;
+
+select is(
+  (select name || ' | ' || hoping_for from public.early_access_signups
+   where email = 'second@example.test'),
+  'Filled In Later | Added later',
+  'a later submission still fills details the first one left blank'
 );
 
 select * from finish();

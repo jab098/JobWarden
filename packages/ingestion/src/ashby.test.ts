@@ -210,11 +210,14 @@ describe("Ashby adapter", () => {
       "2026-07-21T12:00:00.000Z",
     );
     expect(result.provenance).toBe("advertised");
-    // Minor units, as every compensation figure in this codebase is: £55,000 is
-    // 5,500,000 pence. Rounding to pounds here would lose the precision the
-    // normaliser deliberately preserves.
-    expect(result.minimum).toBe(5_500_000);
-    expect(result.maximum).toBe(6_500_000);
+    // **Major units — pounds.** An earlier version of this test asserted
+    // 5_500_000 with a confident comment claiming minor units were the
+    // convention. They are the convention in the *database*, not at this
+    // boundary: `normaliseProviderJob` multiplies an adapter's figure by 100.
+    // The wrong assertion made the adapter's 100×-too-high salary look correct
+    // and had to be deleted before the defect could be fixed.
+    expect(result.minimum).toBe(55_000);
+    expect(result.maximum).toBe(65_000);
     expect(result.currency).toBe("GBP");
     expect(result.period).toBe("year");
   });

@@ -1,5 +1,6 @@
-import { parseCompensation } from "@jobwarden/domain";
 import { z } from "zod";
+
+import { advertisedCompensationFromText } from "./advertised-compensation.ts";
 
 import { AdapterError, BoundedJsonTransport } from "./transport.ts";
 import type { BoundedTransportOptions } from "./transport.ts";
@@ -141,10 +142,9 @@ export function toAshbyLocation(
  * Compensation, from what the advert states and nothing else.
  *
  * Ashby's summaries are **free text**, not numbers, so they go to the shared
- * deterministic parser rather than being read structurally. The employer stated
- * the text, so provenance is `advertised` even where the parser resolves no
- * figure from it — a figure is never invented, and text the parser cannot
- * resolve stays advertised with null bounds rather than being guessed at.
+ * deterministic parser rather than being read structurally.
+ * `advertisedCompensationFromText` owns the minor-to-major unit conversion —
+ * see its comment for why that is not inlined here.
  *
  * `compensationTierSummary` is preferred because it is the summary Ashby
  * renders on the advert itself; the scrapeable variant is the fallback.
@@ -153,32 +153,11 @@ export function toAshbyCompensation(
   compensation: z.infer<typeof ashbyPostingSchema>["compensation"],
   observedAt: string,
 ): ProviderCompensation {
-  const summary =
+  return advertisedCompensationFromText(
     present(compensation?.compensationTierSummary) ??
-    present(compensation?.scrapeableCompensationSalarySummary);
-
-  if (!summary) {
-    return {
-      raw: null,
-      minimum: null,
-      maximum: null,
-      currency: null,
-      period: "unknown",
-      provenance: "unknown",
-      observedAt: null,
-    };
-  }
-
-  const parsed = parseCompensation(summary);
-  return {
-    raw: summary,
-    minimum: parsed.minimum,
-    maximum: parsed.maximum,
-    currency: parsed.currency,
-    period: parsed.period,
-    provenance: "advertised",
+      present(compensation?.scrapeableCompensationSalarySummary),
     observedAt,
-  };
+  );
 }
 
 /** An ISO date, or null. Never a guess. */

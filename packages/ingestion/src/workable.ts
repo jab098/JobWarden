@@ -119,8 +119,10 @@ function locationLabel(city?: string | null, region?: string | null): string {
  * behaviour and it is why joining is safe here where appending a stray
  * qualifier would not be.
  *
- * Hidden locations are dropped, and duplicates are collapsed so a board that
- * repeats a city does not produce a repeated label.
+ * Hidden locations are dropped — including when every location on a row is
+ * hidden, which must contribute nothing rather than fall back to the row's
+ * top-level city. Duplicates are collapsed, and the result is sorted so the
+ * evidence does not depend on provider row order.
  */
 export function toWorkableLocation(
   rows: readonly z.infer<typeof workableJobSchema>[],
@@ -128,25 +130,39 @@ export function toWorkableLocation(
   const labels = new Set<string>();
 
   for (const row of rows) {
-    const nested = (row.locations ?? []).filter(
-      (location) => location.hidden !== true,
-    );
+    const stated = row.locations ?? [];
+    const visible = stated.filter((location) => location.hidden !== true);
 
-    if (nested.length > 0) {
-      for (const location of nested) {
-        const label = locationLabel(location.city, location.region);
-        if (label) labels.add(label);
+    // Every stated location is hidden, so the employer has taken this row off
+    // the board. Contribute nothing. The earlier version fell through to the
+    // top-level `city`/`state` here, which restates the same place and
+    // published exactly what `hidden` asks it not to.
+    if (stated.length > 0 && visible.length === 0) continue;
+
+    let usable = false;
+    for (const location of visible) {
+      const label = locationLabel(location.city, location.region);
+      if (label) {
+        labels.add(label);
+        usable = true;
       }
-      continue;
     }
+    if (usable) continue;
 
-    // A row with no usable nested location still states a top-level city and
-    // state, which is what older boards return.
+    // No usable nested label — either the row states no locations at all, or
+    // the ones it states are empty. The top-level `city`/`state` is then what
+    // the row actually says. Guarding this on "produced a usable label" rather
+    // than "had any entry" is what stops an empty nested location silently
+    // discarding the row.
     const label = locationLabel(row.city, row.state);
     if (label) labels.add(label);
   }
 
-  return [...labels].join(" / ");
+  // Sorted, so the joined evidence does not depend on the order the provider
+  // happened to return its rows in. Without this the same advert yields a
+  // different `rawLocation` and a different `contentHash` between runs, and
+  // every refresh reports it as changed.
+  return [...labels].sort().join(" / ");
 }
 
 /** An ISO date, or null. Never a guess. */
