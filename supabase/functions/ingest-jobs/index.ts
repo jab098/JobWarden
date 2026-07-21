@@ -3,6 +3,7 @@ import {
   GreenhouseAdapter,
   LeverAdapter,
   ReedAdapter,
+  TeachingVacanciesAdapter,
 } from "@jobwarden/ingestion";
 
 import { readRuntimeEnvironment } from "../_shared/env.ts";
@@ -17,6 +18,9 @@ const handler = createIngestionHandler({
   createAdapter: (source, environment) => {
     if (source.provider === "greenhouse") return new GreenhouseAdapter();
     if (source.provider === "lever") return new LeverAdapter();
+    if (source.provider === "teaching_vacancies") {
+      return new TeachingVacanciesAdapter();
+    }
     if (!environment.reedApiKey) {
       throw new AdapterError(
         "configuration_error",

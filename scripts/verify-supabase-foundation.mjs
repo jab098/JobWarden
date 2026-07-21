@@ -32,6 +32,7 @@ export const requiredMigrationFiles = [
   "202607220002_uk_places_seed.sql",
   "202607220003_drop_legacy_upsert_ingested_job.sql",
   "202607220004_provider_vocabulary.sql",
+  "202607220005_teaching_vacancies_provider.sql",
 ];
 
 const publicTables = [

@@ -85,7 +85,7 @@ Each service below was checked against its own current interface rather than aga
 
 **Result: one service is usable now, one needs a free self-service key, and three stop at the owner.**
 
-### Teaching Vacancies (Department for Education) — approved for implementation
+### Teaching Vacancies (Department for Education) — implemented, ships disabled
 
 - **Official interface:** `GET https://teaching-vacancies.service.gov.uk/api/v1/jobs.json`, confirmed by request on 2026-07-21. Read-only. The response carries its own `info` block naming the licence, terms and support contact, so the service documents itself at the endpoint.
 - **Authentication:** none. No API key, registration, approval or agreement is required, confirmed by an unauthenticated request succeeding.
@@ -97,8 +97,11 @@ Each service below was checked against its own current interface rather than aga
 - **Compensation:** `baseSalary` is advertised by the employer, so it is `advertised` provenance where present and `unknown` where absent. Never estimated. An `occupationalCategory` or pay-band name is not a figure.
 - **Coverage semantics:** **incremental**, not complete, and this is deliberate. The response is paginated and a bounded free-tier run will not read every page, so an absent vacancy is never evidence that the role closed and must never advance an omission counter. `validThrough` may close a listing through the existing bounded expiry process.
 - **Attribution:** OGL v3 requires acknowledging the source. Attribute as Teaching Vacancies with the standard public-sector-information wording wherever listings from this source are shown.
-- **Volume:** the service's own listing page reported roughly 6,400 live vacancies on 2026-07-21. Substantially larger than any single employer ATS board, and smaller than the whole UK market — do not describe it as comprehensive.
-- **To confirm at implementation:** the exact pagination contract. Search results describe 50 results per page with a `page` query parameter and a `links` object; the response observed on 2026-07-21 carried 25 objects in `data` and no top-level `links`. Establish the real behaviour empirically before relying on either, and never treat a short page as a complete snapshot.
+- **Volume:** the API's own `meta` block reported `count: 2970` across `totalPages: 30` on 2026-07-21, at 100 adverts per page. An earlier note here said roughly 6,400 from the service's HTML listing page; **the API is the authority and 2,970 is the correct figure.** Substantially larger than any single employer ATS board, and far smaller than the whole UK market — never describe it as comprehensive.
+- **Pagination, confirmed 2026-07-21:** 100 adverts per page. The response carries `links` with `self`, `first`, `last`, `prev` and `next`, and `meta` with `totalPages` and `count`. Two earlier second-hand figures — 50 per page and 25 per page — were both wrong, which is the whole reason this had to be confirmed against the service rather than a summary.
+- **JobWarden limits:** five pages per run, which is five requests and cycles the whole service in under two days on the weekday schedule. Bounded retries; the adapter follows only a `next` link that stays on the service's own endpoint, never one that points elsewhere.
+- **A trap in the data, recorded so it is not rediscovered:** `baseSalary.value.value` is **free text, not a number**, and its sibling `unitText` is **unreliable** — an hourly rate is served with `unitText: "YEAR"`. Neither is trusted. The raw text goes to the shared deterministic compensation parser, which infers the period from the words the employer actually wrote. A figure is never invented, and text the parser cannot resolve stays advertised with null figures rather than being guessed at.
+- **Location evidence:** built from `addressLocality`, `addressRegion` and `postalCode` — places the advert itself names. `addressCountry` is deliberately excluded, following the precedent recorded in the Lever adapter: making a provider's country assertion into eligibility evidence would change the contract for every provider. Task 37's postcode recognition is what lets an advert publish when its locality is missing from the gazetteer.
 - **Disable/removal:** disable the source on any provider request, terms change or licence change, and remove acquired data on a termination instruction.
 
 ### Find an apprenticeship (Department for Education) — needs a free key, owner action
