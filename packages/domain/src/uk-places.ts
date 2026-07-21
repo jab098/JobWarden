@@ -79,7 +79,10 @@ for (const place of dataset.places) {
   for (const value of [place.county, place.region]) {
     if (!value) continue;
     administrativeAreas.add(normalisePlaceName(value));
-    for (const part of value.split(/,| - /)) {
+    // The slash is here because eligibility splits locations on it. Without
+    // it, "Northern Ireland / Tuaisceart Éireann" is indexed only as the whole
+    // string and its second half would arrive as an unrecognised label.
+    for (const part of value.split(/,| - |\//)) {
       const normalised = normalisePlaceName(part);
       if (normalised) administrativeAreas.add(normalised);
     }

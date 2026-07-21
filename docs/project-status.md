@@ -6,6 +6,10 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 **Next task: 30b, the provider vocabulary widening.** It is unblocked and, for the first time, lands on a green database gate. Read the roadmap's "Remaining work, in the order it should be done" for why it comes before 31 and 32.
 
+**Task 37 is done.** Full UK postcodes, the ISO code `GB`, multi-location strings split on `/`, and a closed set of nation-wide phrasings are now recognised as UK location evidence. Measured on the same 44-shape probe the task was specified from: **16 published before, 23 after**, no regressions.
+
+Two things to know before touching this area again. First, **the next round of shapes should come from `/admin/ingestion`, not from a probe.** Six non-settlement shapes still drop and two of them are one-line fixes, but the list of ways an advert can write a location has no end, and this task's own first hypothesis — that the place dataset was too thin — was tested and disproved. Real run data should choose the next five. Second, **the settlement gaps are a different task**: Shoreditch, Camden, Stratford-upon-Avon and others are missing from `uk-places.generated.json`, which is generated from postcodes.io and Nominatim by `scripts/build-uk-places.mjs`, carries centroids that radius search depends on, and is seeded into migration `202607220002`. Adding a name there is a data change with a migration, not a logic change.
+
 **Task 30b is done.** `lever` is now a provider the database accepts, so the Lever adapter shipped in Task 30a can finally be configured as a source. Migration `202607220004_provider_vocabulary.sql`; pgTAP file `023_provider_vocabulary.sql`; the live gate is green at 26 files and 561 tests.
 
 Three things from it are worth carrying forward:
@@ -131,7 +135,7 @@ One schema defect is recorded and undecided — no `auth.users` row can be delet
 | 36. Entrance motion, administration inside the hub                     | shipped  | Owner request from a reference video; no independent review pass                   |
 | 35. Make the live database gate pass                                   | reviewed | Delivered by PR #41 at `ab1515b`; 542 tests, lint clean, review APPROVED           |
 | 30b. Provider vocabulary widening                                      | shipped  | `lever` accepted; Ashby/Workable rejected until their adapters ship; 561 tests     |
-| 37. Location string-shape recognition                                  | pending  | Specified 2026-07-21 from a measured probe; runs before 38, 31 and 32              |
+| 37. Location string-shape recognition                                  | shipped  | Postcodes, `GB`, multi-location, nation-wide phrases; probe 16/44 to 23/44         |
 | 38. Official UK public-sector sources                                  | pending  | Specified 2026-07-21; access terms confirmed per service before any code reads it  |
 | 39. Adzuna licence decision                                            | blocked  | Owner action; written licence and attribution terms required before any connector  |
 

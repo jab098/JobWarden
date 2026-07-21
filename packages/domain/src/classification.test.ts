@@ -419,6 +419,128 @@ describe("UK eligibility", () => {
   });
 });
 
+describe("UK eligibility location shapes", () => {
+  const neutral = "We are hiring a software engineer for this team.";
+  const publishes = (location: string) =>
+    classifyUkEligibility(location, neutral).eligible;
+
+  // A full UK postcode is unambiguous evidence of a UK location.
+  it.each(["EC2A 4NE", "SW1A 1AA", "M1 2AB", "ec2a 4ne", "B33 8TH"])(
+    "publishes the full UK postcode %s",
+    (location) => {
+      expect(publishes(location)).toBe(true);
+    },
+  );
+
+  it("carries the postcode into the eligibility evidence", () => {
+    const result = classifyUkEligibility("EC2A 4NE", neutral);
+    expect(result.evidence.join(" ")).toContain("EC2A 4NE");
+  });
+
+  it("publishes a town beside its postcode", () => {
+    expect(publishes("London, EC2A 4NE")).toBe(true);
+  });
+
+  // A bare outward code is not evidence: M1 is also a motorway.
+  it.each(["EC2A", "M1", "SW1A"])(
+    "leaves the bare outward code %s ambiguous",
+    (location) => {
+      expect(publishes(location)).toBe(false);
+    },
+  );
+
+  // The collision guard. A UK inward code is always digit-letter-letter, so a
+  // Canadian code (digit-letter-digit) cannot match. This is the assertion that
+  // stops the postcode rule publishing foreign roles.
+  it.each([
+    ["Canada", "K1A 0B1"],
+    ["Canada", "M5V 3L9"],
+    ["Netherlands", "1234 AB"],
+    ["Sweden", "114 51"],
+    ["United States", "10001"],
+    ["United States", "NY 10001"],
+    ["United States", "CA 90210"],
+    ["United States", "Springfield, IL 62701"],
+  ])("does not publish the %s postal code %s", (_country, location) => {
+    expect(publishes(location)).toBe(false);
+  });
+
+  // GB is the ISO 3166-1 code Greenhouse and Lever emit.
+  it.each(["London, GB", "Manchester, GB", "GB"])(
+    "publishes %s, because GB names the United Kingdom",
+    (location) => {
+      expect(publishes(location)).toBe(true);
+    },
+  );
+
+  // Accepting GB as a nation anchor makes `namesUkNation` true, which
+  // short-circuits the foreign-region check. The allowlist still has to refuse
+  // this, and that is what makes the change safe.
+  it("still refuses a foreign city carrying a GB qualifier", () => {
+    expect(publishes("Paris, GB")).toBe(false);
+  });
+
+  it.each(["UK Wide", "uk-wide", "Anywhere in the UK", "Across the UK"])(
+    "publishes the nation-wide phrasing %s",
+    (location) => {
+      expect(publishes(location)).toBe(true);
+    },
+  );
+
+  // Nationwide is also the name of a UK employer. Treating it as location
+  // evidence would publish on an employer string, so it stays ambiguous.
+  it("leaves Nationwide ambiguous, because it is also an employer name", () => {
+    expect(publishes("Nationwide")).toBe(false);
+  });
+
+  it("publishes a multi-location advert once every part is recognised", () => {
+    expect(publishes("London / Manchester")).toBe(true);
+  });
+
+  it("refuses a multi-location advert when one part is unrecognised", () => {
+    expect(publishes("London / Springfield")).toBe(false);
+  });
+
+  // The dataset carries this region as one string with a slash in it. Splitting
+  // locations on "/" would otherwise turn it into an unrecognised second label.
+  it("publishes a bilingual Northern Ireland region string", () => {
+    expect(publishes("Belfast, Northern Ireland / Tuaisceart Éireann")).toBe(
+      true,
+    );
+  });
+
+  // Crown dependencies are outside the UK for right-to-work purposes. These
+  // quarantining is correct and must not be "fixed" into eligibility.
+  it.each([
+    "Isle of Man",
+    "Jersey",
+    "Guernsey",
+    "Gibraltar",
+    "Douglas, Isle of Man",
+  ])(
+    "does not publish the Crown dependency or overseas territory %s",
+    (location) => {
+      expect(publishes(location)).toBe(false);
+    },
+  );
+
+  // The shapes above must not have cost the plain-name behaviour that already
+  // worked. These are a sample of the 73-name sweep the task was specified from.
+  it.each([
+    "Slough",
+    "Milton Keynes",
+    "Kingston upon Hull",
+    "Newcastle upon Tyne",
+    "Weston-super-Mare",
+    "Leeds, West Yorkshire",
+    "London, England, United Kingdom",
+    "Remote, UK",
+    "Croydon",
+  ])("still publishes the plain location %s", (location) => {
+    expect(publishes(location)).toBe(true);
+  });
+});
+
 describe("employment classification", () => {
   it.each([
     ["Permanent employee", "permanent"],

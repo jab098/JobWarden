@@ -12,12 +12,52 @@ export type UkEligibilityResult = {
 
 const ukNationAnchors = new Set([
   "uk",
+  // The ISO 3166-1 alpha-2 code, which Greenhouse and Lever both emit as a
+  // location qualifier. Accepting it makes `namesUkNation` true, which
+  // short-circuits the foreign-region check below; that stays safe because
+  // publication still requires every label to be a recognised UK label, so
+  // "Paris, GB" is refused by the allowlist rather than by that check.
+  "gb",
   "united kingdom",
   "england",
   "scotland",
   "wales",
   "northern ireland",
 ]);
+
+/**
+ * Phrasings that name the whole United Kingdom rather than a place in it.
+ *
+ * A closed set matched whole, never by containment, so nothing reaches
+ * eligibility through a substring of a longer label.
+ *
+ * "Nationwide" is deliberately absent. It is also the name of a UK employer, so
+ * treating it as location evidence would publish on an employer string; a test
+ * pins it as ambiguous.
+ */
+const ukWidePhrases = new Set([
+  "uk wide",
+  "uk-wide",
+  "anywhere in the uk",
+  "across the uk",
+  "throughout the uk",
+]);
+
+/**
+ * A full UK postcode.
+ *
+ * The inward code is always digit-letter-letter, which is what stops this
+ * matching a Canadian code such as "K1A 0B1" (digit-letter-digit) — the only
+ * foreign format close enough to collide. The second letter excludes I and Z
+ * per the real rule.
+ *
+ * Full postcodes only. A bare outward code is not evidence: "M1" is also a
+ * motorway, and a short alphanumeric says nothing on its own.
+ *
+ * Labels reach this already lowercased by `normaliseLocationLabel`.
+ */
+const ukPostcodePattern =
+  /^(gir ?0aa|[a-z][0-9]{1,2} ?[0-9][a-z]{2}|[a-z][a-hj-y][0-9]{1,2} ?[0-9][a-z]{2}|[a-z][0-9][a-z] ?[0-9][a-z]{2}|[a-z][a-hj-y][0-9][a-z] ?[0-9][a-z]{2})$/u;
 
 const ukOfficialRegions = new Set([
   "east midlands",
@@ -475,17 +515,26 @@ function normaliseLocationLabel(value: string): string {
 }
 
 function splitLocation(location: string): string[] {
-  return location
-    .replace(/\(([^()]*)\)/g, ",$1,")
-    .replace(/\s+[–—-]\s+/g, ",")
-    .split(",")
-    .map(normaliseLocationLabel)
-    .filter(Boolean);
+  return (
+    location
+      .replace(/\(([^()]*)\)/g, ",$1,")
+      .replace(/\s+[–—-]\s+/g, ",")
+      // A multi-location advert — "London / Manchester" — is one unrecognised
+      // label unless this splits it. Hyphens are deliberately not split the same
+      // way: "Stratford-upon-Avon" is one place, which is why the dash rule above
+      // requires surrounding whitespace.
+      .replace(/\//g, ",")
+      .split(",")
+      .map(normaliseLocationLabel)
+      .filter(Boolean)
+  );
 }
 
 function isQualifiedUkLabel(label: string): boolean {
   return (
     ukNationAnchors.has(label) ||
+    ukWidePhrases.has(label) ||
+    ukPostcodePattern.test(label) ||
     ukOfficialRegions.has(label) ||
     // Derry and Newcastle are in this allowlist but not in the gazetteer, which
     // carries Londonderry and Newcastle upon Tyne, so it still earns its place.
