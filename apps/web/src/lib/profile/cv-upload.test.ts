@@ -183,15 +183,23 @@ describe("uploadCv", () => {
     expect(path).not.toMatch(/(^|\/)\.\.(\/|$)/u);
   });
 
-  it("sends the digest as the extraction idempotency key", async () => {
+  // It used to send the file's SHA-256. `cv_extraction_runs` is unique on
+  // (user_id, idempotency_key) and the claim returns the existing run when the
+  // key matches, so keying on content meant a failed extraction could never be
+  // retried with the same file — the owner whose first CV failed re-uploaded
+  // it twice and got no run at all. The document id is the right granularity:
+  // every upload registers a new document, so a retry is a new attempt, while
+  // two invokes for one document still deduplicate.
+  it("keys extraction on the document, so a failed one can be retried", async () => {
     const { client, calls } = clientOf();
     await uploadCv(client, goodInput());
 
     const sha256 = calls[2]?.parameters?.sha256_value;
     const body = calls[3]?.parameters ?? {};
     expect(sha256).toMatch(/^[a-f0-9]{64}$/u);
-    expect(body.idempotencyKey).toBe(sha256);
     expect(body.cvDocumentId).toBe(documentId);
+    expect(body.idempotencyKey).toBe(documentId);
+    expect(body.idempotencyKey).not.toBe(sha256);
   });
 
   it("rejects an invalid file before making any request", async () => {

@@ -182,7 +182,11 @@ function CvUploadForm({
         <p
           role={outcome.kind === "uploaded" ? "status" : "alert"}
           className={`mt-3 text-sm ${
-            outcome.kind === "uploaded" ? "text-success" : "text-[#8a2b2b]"
+            // An upload whose extraction never started is not a success, and
+            // was being shown in success green next to text saying so.
+            outcome.kind === "uploaded" && outcome.extractionStarted
+              ? "text-success"
+              : "text-[#8a2b2b]"
           }`}
         >
           {messageFor(outcome)}

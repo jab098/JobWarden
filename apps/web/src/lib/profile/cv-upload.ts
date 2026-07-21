@@ -252,7 +252,20 @@ export async function uploadCv(
   let extractionStarted = false;
   try {
     const invoked = await client.functions.invoke("extract-career-profile", {
-      body: { cvDocumentId: documentId, idempotencyKey: sha256 },
+      body: {
+        cvDocumentId: documentId,
+        // The document id, not the file's SHA-256. `cv_extraction_runs` is
+        // unique on (user_id, idempotency_key), and the claim returns the
+        // existing run when the key matches — so keying on content meant a
+        // failed extraction could never be retried with the same file. The
+        // owner whose first CV failed re-uploaded it twice and got no run at
+        // all, silently.
+        //
+        // A document id is the right granularity: every upload registers a new
+        // document, so a retry is a new attempt, while two invokes for the
+        // same document still deduplicate.
+        idempotencyKey: documentId,
+      },
     });
     extractionStarted = !invoked.error;
   } catch {

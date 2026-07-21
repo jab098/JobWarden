@@ -609,13 +609,37 @@ function validateRelationships(
           "TargetMode",
         )?.toLowerCase();
         if (!target || !type) fail("unsafe_archive");
-        if (
+
+        // A relationship pointing outside the package is a hyperlink: a
+        // `mailto:` for the writer's own address, an `https:` link to their
+        // profile. **Refusing the document for one refused every CV that
+        // contains a link**, which is very nearly every real CV — the first
+        // real file put through this parser had three, and was rejected as an
+        // unsafe archive.
+        //
+        // Skipping it loses nothing, because this parser never dereferences a
+        // relationship. Parts are selected from the archive index by fixed
+        // name — `[content_types].xml`, `_rels/.rels`, `word/document.xml`,
+        // `word/styles.xml` — so no target is ever resolved, fetched, or
+        // opened. The URL is not extracted either; only the visible link text
+        // inside `w:t` becomes evidence.
+        const isExternal =
           targetMode === "external" ||
           target.startsWith("//") ||
-          /^[a-z][a-z0-9+.-]*:/iu.test(target)
-        ) {
-          fail("unsafe_archive");
+          /^[a-z][a-z0-9+.-]*:/iu.test(target);
+
+        if (isExternal) {
+          // The one relationship that must never point outward. It is what
+          // names the main document, and an external one would be an attempt
+          // to aim the parser somewhere other than this package.
+          if (name === "_rels/.rels" && type.endsWith("/officeDocument")) {
+            fail("unsafe_archive");
+          }
+          return;
         }
+
+        // Internal targets keep every check they had: `normaliseArchiveName`
+        // still refuses traversal, absolute paths, and drive-letter colons.
         normaliseArchiveName(target.replace(/^\.\//u, ""));
 
         if (name === "_rels/.rels" && type.endsWith("/officeDocument")) {

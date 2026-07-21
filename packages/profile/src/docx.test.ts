@@ -436,10 +436,50 @@ describe("bounded DOCX extraction", () => {
     });
   });
 
-  it("rejects external OOXML relationships", async () => {
+  // A CV with a hyperlink used to be refused outright. The first real file
+  // ever put through this parser carried three — an https link, an http link,
+  // and the writer's own mailto — and was rejected as an unsafe archive.
+  // Nearly every professional CV has them.
+  //
+  // Skipping them is safe because this parser never dereferences a
+  // relationship: parts are chosen from the archive index by fixed name, so no
+  // target is resolved, fetched or opened, and only the visible link text
+  // inside `w:t` becomes evidence.
+  it.each([
+    ["a portfolio link", "https://example.test/fictional"],
+    ["an insecure link", "http://example.test/fictional"],
+    ["the writer's own address", "mailto:fictional@example.test"],
+    ["a protocol-relative link", "//example.test/fictional"],
+  ])("accepts a document containing %s", async (_label, target) => {
     const relationships = `<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://example.test/fictional" TargetMode="External"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="${target}" TargetMode="External"/>
+</Relationships>`;
+
+    const result = await extractDocxText(
+      createDocx({ "word/_rels/document.xml.rels": relationships }),
+    );
+    expect(result.text).toContain("Fictional analyst");
+  });
+
+  // The one relationship that must never point outward: it is what names the
+  // main document, so an external one aims the parser away from this package.
+  it("still refuses an external main-document relationship", async () => {
+    const packageRels = `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="https://example.test/document.xml" TargetMode="External"/>
+</Relationships>`;
+
+    await expect(
+      extractDocxText(createDocx({ "_rels/.rels": packageRels })),
+    ).rejects.toMatchObject({ code: "unsafe_archive" });
+  });
+
+  // Internal targets keep every check they had.
+  it("still refuses an internal relationship that escapes the package", async () => {
+    const relationships = `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../../../etc/passwd"/>
 </Relationships>`;
 
     await expect(
