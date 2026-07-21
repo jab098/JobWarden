@@ -88,6 +88,7 @@ insert into public.jobs (
   ir35_status,
   compensation_period,
   content_hash,
+  deduplication_key,
   lifecycle_status
 )
 values (
@@ -105,6 +106,7 @@ values (
   'not_applicable',
   'unknown',
   repeat('a', 64),
+  repeat('b', 64),
   'active'
 );
 

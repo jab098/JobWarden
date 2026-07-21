@@ -104,6 +104,12 @@ select throws_ok(
   'the administrator source RPC rejects future review dates'
 );
 
+-- Asserted as the owner, not as `authenticated`. This is a schema property, and
+-- `authenticated` holds no INSERT on `job_sources`, so as that role the write is
+-- refused with 42501 before the constraint is ever evaluated — proving the grant
+-- rather than the constraint the test is named for. The grant is asserted
+-- separately below.
+reset role;
 select throws_ok(
   $$
     insert into public.job_sources (
@@ -118,6 +124,9 @@ select throws_ok(
   null,
   'the table constraint rejects intervals below fifteen minutes'
 );
+-- Back to the administrator the surrounding tests act as.
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '40000000-0000-4000-8000-000000000002', true);
 
 select throws_ok(
   $$ select public.request_source_ingestion('41000000-0000-4000-8000-000000000099') $$,

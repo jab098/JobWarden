@@ -314,6 +314,10 @@ select public.register_cv_document(
   8192,
   repeat('b', 64)
 ) as id;
+-- Scaffolding, not a product grant. This temporary table is created here as
+-- `authenticated` and read further down as `service_role`, and it vanishes with
+-- the transaction. Granting on it widens no boundary on any real table.
+grant select on second_cv to service_role;
 
 select ok((select id is not null from second_cv), 'the owner can replace the current CV');
 select is(
@@ -443,6 +447,26 @@ select throws_ok(
   'profile suggestion not found',
   'another approved user cannot decide the owner suggestion'
 );
+
+-- `delete_career_profile_data` refuses while any object remains under the
+-- owner's Storage prefix, by design: structured rows must never be dropped
+-- while the files they describe survive. A real client removes the objects
+-- first, so the fixture does too. Without this the RPC raises 23503 and the
+-- deletion path below is never exercised.
+reset role;
+-- Supabase's own `protect_objects_delete` trigger refuses direct deletion and
+-- directs callers to the Storage API, which a pgTAP transaction cannot reach.
+-- Standing it down for this one statement is how the fixture represents the
+-- API call the real client makes before deleting; it is restored immediately.
+-- `storage.objects` is owned by supabase_storage_admin, which this session
+-- cannot become, so the trigger is stood down by replication role for exactly
+-- one statement and restored on the next line.
+set local session_replication_role = replica;
+delete from storage.objects
+where bucket_id = 'career-documents'
+  and name like '70000000-0000-4000-8000-000000000001/%';
+set local session_replication_role = origin;
+set local role authenticated;
 
 select set_config('request.jwt.claim.sub', '70000000-0000-4000-8000-000000000001', true);
 select lives_ok(

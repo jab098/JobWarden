@@ -91,7 +91,7 @@ insert into public.jobs (
   id, source_id, provider_job_id, title, employer, description_text,
   application_url, country_code, uk_eligibility_evidence, employment_type,
   working_time, workplace_type, ir35_status, compensation_period, content_hash,
-  lifecycle_status
+  deduplication_key, lifecycle_status
 )
 values (
   '92000000-0000-4000-8000-000000000001',
@@ -99,7 +99,7 @@ values (
   'Target Feed Ltd', 'A UK role.',
   'https://boards.greenhouse.io/target-feed/jobs/1', 'GB',
   array['Location: Scotland'], 'permanent', 'full_time', 'remote', 'not_applicable',
-  'year', repeat('1', 64), 'active'
+  'year', repeat('1', 64), repeat('2', 64), 'active'
 );
 
 set local role authenticated;

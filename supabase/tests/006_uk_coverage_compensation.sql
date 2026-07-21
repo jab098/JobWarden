@@ -125,8 +125,15 @@ select lives_ok(
   'a complete source can create the canonical job and its occurrence'
 );
 
+-- The RPC above runs as service_role because the ingestion runtime does. The
+-- verification below does not: service_role holds no direct privilege on
+-- `jobs`, deliberately, and no runtime path reads it that way. Asserting the
+-- effect as the owner keeps the boundary intact instead of widening a grant to
+-- suit a test.
+reset role;
 select is((select count(*)::integer from public.jobs where deduplication_key = repeat('a', 64)), 1, 'one canonical job is created');
 select is((select count(*)::integer from public.job_source_occurrences where job_id = (select id from public.jobs where deduplication_key = repeat('a', 64))), 1, 'the first source occurrence is retained');
+set local role service_role;
 
 select lives_ok(
   $$ select public.finish_source_ingestion('63000000-0000-4000-8000-000000000001', 'succeeded', true, 1, 1, 1, 0, 0, 5, 0, null) $$,
@@ -173,6 +180,7 @@ select lives_ok(
   'an exact canonical URL key attaches a second provider occurrence'
 );
 
+reset role;
 select is((select count(*)::integer from public.jobs where deduplication_key = repeat('a', 64)), 1, 'exact-key deduplication does not duplicate the canonical job');
 select is((select count(*)::integer from public.job_source_occurrences where job_id = (select id from public.jobs where deduplication_key = repeat('a', 64))), 2, 'both provider occurrences remain attributable');
 select is((select compensation_provenance from public.jobs where deduplication_key = repeat('a', 64)), 'advertised', 'advertised salary provenance is stored');
@@ -245,7 +253,9 @@ select lives_ok(
   $$,
   'a winning direct occurrence can move to a corrected new canonical key'
 );
+reset role;
 select is((select source_id from public.jobs where deduplication_key = repeat('a', 64)), '61000000-0000-4000-8000-000000000002'::uuid, 'the old canonical rematerialises from its remaining Reed occurrence');
+set local role service_role;
 select lives_ok(
   $$
     select * from public.upsert_ingested_jobs(
@@ -278,8 +288,10 @@ select lives_ok(
   $$,
   'the direct occurrence can move back onto an existing canonical job'
 );
+reset role;
 select is((select count(*)::integer from public.jobs where deduplication_key = repeat('f', 64)), 0, 'the orphaned temporary canonical row is removed');
 select is((select source_id from public.jobs where deduplication_key = repeat('a', 64)), '61000000-0000-4000-8000-000000000001'::uuid, 'direct evidence wins regardless of provider arrival order');
+set local role service_role;
 select lives_ok(
   $$ select public.finish_source_ingestion('63000000-0000-4000-8000-000000000007', 'succeeded', true, 1, 1, 0, 1, 0, 5, 0, null) $$,
   'the canonical-key correction run finalises normally'
@@ -318,6 +330,7 @@ select lives_ok(
   'the second complete omission finalises'
 );
 select is((select lifecycle_status from public.job_source_occurrences where source_id = '61000000-0000-4000-8000-000000000001'), 'closed', 'two complete omissions close that occurrence');
+reset role;
 select is((select lifecycle_status from public.jobs where deduplication_key = repeat('a', 64)), 'active', 'another active occurrence keeps the canonical job open');
 
 reset role;
@@ -330,6 +343,7 @@ select lives_ok(
   'bounded closing-date maintenance runs after successful discovery'
 );
 select is((select lifecycle_status from public.job_source_occurrences where source_id = '61000000-0000-4000-8000-000000000002'), 'closed', 'the expired incremental occurrence closes explicitly');
+reset role;
 select is((select lifecycle_status from public.jobs where deduplication_key = repeat('a', 64)), 'closed', 'the canonical job closes only after every occurrence closes');
 select is((select count(distinct job_id)::integer from public.job_source_occurrences), (select count(*)::integer from public.jobs), 'every canonical job has occurrence provenance');
 
@@ -347,11 +361,13 @@ select lives_ok(
   $$ select public.enqueue_scheduled_ingestion() $$,
   'the shared scheduler can enqueue an enabled Reed source'
 );
+reset role;
 select is(
   (select count(*)::integer from public.ingestion_requests where source_id = '61000000-0000-4000-8000-000000000002' and status = 'pending'),
   1,
   'Reed enters the shared pending queue'
 );
+set local role service_role;
 select lives_ok(
   $$ create temporary table reed_claim on commit drop as select * from public.claim_ingestion_requests(1) $$,
   'the shared worker can claim and start a Reed source run'
@@ -405,6 +421,7 @@ select lives_ok(
   $$,
   'the claimed Reed run finalises and completes its queue delivery'
 );
+reset role;
 select is(
   (select status from public.ingestion_requests where id = (select request_id from reed_claim)),
   'completed',

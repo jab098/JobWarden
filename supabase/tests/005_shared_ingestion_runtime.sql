@@ -67,7 +67,13 @@ values
   ('51000000-0000-4000-8000-000000000007', 'greenhouse', 'recent-source', 'Recent Source Ltd', true, interval '60 minutes', array['boards.greenhouse.io'], current_date, current_date, 'Recently completed source.', clock_timestamp()),
   ('51000000-0000-4000-8000-000000000008', 'greenhouse', 'disabled-source', 'Disabled Source Ltd', false, interval '60 minutes', array['boards.greenhouse.io'], current_date, current_date, 'Disabled source fixture.', null);
 
-set local role service_role;
+-- Deliberately NOT `set local role service_role`. Every ingestion RPC below is
+-- security definer, so the executing role changes nothing about its behaviour,
+-- and the grants are already asserted explicitly above with
+-- `has_function_privilege` — for service_role positively and for anon and
+-- authenticated negatively. Running the body as service_role only meant the
+-- assertions could not read the tables they verify, because service_role holds
+-- no direct table privilege and no runtime path gives it one.
 
 create temporary table scheduled_enqueue as
 select public.enqueue_scheduled_ingestion() as inserted_count;
@@ -230,8 +236,12 @@ select lives_ok(
       'compensationMaximum', null,
       'compensationCurrency', null,
       'compensationPeriod', 'unknown',
+      -- Every amount above is null, and `jobs_compensation_provenance_consistent`
+      -- requires 'unknown' in exactly that case.
+      'compensationProvenance', 'unknown',
       'postedAt', null,
       'closesAt', null,
+      'deduplicationKey', repeat('c', 64),
       'contentHash', repeat('b', 64)
     ))::text
   ),
@@ -274,7 +284,6 @@ select is(
   'a failed source cannot close an unseen job'
 );
 
-reset role;
 
 update public.ingestion_requests
 set
@@ -282,7 +291,6 @@ set
   claim_expires_at = clock_timestamp() - interval '1 minute'
 where id = (select request_id from first_claims order by request_id limit 1 offset 2);
 
-set local role service_role;
 
 create temporary table recovered_claim as
 select * from public.claim_ingestion_requests(1);
@@ -313,7 +321,6 @@ select is(
   'the abandoned source run records one sanitised lease error'
 );
 
-reset role;
 
 update public.ingestion_requests
 set
@@ -322,7 +329,6 @@ set
   claim_expires_at = clock_timestamp() - interval '1 minute'
 where id = (select request_id from first_claims order by request_id limit 1 offset 3);
 
-set local role service_role;
 create temporary table exhaustion_followup as
 select * from public.claim_ingestion_requests(1);
 
@@ -346,7 +352,6 @@ select is(
   'attempt exhaustion retains only a sanitised terminal code'
 );
 
-reset role;
 
 insert into public.job_sources (
   id, provider, board_token, employer_name, enabled, minimum_sync_interval,
@@ -359,16 +364,13 @@ values (
   'Source disabled after queue fixture.'
 );
 
-set local role service_role;
 create temporary table disabled_enqueue as
 select public.enqueue_scheduled_ingestion() as inserted_count;
-reset role;
 
 update public.job_sources
 set enabled = false
 where id = '51000000-0000-4000-8000-000000000009';
 
-set local role service_role;
 create temporary table disabled_followup as
 select * from public.claim_ingestion_requests(1);
 

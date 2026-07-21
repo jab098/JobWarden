@@ -42,7 +42,7 @@ insert into public.jobs (
   source_id, provider_job_id, title, employer, description_text,
   application_url, country_code, uk_eligibility_evidence, employment_type,
   working_time, workplace_type, ir35_status, compensation_period, content_hash,
-  lifecycle_status
+  deduplication_key, lifecycle_status
 )
 select
   '21000000-0000-4000-8000-000000000001'::uuid,
@@ -58,7 +58,11 @@ select
   'remote',
   'outside',
   'day',
-  repeat(substr(lifecycle_status, 1, 1), 64),
+  -- Both columns are constrained to `^[a-f0-9]{64}$`, so neither can repeat an
+  -- initial: 'quarantined' would repeat a 'q'. Doubled md5 is hex, distinct per
+  -- lifecycle status, and distinct between the two columns.
+  md5('hash-' || lifecycle_status) || md5('hash-' || lifecycle_status),
+  md5(lifecycle_status) || md5(lifecycle_status),
   lifecycle_status
 from unnest(array['active', 'closed', 'quarantined']) as lifecycle_status;
 
