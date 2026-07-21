@@ -41,6 +41,7 @@ export const requiredMigrationFiles = [
   "202607220011_early_access_no_overwrite.sql",
   "202607220012_bootstrap_admin_approves.sql",
   "202607220013_revisit_onboarding_step.sql",
+  "202607220014_adzuna_provider.sql",
 ];
 
 const publicTables = [

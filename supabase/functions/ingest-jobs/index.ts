@@ -1,5 +1,6 @@
 import {
   AdapterError,
+  AdzunaAdapter,
   AshbyAdapter,
   GreenhouseAdapter,
   LeverAdapter,
@@ -24,6 +25,19 @@ const handler = createIngestionHandler({
     if (source.provider === "workable") return new WorkableAdapter();
     if (source.provider === "teaching_vacancies") {
       return new TeachingVacanciesAdapter();
+    }
+    if (source.provider === "adzuna") {
+      if (!environment.adzunaAppId || !environment.adzunaAppKey) {
+        throw new AdapterError(
+          "configuration_error",
+          "Adzuna credentials are not configured.",
+          0,
+        );
+      }
+      return new AdzunaAdapter({
+        appId: environment.adzunaAppId,
+        appKey: environment.adzunaAppKey,
+      });
     }
     if (!environment.reedApiKey) {
       throw new AdapterError(
