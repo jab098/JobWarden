@@ -1,9 +1,8 @@
 import { parseCompensation } from "@jobwarden/domain";
 import { z } from "zod";
 
-import { AdapterError } from "./greenhouse.ts";
-import { isTransientStatus, retryDelayMilliseconds, sleep } from "./retry.ts";
-import type { Sleep } from "./retry.ts";
+import { AdapterError, BoundedJsonTransport } from "./transport.ts";
+import type { BoundedTransportOptions } from "./transport.ts";
 import type {
   JobSource,
   ProviderAdapter,
@@ -11,19 +10,6 @@ import type {
   ProviderFetchResult,
   ProviderJob,
 } from "./types.ts";
-
-// ponytail: the fifth copy of the bounded transport loop, and the ceiling the
-// Lever copy named — "if Ashby and Workable also duplicate it, five copies is
-// where extracting a shared transport pays". It is reached. Extracting it was
-// deliberately not folded into this slice, because the three single-request
-// whole-board adapters (Greenhouse, Lever, Ashby) share a genuinely identical
-// shape while Reed and Teaching Vacancies paginate, so the honest extraction is
-// of that shape rather than of all five — and refactoring reviewed,
-// security-sensitive transport code is its own task with its own review, not a
-// side effect of adding a provider. Raise it before Task 32 adds the sixth.
-const MAX_ATTEMPTS = 3;
-const DEFAULT_TIMEOUT_MS = 8_000;
-const DEFAULT_MAX_RETRY_AFTER_MS = 30_000;
 
 /**
  * A postal address as Ashby serves it.
@@ -77,23 +63,7 @@ const ashbyResponseSchema = z.object({
   jobs: z.array(ashbyPostingSchema).max(2_000),
 });
 
-export type AshbyAdapterOptions = {
-  fetch?: typeof fetch;
-  sleep?: Sleep;
-  random?: () => number;
-  now?: () => number;
-  createTimeoutSignal?: (milliseconds: number) => AbortSignal;
-  timeoutMs?: number;
-  maxRetryAfterMs?: number;
-};
-
-function callerAborted(attempts: number): AdapterError {
-  return new AdapterError(
-    "aborted",
-    "Ashby request was cancelled by the caller.",
-    attempts,
-  );
-}
+export type AshbyAdapterOptions = BoundedTransportOptions;
 
 /** An empty or whitespace-only provider string means absent, not present. */
 function present(value: string | null | undefined): string | null {
@@ -230,70 +200,10 @@ function isoDate(value: string | null | undefined): string | null {
  * `docs/product/source-coverage.md`.
  */
 export class AshbyAdapter implements ProviderAdapter {
-  readonly #fetch: typeof fetch;
-  readonly #sleep: Sleep;
-  readonly #random: () => number;
-  readonly #now: () => number;
-  readonly #createTimeoutSignal: (milliseconds: number) => AbortSignal;
-  readonly #timeoutMs: number;
-  readonly #maxRetryAfterMs: number;
+  readonly #transport: BoundedJsonTransport;
 
   constructor(options: AshbyAdapterOptions = {}) {
-    this.#fetch = options.fetch ?? globalThis.fetch;
-    this.#sleep = options.sleep ?? sleep;
-    this.#random = options.random ?? Math.random;
-    this.#now = options.now ?? Date.now;
-    this.#createTimeoutSignal =
-      options.createTimeoutSignal ??
-      ((milliseconds) => AbortSignal.timeout(milliseconds));
-    this.#timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.#maxRetryAfterMs =
-      options.maxRetryAfterMs ?? DEFAULT_MAX_RETRY_AFTER_MS;
-  }
-
-  async #waitBeforeRetry(
-    retryNumber: number,
-    retryAfter: string | null,
-    attempts: number,
-    callerSignal?: AbortSignal,
-  ): Promise<void> {
-    const delay = retryDelayMilliseconds({
-      retryNumber,
-      retryAfter,
-      maximumRetryAfterMilliseconds: this.#maxRetryAfterMs,
-      random: this.#random,
-      now: this.#now,
-    });
-
-    try {
-      await this.#sleep(delay, callerSignal);
-    } catch {
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-      throw new AdapterError(
-        "network_error",
-        "Ashby retry scheduling failed.",
-        attempts,
-      );
-    }
-  }
-
-  async #retryTransportFailure(
-    code: "timeout" | "network_error",
-    retryNumber: number,
-    attempts: number,
-    callerSignal?: AbortSignal,
-  ): Promise<void> {
-    if (attempts === MAX_ATTEMPTS) {
-      throw new AdapterError(
-        code,
-        code === "timeout"
-          ? "Ashby request timed out after bounded retries."
-          : "Ashby request failed after bounded retries.",
-        attempts,
-      );
-    }
-
-    await this.#waitBeforeRetry(retryNumber, null, attempts, callerSignal);
+    this.#transport = new BoundedJsonTransport("Ashby", options);
   }
 
   async fetchJobs(
@@ -315,152 +225,48 @@ export class AshbyAdapter implements ProviderAdapter {
     // served empty, so an advert with a stated salary would read as unknown.
     endpoint.searchParams.set("includeCompensation", "true");
 
-    let attempts = 0;
-    for (let retryNumber = 1; retryNumber <= MAX_ATTEMPTS; retryNumber += 1) {
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-
-      const timeoutSignal = this.#createTimeoutSignal(this.#timeoutMs);
-      const requestSignal = callerSignal
-        ? AbortSignal.any([callerSignal, timeoutSignal])
-        : timeoutSignal;
-      attempts += 1;
-
-      let response: Response;
-      try {
-        response = await this.#fetch(endpoint, {
-          method: "GET",
-          redirect: "error",
-          headers: {
-            Accept: "application/json",
-            "User-Agent": "JobWarden/0.1 (+private UK job index)",
-          },
-          signal: requestSignal,
-        });
-      } catch {
-        if (callerSignal?.aborted) throw callerAborted(attempts);
-
-        const code = timeoutSignal.aborted ? "timeout" : "network_error";
-        await this.#retryTransportFailure(
-          code,
-          retryNumber,
-          attempts,
-          callerSignal,
-        );
-        continue;
-      }
-
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-
-      if (!response.ok) {
-        if (isTransientStatus(response.status) && attempts < MAX_ATTEMPTS) {
-          await this.#waitBeforeRetry(
-            retryNumber,
-            response.headers.get("retry-after"),
-            attempts,
-            callerSignal,
-          );
-          continue;
-        }
-
-        throw new AdapterError(
-          "http_error",
-          `Ashby request failed with HTTP status ${response.status}.`,
-          attempts,
-          response.status,
-        );
-      }
-
-      let responseBody: string;
-      try {
-        responseBody = await response.text();
-      } catch {
-        if (callerSignal?.aborted) throw callerAborted(attempts);
-
-        const code = timeoutSignal.aborted ? "timeout" : "network_error";
-        await this.#retryTransportFailure(
-          code,
-          retryNumber,
-          attempts,
-          callerSignal,
-        );
-        continue;
-      }
-
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-      if (timeoutSignal.aborted) {
-        await this.#retryTransportFailure(
-          "timeout",
-          retryNumber,
-          attempts,
-          callerSignal,
-        );
-        continue;
-      }
-
-      let untrustedPayload: unknown;
-      try {
-        untrustedPayload = JSON.parse(responseBody) as unknown;
-      } catch {
-        throw new AdapterError(
-          "invalid_response",
-          "Ashby returned invalid JSON syntax.",
-          attempts,
-        );
-      }
-
-      const result = ashbyResponseSchema.safeParse(untrustedPayload);
-      if (!result.success) {
-        throw new AdapterError(
-          "invalid_response",
-          "Ashby response did not match the expected schema.",
-          attempts,
-        );
-      }
-
-      const observedAt = new Date(this.#now()).toISOString();
-
-      return {
-        // One request returns the whole board, so the existing
-        // two-consecutive-omissions closure rule applies as it does to
-        // Greenhouse and Lever. This is not incremental discovery like Reed.
-        coverage: "complete",
-        jobs: result.data.jobs
-          // `isListed: false` means the posting is not on the employer's board.
-          // It is not published. An absent flag is treated as listed, which is
-          // how Ashby serves an ordinary live posting.
-          .filter((posting) => posting.isListed !== false)
-          .map((posting) => ({
-            providerJobId: posting.id,
-            title: posting.title,
-            location: toAshbyLocation(posting),
-            descriptionHtml:
-              present(posting.descriptionHtml) ??
-              present(posting.descriptionPlain) ??
-              "",
-            absoluteUrl: posting.jobUrl,
-            // The employer's own apply destination where Ashby states one, and
-            // the advert page otherwise. Never a JobWarden-side submission.
-            canonicalApplicationUrl:
-              present(posting.applyUrl) ?? posting.jobUrl,
-            updatedAt: null,
-            postedAt: isoDate(posting.publishedAt),
-            metadataText: [
-              present(posting.department)
-                ? `Department: ${present(posting.department)}`
-                : null,
-              present(posting.team) ? `Team: ${present(posting.team)}` : null,
-            ].filter((value): value is string => value !== null),
-            employmentType: classifyEmploymentType(posting.employmentType),
-            workingTime: classifyWorkingTime(posting.employmentType),
-            compensation: toAshbyCompensation(posting.compensation, observedAt),
-          })),
-      };
-    }
-
-    throw new AdapterError(
-      "network_error",
-      "Ashby request exhausted its bounded retry policy.",
-      attempts,
+    const data = await this.#transport.requestJson(
+      endpoint,
+      ashbyResponseSchema,
+      callerSignal,
     );
+
+    const observedAt = new Date(this.#transport.now()).toISOString();
+
+    return {
+      // One request returns the whole board, so the existing
+      // two-consecutive-omissions closure rule applies as it does to
+      // Greenhouse and Lever. This is not incremental discovery like Reed.
+      coverage: "complete",
+      jobs: data.jobs
+        // `isListed: false` means the posting is not on the employer's board.
+        // It is not published. An absent flag is treated as listed, which is
+        // how Ashby serves an ordinary live posting.
+        .filter((posting) => posting.isListed !== false)
+        .map((posting) => ({
+          providerJobId: posting.id,
+          title: posting.title,
+          location: toAshbyLocation(posting),
+          descriptionHtml:
+            present(posting.descriptionHtml) ??
+            present(posting.descriptionPlain) ??
+            "",
+          absoluteUrl: posting.jobUrl,
+          // The employer's own apply destination where Ashby states one, and
+          // the advert page otherwise. Never a JobWarden-side submission.
+          canonicalApplicationUrl: present(posting.applyUrl) ?? posting.jobUrl,
+          updatedAt: null,
+          postedAt: isoDate(posting.publishedAt),
+          metadataText: [
+            present(posting.department)
+              ? `Department: ${present(posting.department)}`
+              : null,
+            present(posting.team) ? `Team: ${present(posting.team)}` : null,
+          ].filter((value): value is string => value !== null),
+          employmentType: classifyEmploymentType(posting.employmentType),
+          workingTime: classifyWorkingTime(posting.employmentType),
+          compensation: toAshbyCompensation(posting.compensation, observedAt),
+        })),
+    };
   }
 }

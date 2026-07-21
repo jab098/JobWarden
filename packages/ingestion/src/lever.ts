@@ -1,23 +1,13 @@
 import { z } from "zod";
 
-import { AdapterError } from "./greenhouse.ts";
-import { isTransientStatus, retryDelayMilliseconds, sleep } from "./retry.ts";
-import type { Sleep } from "./retry.ts";
+import { AdapterError, BoundedJsonTransport } from "./transport.ts";
+import type { BoundedTransportOptions } from "./transport.ts";
 import type {
   JobSource,
   ProviderAdapter,
   ProviderFetchResult,
   ProviderJob,
 } from "./types.ts";
-
-// ponytail: a third copy of the bounded transport loop, matching Greenhouse
-// and Reed rather than refactoring two reviewed security-sensitive adapters as
-// a side effect of adding a third. Greenhouse and Lever are the two with a
-// genuinely identical shape; if Ashby and Workable also duplicate it, five
-// copies is where extracting a shared transport pays.
-const MAX_ATTEMPTS = 3;
-const DEFAULT_TIMEOUT_MS = 8_000;
-const DEFAULT_MAX_RETRY_AFTER_MS = 30_000;
 
 /**
  * Lever's documented public postings response, validated in full before any
@@ -64,23 +54,7 @@ const leverPostingSchema = z.object({
 
 const leverResponseSchema = z.array(leverPostingSchema);
 
-export type LeverAdapterOptions = {
-  fetch?: typeof fetch;
-  sleep?: Sleep;
-  random?: () => number;
-  now?: () => number;
-  createTimeoutSignal?: (milliseconds: number) => AbortSignal;
-  timeoutMs?: number;
-  maxRetryAfterMs?: number;
-};
-
-function callerAborted(attempts: number): AdapterError {
-  return new AdapterError(
-    "aborted",
-    "Lever request was cancelled by the caller.",
-    attempts,
-  );
-}
+export type LeverAdapterOptions = BoundedTransportOptions;
 
 /**
  * Lever's commitment is free employer text. It informs employment type only.
@@ -192,70 +166,10 @@ export function toDescriptionHtml(
 }
 
 export class LeverAdapter implements ProviderAdapter {
-  readonly #fetch: typeof fetch;
-  readonly #sleep: Sleep;
-  readonly #random: () => number;
-  readonly #now: () => number;
-  readonly #createTimeoutSignal: (milliseconds: number) => AbortSignal;
-  readonly #timeoutMs: number;
-  readonly #maxRetryAfterMs: number;
+  readonly #transport: BoundedJsonTransport;
 
   constructor(options: LeverAdapterOptions = {}) {
-    this.#fetch = options.fetch ?? globalThis.fetch;
-    this.#sleep = options.sleep ?? sleep;
-    this.#random = options.random ?? Math.random;
-    this.#now = options.now ?? Date.now;
-    this.#createTimeoutSignal =
-      options.createTimeoutSignal ??
-      ((milliseconds) => AbortSignal.timeout(milliseconds));
-    this.#timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.#maxRetryAfterMs =
-      options.maxRetryAfterMs ?? DEFAULT_MAX_RETRY_AFTER_MS;
-  }
-
-  async #waitBeforeRetry(
-    retryNumber: number,
-    retryAfter: string | null,
-    attempts: number,
-    callerSignal?: AbortSignal,
-  ): Promise<void> {
-    const delay = retryDelayMilliseconds({
-      retryNumber,
-      retryAfter,
-      maximumRetryAfterMilliseconds: this.#maxRetryAfterMs,
-      random: this.#random,
-      now: this.#now,
-    });
-
-    try {
-      await this.#sleep(delay, callerSignal);
-    } catch {
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-      throw new AdapterError(
-        "network_error",
-        "Lever retry scheduling failed.",
-        attempts,
-      );
-    }
-  }
-
-  async #retryTransportFailure(
-    code: "timeout" | "network_error",
-    retryNumber: number,
-    attempts: number,
-    callerSignal?: AbortSignal,
-  ): Promise<void> {
-    if (attempts === MAX_ATTEMPTS) {
-      throw new AdapterError(
-        code,
-        code === "timeout"
-          ? "Lever request timed out after bounded retries."
-          : "Lever request failed after bounded retries.",
-        attempts,
-      );
-    }
-
-    await this.#waitBeforeRetry(retryNumber, null, attempts, callerSignal);
+    this.#transport = new BoundedJsonTransport("Lever", options);
   }
 
   async fetchJobs(
@@ -275,141 +189,38 @@ export class LeverAdapter implements ProviderAdapter {
     );
     endpoint.searchParams.set("mode", "json");
 
-    let attempts = 0;
-    for (let retryNumber = 1; retryNumber <= MAX_ATTEMPTS; retryNumber += 1) {
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-
-      const timeoutSignal = this.#createTimeoutSignal(this.#timeoutMs);
-      const requestSignal = callerSignal
-        ? AbortSignal.any([callerSignal, timeoutSignal])
-        : timeoutSignal;
-      attempts += 1;
-
-      let response: Response;
-      try {
-        response = await this.#fetch(endpoint, {
-          method: "GET",
-          redirect: "error",
-          headers: {
-            Accept: "application/json",
-            "User-Agent": "JobWarden/0.1 (+private UK job index)",
-          },
-          signal: requestSignal,
-        });
-      } catch {
-        if (callerSignal?.aborted) throw callerAborted(attempts);
-
-        const code = timeoutSignal.aborted ? "timeout" : "network_error";
-        await this.#retryTransportFailure(
-          code,
-          retryNumber,
-          attempts,
-          callerSignal,
-        );
-        continue;
-      }
-
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-
-      if (!response.ok) {
-        if (isTransientStatus(response.status) && attempts < MAX_ATTEMPTS) {
-          await this.#waitBeforeRetry(
-            retryNumber,
-            response.headers.get("retry-after"),
-            attempts,
-            callerSignal,
-          );
-          continue;
-        }
-
-        throw new AdapterError(
-          "http_error",
-          `Lever request failed with HTTP status ${response.status}.`,
-          attempts,
-          response.status,
-        );
-      }
-
-      let responseBody: string;
-      try {
-        responseBody = await response.text();
-      } catch {
-        if (callerSignal?.aborted) throw callerAborted(attempts);
-
-        const code = timeoutSignal.aborted ? "timeout" : "network_error";
-        await this.#retryTransportFailure(
-          code,
-          retryNumber,
-          attempts,
-          callerSignal,
-        );
-        continue;
-      }
-
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-      if (timeoutSignal.aborted) {
-        await this.#retryTransportFailure(
-          "timeout",
-          retryNumber,
-          attempts,
-          callerSignal,
-        );
-        continue;
-      }
-
-      let untrustedPayload: unknown;
-      try {
-        untrustedPayload = JSON.parse(responseBody) as unknown;
-      } catch {
-        throw new AdapterError(
-          "invalid_response",
-          "Lever returned invalid JSON syntax.",
-          attempts,
-        );
-      }
-
-      const result = leverResponseSchema.safeParse(untrustedPayload);
-      if (!result.success) {
-        throw new AdapterError(
-          "invalid_response",
-          "Lever response did not match the expected schema.",
-          attempts,
-        );
-      }
-
-      return {
-        // One request returns the whole board, so the existing
-        // two-consecutive-omissions closure rule applies as it does to
-        // Greenhouse. This is not incremental discovery like Reed.
-        coverage: "complete",
-        jobs: result.data.map((posting) => ({
-          providerJobId: posting.id,
-          title: posting.text,
-          // The classifier's location evidence. `country` is deliberately not
-          // used here: synthesising a location string from an ISO code would
-          // fabricate evidence the advert never stated, and teaching the
-          // classifier to read a provider's country assertion changes the
-          // eligibility contract for every provider, which is its own task.
-          location: posting.categories?.location ?? "",
-          descriptionHtml: toDescriptionHtml(posting),
-          absoluteUrl: posting.hostedUrl,
-          canonicalApplicationUrl: posting.applyUrl,
-          updatedAt: null,
-          postedAt:
-            posting.createdAt == null
-              ? null
-              : new Date(posting.createdAt).toISOString(),
-          metadataText: [],
-          employmentType: classifyCommitment(posting.categories?.commitment),
-          compensation: toCompensation(posting.salaryRange),
-        })),
-      };
-    }
-
-    throw new AdapterError(
-      "network_error",
-      "Lever request exhausted its bounded retry policy.",
-      attempts,
+    const postings = await this.#transport.requestJson(
+      endpoint,
+      leverResponseSchema,
+      callerSignal,
     );
+
+    return {
+      // One request returns the whole board, so the existing
+      // two-consecutive-omissions closure rule applies as it does to
+      // Greenhouse. This is not incremental discovery like Reed.
+      coverage: "complete",
+      jobs: postings.map((posting) => ({
+        providerJobId: posting.id,
+        title: posting.text,
+        // The classifier's location evidence. `country` is deliberately not
+        // used here: synthesising a location string from an ISO code would
+        // fabricate evidence the advert never stated, and teaching the
+        // classifier to read a provider's country assertion changes the
+        // eligibility contract for every provider, which is its own task.
+        location: posting.categories?.location ?? "",
+        descriptionHtml: toDescriptionHtml(posting),
+        absoluteUrl: posting.hostedUrl,
+        canonicalApplicationUrl: posting.applyUrl,
+        updatedAt: null,
+        postedAt:
+          posting.createdAt == null
+            ? null
+            : new Date(posting.createdAt).toISOString(),
+        metadataText: [],
+        employmentType: classifyCommitment(posting.categories?.commitment),
+        compensation: toCompensation(posting.salaryRange),
+      })),
+    };
   }
 }

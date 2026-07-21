@@ -1,13 +1,8 @@
 import { parseCompensation } from "@jobwarden/domain";
 import { z } from "zod";
 
-import { AdapterError } from "./greenhouse.ts";
-import {
-  isTransientStatus,
-  retryDelayMilliseconds,
-  sleep,
-  type Sleep,
-} from "./retry.ts";
+import { AdapterError, BoundedJsonTransport } from "./transport.ts";
+import type { BoundedTransportOptions } from "./transport.ts";
 import type {
   JobSource,
   ProviderAdapter,
@@ -17,9 +12,9 @@ import type {
 } from "./types.ts";
 
 const ENDPOINT = "https://teaching-vacancies.service.gov.uk/api/v1/jobs.json";
+// The service is slower than an ATS board, so it gets a longer ceiling than the
+// shared transport's 8s default.
 const DEFAULT_TIMEOUT_MS = 10_000;
-const DEFAULT_MAX_RETRY_AFTER_MS = 30_000;
-const MAX_ATTEMPTS = 3;
 
 /**
  * Pages read per run.
@@ -87,24 +82,9 @@ const responseSchema = z.object({
   links: z.object({ next: z.string().max(2_000).nullish() }).nullish(),
 });
 
-export type TeachingVacanciesAdapterOptions = {
-  fetch?: typeof fetch;
-  sleep?: Sleep;
-  random?: () => number;
-  now?: () => number;
-  createTimeoutSignal?: (milliseconds: number) => AbortSignal;
-  timeoutMs?: number;
-  maxRetryAfterMs?: number;
+export type TeachingVacanciesAdapterOptions = BoundedTransportOptions & {
   maxPages?: number;
 };
-
-function callerAborted(attempts: number): AdapterError {
-  return new AdapterError(
-    "network_error",
-    "Teaching Vacancies request was aborted.",
-    attempts,
-  );
-}
 
 /** An ISO date, or null. Never a guess. */
 function isoDate(value: string | null | undefined): string | null {
@@ -247,159 +227,16 @@ function toProviderJob(
  * protecting this source's terms too.
  */
 export class TeachingVacanciesAdapter implements ProviderAdapter {
-  readonly #fetch: typeof fetch;
-  readonly #sleep: Sleep;
-  readonly #random: () => number;
-  readonly #now: () => number;
-  readonly #createTimeoutSignal: (milliseconds: number) => AbortSignal;
-  readonly #timeoutMs: number;
-  readonly #maxRetryAfterMs: number;
+  readonly #transport: BoundedJsonTransport;
   readonly #maxPages: number;
 
   constructor(options: TeachingVacanciesAdapterOptions = {}) {
-    this.#fetch = options.fetch ?? globalThis.fetch;
-    this.#sleep = options.sleep ?? sleep;
-    this.#random = options.random ?? Math.random;
-    this.#now = options.now ?? Date.now;
-    this.#createTimeoutSignal =
-      options.createTimeoutSignal ??
-      ((milliseconds) => AbortSignal.timeout(milliseconds));
-    this.#timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.#maxRetryAfterMs =
-      options.maxRetryAfterMs ?? DEFAULT_MAX_RETRY_AFTER_MS;
-    this.#maxPages = Math.max(1, options.maxPages ?? DEFAULT_MAX_PAGES);
-  }
-
-  async #waitBeforeRetry(
-    retryNumber: number,
-    retryAfter: string | null,
-    attempts: number,
-    callerSignal?: AbortSignal,
-  ): Promise<void> {
-    const delay = retryDelayMilliseconds({
-      retryNumber,
-      retryAfter,
-      maximumRetryAfterMilliseconds: this.#maxRetryAfterMs,
-      random: this.#random,
-      now: this.#now,
-    });
-
-    try {
-      await this.#sleep(delay, callerSignal);
-    } catch {
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-      throw new AdapterError(
-        "network_error",
-        "Teaching Vacancies retry scheduling failed.",
-        attempts,
-      );
-    }
-  }
-
-  async #readPage(
-    url: string,
-    callerSignal?: AbortSignal,
-  ): Promise<z.infer<typeof responseSchema>> {
-    let attempts = 0;
-
-    for (let retryNumber = 1; retryNumber <= MAX_ATTEMPTS; retryNumber += 1) {
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-
-      const timeoutSignal = this.#createTimeoutSignal(this.#timeoutMs);
-      const requestSignal = callerSignal
-        ? AbortSignal.any([callerSignal, timeoutSignal])
-        : timeoutSignal;
-      attempts += 1;
-
-      let response: Response;
-      try {
-        response = await this.#fetch(url, {
-          method: "GET",
-          redirect: "error",
-          headers: {
-            Accept: "application/json",
-            "User-Agent": "JobWarden/0.1 (+private UK job index)",
-          },
-          signal: requestSignal,
-        });
-      } catch {
-        if (callerSignal?.aborted) throw callerAborted(attempts);
-        if (attempts === MAX_ATTEMPTS) {
-          throw new AdapterError(
-            timeoutSignal.aborted ? "timeout" : "network_error",
-            "Teaching Vacancies request failed after bounded retries.",
-            attempts,
-          );
-        }
-        await this.#waitBeforeRetry(retryNumber, null, attempts, callerSignal);
-        continue;
-      }
-
-      if (callerSignal?.aborted) throw callerAborted(attempts);
-
-      if (!response.ok) {
-        if (isTransientStatus(response.status) && attempts < MAX_ATTEMPTS) {
-          await this.#waitBeforeRetry(
-            retryNumber,
-            response.headers.get("retry-after"),
-            attempts,
-            callerSignal,
-          );
-          continue;
-        }
-
-        throw new AdapterError(
-          "http_error",
-          `Teaching Vacancies request failed with HTTP status ${response.status}.`,
-          attempts,
-          response.status,
-        );
-      }
-
-      let body: string;
-      try {
-        body = await response.text();
-      } catch {
-        if (callerSignal?.aborted) throw callerAborted(attempts);
-        if (attempts === MAX_ATTEMPTS) {
-          throw new AdapterError(
-            timeoutSignal.aborted ? "timeout" : "network_error",
-            "Teaching Vacancies response could not be read after bounded retries.",
-            attempts,
-          );
-        }
-        await this.#waitBeforeRetry(retryNumber, null, attempts, callerSignal);
-        continue;
-      }
-
-      let untrusted: unknown;
-      try {
-        untrusted = JSON.parse(body) as unknown;
-      } catch {
-        throw new AdapterError(
-          "invalid_response",
-          "Teaching Vacancies returned invalid JSON syntax.",
-          attempts,
-        );
-      }
-
-      const parsed = responseSchema.safeParse(untrusted);
-      if (!parsed.success) {
-        throw new AdapterError(
-          "invalid_response",
-          "Teaching Vacancies response did not match the expected schema.",
-          attempts,
-        );
-      }
-
-      return parsed.data;
-    }
-
-    throw new AdapterError(
-      "network_error",
-      "Teaching Vacancies request failed after bounded retries.",
-      attempts,
+    this.#transport = new BoundedJsonTransport(
+      "Teaching Vacancies",
+      options,
+      DEFAULT_TIMEOUT_MS,
     );
+    this.#maxPages = Math.max(1, options.maxPages ?? DEFAULT_MAX_PAGES);
   }
 
   async fetchJobs(
@@ -414,15 +251,18 @@ export class TeachingVacanciesAdapter implements ProviderAdapter {
       );
     }
 
-    const observedAt = new Date(this.#now()).toISOString();
+    const observedAt = new Date(this.#transport.now()).toISOString();
     const jobs: ProviderJob[] = [];
     let nextUrl: string | null = ENDPOINT;
 
+    // The retry budget is per page, which is what the previous #readPage did.
     for (let page = 0; page < this.#maxPages && nextUrl; page += 1) {
-      const body: z.infer<typeof responseSchema> = await this.#readPage(
-        nextUrl,
-        callerSignal,
-      );
+      const body: z.infer<typeof responseSchema> =
+        await this.#transport.requestJson(
+          nextUrl,
+          responseSchema,
+          callerSignal,
+        );
 
       for (const posting of body.data) {
         const job = toProviderJob(posting, observedAt);
