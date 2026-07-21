@@ -87,6 +87,8 @@ export type RuntimeEnvironment = {
   serviceRoleKey: string;
   cronSecret: string;
   reedApiKey?: string;
+  adzunaAppId?: string;
+  adzunaAppKey?: string;
 };
 
 export type RuntimeLog = Readonly<{

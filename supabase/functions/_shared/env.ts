@@ -15,6 +15,24 @@ const environmentSchema = z.object({
       .regex(/^[\x20-\x7e]+$/)
       .optional(),
   ),
+  ADZUNA_APP_ID: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z
+      .string()
+      .min(1)
+      .max(512)
+      .regex(/^[\x20-\x7e]+$/)
+      .optional(),
+  ),
+  ADZUNA_APP_KEY: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z
+      .string()
+      .min(1)
+      .max(512)
+      .regex(/^[\x20-\x7e]+$/)
+      .optional(),
+  ),
 });
 
 function exactHttpOrigin(value: string): string | null {
@@ -55,5 +73,15 @@ export function readRuntimeEnvironment(
     ...(result.data.REED_API_KEY === undefined
       ? {}
       : { reedApiKey: result.data.REED_API_KEY }),
+    // Both or neither. Adzuna authenticates with an id and a key together, so
+    // a half-configured pair would reach the adapter and fail at the provider
+    // rather than at configuration.
+    ...(result.data.ADZUNA_APP_ID === undefined ||
+    result.data.ADZUNA_APP_KEY === undefined
+      ? {}
+      : {
+          adzunaAppId: result.data.ADZUNA_APP_ID,
+          adzunaAppKey: result.data.ADZUNA_APP_KEY,
+        }),
   };
 }

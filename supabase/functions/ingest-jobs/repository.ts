@@ -29,6 +29,7 @@ const claimedRowSchema = z
       "workable",
       "reed",
       "teaching_vacancies",
+      "adzuna",
     ]),
     board_token: z.string().min(1).max(200),
     employer_name: z.string().min(1).max(300),
@@ -55,6 +56,18 @@ const claimedRowSchema = z
         row.allowed_hosts.length === 1 &&
         row.allowed_hosts[0] === "teaching-vacancies.service.gov.uk"),
     { message: "Invalid Teaching Vacancies discovery source." },
+  )
+  // Adzuna is one national aggregator with a credential, not one row per
+  // employer, so its identity is pinned here as well as at the database
+  // constraint.
+  .refine(
+    (row) =>
+      row.provider !== "adzuna" ||
+      (row.board_token === "gb-discovery" &&
+        row.employer_name === "Adzuna" &&
+        row.allowed_hosts.length === 1 &&
+        row.allowed_hosts[0] === "www.adzuna.co.uk"),
+    { message: "Invalid Adzuna discovery source." },
   );
 
 const upsertResultSchema = z
@@ -106,7 +119,9 @@ function mapClaim(row: z.infer<typeof claimedRowSchema>): ClaimedIngestion {
     triggerType: row.trigger_type,
     sourceRunId: row.source_run_id,
     source:
-      row.provider === "reed" || row.provider === "teaching_vacancies"
+      row.provider === "reed" ||
+      row.provider === "teaching_vacancies" ||
+      row.provider === "adzuna"
         ? { ...common, provider: row.provider, boardToken: "gb-discovery" }
         : {
             ...common,
