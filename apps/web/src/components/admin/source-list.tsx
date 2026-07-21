@@ -100,7 +100,10 @@ export function SourceList({
               <p className="mt-4 max-w-3xl text-sm leading-6 text-[#4f5869]">
                 {source.complianceNotes}
               </p>
-              {!readOnly && saveAction && source.provider !== "reed" ? (
+              {!readOnly &&
+              saveAction &&
+              (source.provider === "greenhouse" ||
+                source.provider === "lever") ? (
                 <Disclosure
                   label="Edit source configuration"
                   className="mt-4"
@@ -108,12 +111,12 @@ export function SourceList({
                 >
                   <SourceForm action={saveAction} source={source} />
                 </Disclosure>
-              ) : source.provider === "reed" ? (
+              ) : (
                 <p className="mt-4 border-t border-[#e3dfd7] pt-4 text-xs text-ink-secondary">
-                  Reed discovery settings are environment-managed and read-only
-                  here.
+                  National discovery sources are environment-managed and
+                  read-only here.
                 </p>
-              ) : null}
+              )}
             </article>
           ))}
         </div>

@@ -6,6 +6,15 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 **Next task: 30b, the provider vocabulary widening.** It is unblocked and, for the first time, lands on a green database gate. Read the roadmap's "Remaining work, in the order it should be done" for why it comes before 31 and 32.
 
+**Task 38 is done.** The Teaching Vacancies adapter is delivered and **ships disabled** until the owner enables it. Migration `202607220005_teaching_vacancies_provider.sql`; adapter `packages/ingestion/src/teaching-vacancies.ts`; pgTAP `024`. The live gate is green at 27 files and 572 tests.
+
+Four things from it that will otherwise be rediscovered the hard way:
+
+1. **`baseSalary` is a trap.** `baseSalary.value.value` is free text, not a number, and its sibling `unitText` is unreliable — the live service serves an hourly rate with `unitText: "YEAR"`. Neither is trusted; the raw text goes to the shared deterministic parser. Any future source carrying schema.org `JobPosting` deserves the same suspicion, **including Task 34**.
+2. **Second-hand figures were wrong twice.** Two different summaries claimed 50 and 25 adverts per page; the API says 100 across 30 pages, `count: 2970`. An earlier line in the compliance record saying "roughly 6,400 vacancies" came from the HTML listing page and has been corrected. Confirm against the service, never a summary.
+3. **Task 37 is load-bearing here.** Adverts arrive with `postalCode` and sometimes no locality the gazetteer carries, so postcode recognition is what lets them publish at all. The two tasks compound.
+4. **The project guardrail caught the adapter's own doc comment** for the word "pricing" while it was explaining the licence restriction. That is the guardrail working, not a false alarm to weaken — the comment was reworded. Note the restriction is now a **licence obligation** as well as a product rule: charging a fee or commission around a Teaching Vacancies listing would breach the terms its data is ingested under.
+
 **Task 37 is done.** Full UK postcodes, the ISO code `GB`, multi-location strings split on `/`, and a closed set of nation-wide phrasings are now recognised as UK location evidence. Measured on the same 44-shape probe the task was specified from: **16 published before, 23 after**, no regressions.
 
 Two things to know before touching this area again. First, **the next round of shapes should come from `/admin/ingestion`, not from a probe.** Six non-settlement shapes still drop and two of them are one-line fixes, but the list of ways an advert can write a location has no end, and this task's own first hypothesis — that the place dataset was too thin — was tested and disproved. Real run data should choose the next five. Second, **the settlement gaps are a different task**: Shoreditch, Camden, Stratford-upon-Avon and others are missing from `uk-places.generated.json`, which is generated from postcodes.io and Nominatim by `scripts/build-uk-places.mjs`, carries centroids that radius search depends on, and is seeded into migration `202607220002`. Adding a name there is a data change with a migration, not a logic change.
@@ -94,50 +103,50 @@ One schema defect is recorded and undecided — no `auth.users` row can be delet
 
 ## Task progress
 
-| Task                                                                   | Status      | Notes                                                                               |
-| ---------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------- |
-| 1. Monorepo, persistent standards, and invariant guardrails            | reviewed    | Commits `5563920` and `dc021a6`; independent review clean                           |
-| 2. UK job domain and access state machine                              | reviewed    | Commits `4b3a221` through `b808ce6`; independent review clean                       |
-| 3. Greenhouse adapter and normalisation pipeline                       | reviewed    | Commits `3ed0eb6` through `b570fab`; final full review clean                        |
-| 4. Supabase schema, RLS, mutations, and database tests                 | reviewed    | Review clean; reset and pgTAP now execute green since Task 35                       |
-| 5. Supabase authentication and route gates                             | reviewed    | Code retained; live OAuth and operational setup deferred                            |
-| 6. Responsive app shell and UK jobs feed                               | reviewed    | Delivered by PR #5; merge commit `7878d47` verified locally                         |
-| 7. Administrator operations                                            | reviewed    | Delivered by PR #8; final code review clean at `4a1efdd`                            |
-| 8. Shared ingestion runtime                                            | reviewed    | Delivered by PR #9; final code review clean at `8556997`                            |
-| 9. UK coverage and compensation                                        | reviewed    | Delivered by PR #10; merge commit `44a3580` verified locally                        |
-| 10. Career profile, onboarding, and CV extraction                      | reviewed    | Delivered by PR #11; merge commit `06b5a9c` verified locally                        |
-| 11. Target Feed and explainable fit scores                             | reviewed    | Delivered by PR #12; merge commit `c86a14d` verified locally                        |
-| 12. Explore and career pathways                                        | reviewed    | Delivered by PR #13; merge commit `124216f` verified locally                        |
-| 13. Application tracker and follow-ups                                 | reviewed    | Delivered by PR #14; merge commit `9e66b32` verified locally                        |
-| 14. Scheduled updates and notifications                                | reviewed    | Delivered by PR #15; merge commit `41ab43f` verified locally                        |
-| 15. Evidence-bound CV tailoring                                        | reviewed    | Delivered by PR #16; merge commit `ed75c9d` verified locally                        |
-| 16. Privacy, production access, deployment, and full-path verification | reviewed    | Delivered by PR #18; merge commit `46dacb4`; live setup pending                     |
-| 17. Home activity dashboard                                            | reviewed    | Delivered by PR #17; merge commit `2246b49` verified locally                        |
-| 18. Onboarding gate and state machine                                  | reviewed    | Independent review clean; gate fails closed in every direction                      |
-| 19. Guided setup and first-run population                              | reviewed    | Independent review clean; writes the profile before unlocking                       |
-| 20. Administrator audit log and operational health                     | reviewed    | Independent review clean; no new data is collected                                  |
-| 21. Authentication activation                                          | pending     | Owner-approved 2026-07-19; needs owner platform setup                               |
-| 22. Search Jobs, route naming, and onboarding follow-ups               | reviewed    | Delivered by PR #22; independent review APPROVED at `0fa46de`                       |
-| 23. Single landing destination and public legal footer                 | reviewed    | Delivered by PR #23; independent review APPROVED at `25314de`                       |
-| 24. CV upload client                                                   | reviewed    | Delivered by PR #24; independent review APPROVED at `976065b`                       |
-| 25. Location and radius                                                | reviewed    | Delivered by PR #25; review found a wrong seeded coordinate, fixed at `ca625e8`     |
-| 25a. job_locations ingestion writer                                    | reviewed    | Delivered by PR #26 at `7ffed39`; review caught a false UK remote-permission claim  |
-| 25b. UK eligibility classifier                                         | reviewed    | Delivered by PR #27 at `94913bf`; review rejected the first design and was right    |
-| 25c. Ingestion drop visibility                                         | reviewed    | Delivered by PR #28 at `6ad2e07`; review caught an RPC left open to anon            |
-| 26. Settings, sources, and support pages                               | shipped     | Delivered directly on `main` at `3aa4283`; not recorded here at the time            |
-| 26a. Card surface, graphite data, and viewport-scaled frame            | shipped     | Delivered by PR #30 at `58a80fd`; verified green, no independent review pass        |
-| 26b. Owner surface complaints and the early-access dialog              | shipped     | Delivered by PR #31 at `53d8fbe`; dialog needs Turnstile keys and `202607220001`    |
-| 27. Onboarding hydration defect                                        | reviewed    | Not reproducible at the commit that reported it; regression test delivered instead  |
-| 28. Repair the history secret scan                                     | reviewed    | Delivered by PR #34; proven to catch a planted secret, not merely to run            |
-| 33. Emit `JobPosting` structured data                                  | blocked     | Stopped before implementation; needs owner decisions, not engineering               |
-| 30a. Lever adapter (TypeScript only)                                   | reviewed    | Adapter and 26 tests; dispatches to nothing until 30b, so inert in every path       |
-| 30b. Provider vocabulary widening                                      | next        | 850 lines of definer SQL across seven functions; unblocked, gate is green           |
-| 36. Entrance motion, administration inside the hub                     | shipped     | Owner request from a reference video; no independent review pass                    |
-| 35. Make the live database gate pass                                   | reviewed    | Delivered by PR #41 at `ab1515b`; 542 tests, lint clean, review APPROVED            |
-| 30b. Provider vocabulary widening                                      | shipped     | `lever` accepted; Ashby/Workable rejected until their adapters ship; 561 tests      |
-| 37. Location string-shape recognition                                  | shipped     | Postcodes, `GB`, multi-location, nation-wide phrases; probe 16/44 to 23/44          |
-| 38. Official UK public-sector sources                                  | in progress | Access confirmed 2026-07-21; Teaching Vacancies approved, adapter is the next slice |
-| 39. Adzuna licence decision                                            | blocked     | Owner action; written licence and attribution terms required before any connector   |
+| Task                                                                   | Status   | Notes                                                                               |
+| ---------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------- |
+| 1. Monorepo, persistent standards, and invariant guardrails            | reviewed | Commits `5563920` and `dc021a6`; independent review clean                           |
+| 2. UK job domain and access state machine                              | reviewed | Commits `4b3a221` through `b808ce6`; independent review clean                       |
+| 3. Greenhouse adapter and normalisation pipeline                       | reviewed | Commits `3ed0eb6` through `b570fab`; final full review clean                        |
+| 4. Supabase schema, RLS, mutations, and database tests                 | reviewed | Review clean; reset and pgTAP now execute green since Task 35                       |
+| 5. Supabase authentication and route gates                             | reviewed | Code retained; live OAuth and operational setup deferred                            |
+| 6. Responsive app shell and UK jobs feed                               | reviewed | Delivered by PR #5; merge commit `7878d47` verified locally                         |
+| 7. Administrator operations                                            | reviewed | Delivered by PR #8; final code review clean at `4a1efdd`                            |
+| 8. Shared ingestion runtime                                            | reviewed | Delivered by PR #9; final code review clean at `8556997`                            |
+| 9. UK coverage and compensation                                        | reviewed | Delivered by PR #10; merge commit `44a3580` verified locally                        |
+| 10. Career profile, onboarding, and CV extraction                      | reviewed | Delivered by PR #11; merge commit `06b5a9c` verified locally                        |
+| 11. Target Feed and explainable fit scores                             | reviewed | Delivered by PR #12; merge commit `c86a14d` verified locally                        |
+| 12. Explore and career pathways                                        | reviewed | Delivered by PR #13; merge commit `124216f` verified locally                        |
+| 13. Application tracker and follow-ups                                 | reviewed | Delivered by PR #14; merge commit `9e66b32` verified locally                        |
+| 14. Scheduled updates and notifications                                | reviewed | Delivered by PR #15; merge commit `41ab43f` verified locally                        |
+| 15. Evidence-bound CV tailoring                                        | reviewed | Delivered by PR #16; merge commit `ed75c9d` verified locally                        |
+| 16. Privacy, production access, deployment, and full-path verification | reviewed | Delivered by PR #18; merge commit `46dacb4`; live setup pending                     |
+| 17. Home activity dashboard                                            | reviewed | Delivered by PR #17; merge commit `2246b49` verified locally                        |
+| 18. Onboarding gate and state machine                                  | reviewed | Independent review clean; gate fails closed in every direction                      |
+| 19. Guided setup and first-run population                              | reviewed | Independent review clean; writes the profile before unlocking                       |
+| 20. Administrator audit log and operational health                     | reviewed | Independent review clean; no new data is collected                                  |
+| 21. Authentication activation                                          | pending  | Owner-approved 2026-07-19; needs owner platform setup                               |
+| 22. Search Jobs, route naming, and onboarding follow-ups               | reviewed | Delivered by PR #22; independent review APPROVED at `0fa46de`                       |
+| 23. Single landing destination and public legal footer                 | reviewed | Delivered by PR #23; independent review APPROVED at `25314de`                       |
+| 24. CV upload client                                                   | reviewed | Delivered by PR #24; independent review APPROVED at `976065b`                       |
+| 25. Location and radius                                                | reviewed | Delivered by PR #25; review found a wrong seeded coordinate, fixed at `ca625e8`     |
+| 25a. job_locations ingestion writer                                    | reviewed | Delivered by PR #26 at `7ffed39`; review caught a false UK remote-permission claim  |
+| 25b. UK eligibility classifier                                         | reviewed | Delivered by PR #27 at `94913bf`; review rejected the first design and was right    |
+| 25c. Ingestion drop visibility                                         | reviewed | Delivered by PR #28 at `6ad2e07`; review caught an RPC left open to anon            |
+| 26. Settings, sources, and support pages                               | shipped  | Delivered directly on `main` at `3aa4283`; not recorded here at the time            |
+| 26a. Card surface, graphite data, and viewport-scaled frame            | shipped  | Delivered by PR #30 at `58a80fd`; verified green, no independent review pass        |
+| 26b. Owner surface complaints and the early-access dialog              | shipped  | Delivered by PR #31 at `53d8fbe`; dialog needs Turnstile keys and `202607220001`    |
+| 27. Onboarding hydration defect                                        | reviewed | Not reproducible at the commit that reported it; regression test delivered instead  |
+| 28. Repair the history secret scan                                     | reviewed | Delivered by PR #34; proven to catch a planted secret, not merely to run            |
+| 33. Emit `JobPosting` structured data                                  | blocked  | Stopped before implementation; needs owner decisions, not engineering               |
+| 30a. Lever adapter (TypeScript only)                                   | reviewed | Adapter and 26 tests; dispatches to nothing until 30b, so inert in every path       |
+| 30b. Provider vocabulary widening                                      | next     | 850 lines of definer SQL across seven functions; unblocked, gate is green           |
+| 36. Entrance motion, administration inside the hub                     | shipped  | Owner request from a reference video; no independent review pass                    |
+| 35. Make the live database gate pass                                   | reviewed | Delivered by PR #41 at `ab1515b`; 542 tests, lint clean, review APPROVED            |
+| 30b. Provider vocabulary widening                                      | shipped  | `lever` accepted; Ashby/Workable rejected until their adapters ship; 561 tests      |
+| 37. Location string-shape recognition                                  | shipped  | Postcodes, `GB`, multi-location, nation-wide phrases; probe 16/44 to 23/44          |
+| 38. Official UK public-sector sources                                  | shipped  | Teaching Vacancies adapter shipped disabled; Apprenticeships/NHS/DWP need the owner |
+| 39. Adzuna licence decision                                            | blocked  | Owner action; written licence and attribution terms required before any connector   |
 
 ## Last verification commands
 

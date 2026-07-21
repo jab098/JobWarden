@@ -16,6 +16,7 @@ export type JobSource = JobSourceBase &
     | { provider: "greenhouse" }
     | { provider: "lever" }
     | { provider: "reed"; boardToken: "gb-discovery" }
+    | { provider: "teaching_vacancies"; boardToken: "gb-discovery" }
   );
 
 export type CompensationProvenance = "advertised" | "estimated" | "unknown";

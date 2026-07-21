@@ -1,0 +1,156 @@
+{
+  "info": {
+    "title": "GOV UK - Teaching Vacancies",
+    "license": {
+      "name": "Open Government License",
+      "url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+    }
+  },
+  "openapi": "3.0.0",
+  "links": {
+    "self": "https://teaching-vacancies.service.gov.uk/api/v1/jobs.json?page=1",
+    "next": "https://teaching-vacancies.service.gov.uk/api/v1/jobs.json?page=2"
+  },
+  "meta": { "totalPages": 2, "count": 5 },
+  "data": [
+    {
+      "@context": "http://schema.org",
+      "@type": "JobPosting",
+      "title": "Fictional Lunchtime Supervisor",
+      "description": "<div><p>Fictional Lower School is recruiting a lunchtime supervisor.</p></div>",
+      "datePosted": "2026-07-20",
+      "validThrough": "2026-09-01T12:00:00+01:00",
+      "occupationalCategory": "other_support",
+      "industry": "Education",
+      "directApply": null,
+      "employmentType": ["PART_TIME"],
+      "jobLocation": {
+        "@type": "Place",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Bedford",
+          "addressRegion": "East of England",
+          "streetAddress": "Fictional Street",
+          "postalCode": "MK45 5JH",
+          "addressCountry": "GB"
+        }
+      },
+      "baseSalary": {
+        "@type": "MonetaryAmount",
+        "currency": "GBP",
+        "value": {
+          "@type": "QuantitativeValue",
+          "value": "£12.71 Hourly\n\rLevel 1 B Point 2 (Hourly Rate From £12.71)",
+          "unitText": "YEAR"
+        }
+      },
+      "url": "https://teaching-vacancies.service.gov.uk/jobs/fictional-lunchtime-supervisor-11111111-1111-4111-8111-111111111111",
+      "hiringOrganization": {
+        "@type": "Organization",
+        "name": "Fictional Lower School",
+        "sameAs": "https://example.invalid/fictional-lower",
+        "identifier": "900001"
+      }
+    },
+    {
+      "@context": "http://schema.org",
+      "@type": "JobPosting",
+      "title": "Fictional Teacher of Mathematics",
+      "description": "<div><p>A fictional secondary school seeks a teacher of mathematics.</p></div>",
+      "datePosted": "2026-07-19",
+      "validThrough": "2026-08-25T09:00:00+01:00",
+      "occupationalCategory": "teacher",
+      "industry": "Education",
+      "directApply": true,
+      "employmentType": ["FULL_TIME"],
+      "jobLocation": {
+        "@type": "Place",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Sheffield",
+          "addressRegion": "Yorkshire and the Humber",
+          "postalCode": "S1 2HH",
+          "addressCountry": "GB"
+        }
+      },
+      "baseSalary": {
+        "@type": "MonetaryAmount",
+        "currency": "GBP",
+        "value": {
+          "@type": "QuantitativeValue",
+          "value": "£31,650.00 - £43,607.00 Annually (Actual)",
+          "unitText": "YEAR"
+        }
+      },
+      "url": "https://teaching-vacancies.service.gov.uk/jobs/fictional-teacher-maths-22222222-2222-4222-8222-222222222222",
+      "hiringOrganization": {
+        "@type": "Organization",
+        "name": "Fictional Secondary School",
+        "identifier": "900002"
+      }
+    },
+    {
+      "@context": "http://schema.org",
+      "@type": "JobPosting",
+      "title": "Fictional Cover Supervisor",
+      "description": "<div><p>Fixed cover role at a fictional academy.</p></div>",
+      "datePosted": "2026-07-18",
+      "validThrough": "2026-08-15T12:00:00+01:00",
+      "occupationalCategory": "other_support",
+      "industry": "Education",
+      "directApply": false,
+      "employmentType": ["FULL_TIME", "TEMPORARY"],
+      "jobLocation": {
+        "@type": "Place",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Cardiff",
+          "addressRegion": "Wales",
+          "postalCode": "CF10 1EP",
+          "addressCountry": "GB"
+        }
+      },
+      "url": "https://teaching-vacancies.service.gov.uk/jobs/fictional-cover-supervisor-33333333-3333-4333-8333-333333333333",
+      "hiringOrganization": {
+        "@type": "Organization",
+        "name": "Fictional Academy",
+        "identifier": "900003"
+      }
+    },
+    {
+      "@context": "http://schema.org",
+      "@type": "JobPosting",
+      "title": "Fictional Teaching Assistant",
+      "description": "<div><p>An advert whose locality the bundled gazetteer does not carry, so the postcode is the only location evidence.</p></div>",
+      "datePosted": "2026-07-17",
+      "validThrough": "2026-08-20T12:00:00+01:00",
+      "occupationalCategory": "teaching_assistant",
+      "industry": "Education",
+      "directApply": null,
+      "employmentType": ["PART_TIME", "TEMPORARY"],
+      "jobLocation": {
+        "@type": "Place",
+        "address": {
+          "@type": "PostalAddress",
+          "postalCode": "EC2A 4NE",
+          "addressCountry": "GB"
+        }
+      },
+      "baseSalary": {
+        "@type": "MonetaryAmount",
+        "currency": "GBP",
+        "value": {
+          "@type": "QuantitativeValue",
+          "value": "Fictional pay scale reference only",
+          "unitText": "YEAR"
+        }
+      },
+      "url": "https://teaching-vacancies.service.gov.uk/jobs/fictional-teaching-assistant-44444444-4444-4444-8444-444444444444",
+      "hiringOrganization": {
+        "@type": "Organization",
+        "name": "Fictional Primary School",
+        "identifier": "900004"
+      }
+    }
+  ]
+}

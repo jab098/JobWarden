@@ -22,7 +22,7 @@ const claimedRowSchema = z
     trigger_type: z.enum(["admin", "scheduled"]),
     source_run_id: z.string().uuid(),
     source_id: z.string().uuid(),
-    provider: z.enum(["greenhouse", "lever", "reed"]),
+    provider: z.enum(["greenhouse", "lever", "reed", "teaching_vacancies"]),
     board_token: z.string().min(1).max(200),
     employer_name: z.string().min(1).max(300),
     allowed_hosts: z.array(hostSchema).min(1).max(10),
@@ -35,6 +35,19 @@ const claimedRowSchema = z
         row.allowed_hosts.length === 1 &&
         row.allowed_hosts[0] === "www.reed.co.uk"),
     { message: "Invalid Reed discovery source." },
+  )
+  // Teaching Vacancies is a single national discovery source, not one row per
+  // employer, so its identity is pinned here as well as at the database
+  // constraint. A row claiming to be it with a different host is refused rather
+  // than fetched.
+  .refine(
+    (row) =>
+      row.provider !== "teaching_vacancies" ||
+      (row.board_token === "gb-discovery" &&
+        row.employer_name === "Teaching Vacancies" &&
+        row.allowed_hosts.length === 1 &&
+        row.allowed_hosts[0] === "teaching-vacancies.service.gov.uk"),
+    { message: "Invalid Teaching Vacancies discovery source." },
   );
 
 const upsertResultSchema = z
@@ -86,8 +99,8 @@ function mapClaim(row: z.infer<typeof claimedRowSchema>): ClaimedIngestion {
     triggerType: row.trigger_type,
     sourceRunId: row.source_run_id,
     source:
-      row.provider === "reed"
-        ? { ...common, provider: "reed", boardToken: "gb-discovery" }
+      row.provider === "reed" || row.provider === "teaching_vacancies"
+        ? { ...common, provider: row.provider, boardToken: "gb-discovery" }
         : {
             ...common,
             provider: row.provider,
