@@ -4,56 +4,94 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Start here if you are picking this up
 
-**The active work is production setup, not a roadmap task.** A live Supabase project now exists and the owner is part-way through `docs/setup/production-setup.md`. Resume there, at **step 6 (deploy)**.
+**JobWarden is deployed and serving real jobs.** Updated 2026-07-21, evening.
+
+- **Live at https://jobwarden.jabed.co.uk** — Vercel, valid certificate, sign-in works end to end.
+- **457 UK jobs** across **47 enabled sources** (46 Greenhouse employer boards + Teaching Vacancies).
+- `main` is clean; seven pull requests merged today, #70 through #77.
+
+### The platform changed, and the architecture record was wrong until now
+
+`docs/architecture/free-tier-services.md` named **Cloudflare Workers through OpenNext**. That path is **blocked upstream**: `@opennextjs/cloudflare` 1.20.1 does not support Next.js 16.2.10. Next 16 runs `proxy.ts` on the Node runtime only and the adapter refuses it ([opennextjs-cloudflare#962](https://github.com/opennextjs/opennextjs-cloudflare/issues/962)); renaming to the older `middleware.ts` convention gets past that and then esbuild fails parsing Next's own `next-server.js`. It is not a configuration problem and there is no newer release.
+
+**The deployment is Vercel.** Cloudflare still holds DNS for `jabed.co.uk`, Turnstile, and Workers AI. The record has been corrected — do not try Cloudflare Workers again without checking whether that issue has closed.
+
+### What is true of the live project
+
+Confirmed by querying it, not remembered:
+
+| Thing                                               | State                                                                             |
+| --------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Supabase, Google OAuth, approved administrator      | done                                                                              |
+| Vercel deployment on the owner's domain             | done                                                                              |
+| `SITE_URL` secret and CV-upload CORS                | done — verified allowed for the real origin, refused for a rogue one              |
+| Turnstile keys                                      | done                                                                              |
+| Resend                                              | done                                                                              |
+| `ingest-jobs` and `extract-career-profile` deployed | done                                                                              |
+| Cron `jobwarden-ingestion-weekdays`                 | active, 08/09/11/12/14/15/17/18 UTC                                               |
+| AI extraction                                       | **enabled**, allowance 10 in both gates, and has produced **nothing** — see below |
+| Adzuna                                              | adapter and vocabulary merged, migration applied, **0 source rows, deliberately** |
+
+**Not started:** `send-digests` is undeployed, and Sentry is optional and skipped.
 
 ### Verify this first — it is untested
 
-The most recent change, PR #68, fixed a defect that returned a reader to step one of onboarding after they finished it. **Nobody has confirmed the fix in the browser.** The database already records that owner's onboarding as complete, so the check is simply whether `/home` now loads instead of bouncing to `/onboarding`:
+**AI extraction has never produced a suggestion.** One call was made, the daily allowance was spent, and `suggestion_count` was 0. PR #72 added diagnostics, so the next CV upload writes one line to Supabase → Edge Functions → `extract-career-profile` → Logs:
 
-```sh
-pnpm --filter @jobwarden/web dev
-# sign in, then open http://localhost:3000/home
-```
+- `accepted` with a count — it works,
+- `rejected_schema` with the first failing field path — an 8B model cannot hit the strict contract, so change the model,
+- `call_failed` with an HTTP status — 404 is a wrong model name, 401 a bad token, 429 the free allocation.
 
-If it bounces, read `career_onboarding_state` for that owner and compare what `parseOnboardingState` does with the row — that is where the bug lived.
+**Pathways depend entirely on this.** The catalogue needs capability concepts (stakeholder collaboration, documentation, data quality governance) that deterministic extraction does not emit. PR #70 added a concept alias map which lifted the best pathway from 36% to 57%, still under the 70% threshold, and a test pins the still-empty result so it **fails loudly** when extraction improves. That failure is the signal to re-look, not a defect.
 
-### What is already true of the live project
+**Teaching Vacancies has never succeeded.** Its only run predates the compensation fix in PR #71. Deliberately not retried in the session that fixed it.
 
-Confirmed by querying it on 2026-07-21, not remembered:
+### The one lesson worth more than the rest
 
-| Step                              | State                                                                   |
-| --------------------------------- | ----------------------------------------------------------------------- |
-| Supabase project, London region   | done, CLI linked                                                        |
-| 38 migrations pushed              | done — `supabase db push`                                               |
-| Google OAuth provider             | done, sign-in works end to end                                          |
-| Administrator bootstrap           | done — the owner is `admin` **and** `approved`                          |
-| Private `career-documents` bucket | done — created by migration, not by hand                                |
-| CV uploads switched on            | done — `private.app_settings.career_cv_uploads_enabled` is true         |
-| `extract-career-profile` deployed | done, with the `SITE_URL` secret set to `http://localhost:3000`         |
-| A real CV uploaded and extracted  | done — 9 evidence items from 6,436 characters                           |
-| Onboarding completed              | recorded in the database; **browser behaviour unverified since PR #68** |
+**Seven defects this week shared one shape: a green test pinning an assumption instead of the provider.** Every one verified clean while doing nothing real.
 
-**Not started:** a domain, the Cloudflare deployment, Turnstile keys, Resend, Sentry, and the two other Edge Functions (`ingest-jobs`, `send-digests`) are undeployed. **No job source is configured, so `jobs` is empty** — nothing will appear in any feed until step 8 of the runbook.
+1. `z.iso.datetime()` rejected the numeric offset PostgreSQL actually sends — onboarding looped, and every feed would have failed on its first row.
+2. Unknown compensation provenance carried a GBP currency the database forbids. Three adverts in 342 discarded **every job in the run**, reported only as `runtime_unexpected`.
+3. Greenhouse sends object metadata (`{"unit":"USD","min_value":…}`). One field rejected whole boards — Datadog's 421 and MongoDB's 392, on every run. **A test asserted that objects must be refused; the test was the bug.**
+4. The job ceiling counted the provider's whole response instead of the eligible subset, so Databricks (780 received, 48 UK) and Stripe (522, 39) saved nothing. **The old test's batch was entirely UK-eligible, so it passed under either rule and could not tell them apart.**
+5. `allowed_hosts` was documented as `boards.greenhouse.io` for every board. Live probing found **19 distinct hosts**. A mismatch quarantines every advert while the run reports success.
+6. The AI path swallowed every failure silently on a metered call.
+7. **The gazetteer landmine below**, found before it was triggered.
 
-### When the deployment happens, change `SITE_URL`
+**When something behaves oddly, read the row, the header, or the wire format before reasoning forward from the code.** Every fix above came from querying live data, never from reading the source.
 
-The Edge Function answers a CORS preflight for exactly one origin. It is set to `http://localhost:3000`. **CV upload will work locally and silently stop working on the deployed site** unless `supabase secrets set SITE_URL=https://your-real-origin` runs too. The runbook says this at both the storage step and the deploy step.
+### The landmine waiting in the gazetteer task
 
-### Nine defects came out of one real setup, and they share a cause
+`scripts/build-uk-places.mjs` regenerates `supabase/migrations/202607220002_uk_places_seed.sql` **in place**, and that migration is **already recorded as applied** on the live project (`supabase_migrations.schema_migrations` contains `202607220002`; `uk_places` holds 230 rows). Supabase tracks applied migrations by version, so a rewritten `202607220002` **will never re-run in production**.
 
-Every one lived in a path that only a real account, a real Google identity or a real CV could reach. The suite was green throughout.
+Re-running the generator as it stands grows the gazetteer locally and in every test while production silently stays at 230. **Decide how added places reach production before adding a single name.**
 
-1. `bootstrap:admin` never loaded the `.env.local` the runbook tells you to fill in, so the documented sequence could not work.
-2. It then discarded its own error messages and printed only "failed".
-3. `bootstrap_admin` granted the administrator role without approving the account, and the approval screen is behind the gate — the first owner could not administer their way in.
-4. The extraction function answered no CORS preflight, so every browser upload threw before the function ran, and the caller swallowed the rejection.
-5. The DOCX gate refused any relationship pointing outside the package — which is every hyperlink, so every CV with an email or a portfolio link was rejected as an unsafe archive.
-6. A failed extraction could never be retried, because the idempotency key was the file's content hash.
-7. "Continue with my CV" posted the stored path, so a reader who had once chosen "no CV" was sent down the no-CV branch past their own extracted evidence.
-8. Nothing waited for extraction to finish, so that control was live while parsing ran.
-9. **Zod's `z.iso.datetime()` rejects the numeric offset PostgreSQL sends**, so a completed onboarding row failed to parse and returned the reader to step one. The same defect sat unexposed in the jobs feed, target feed and application tracker, where `last_seen_at` is not nullable — the feed would have failed on every row the moment a source was enabled.
+This matters because the gazetteer is now the **binding constraint on the whole product**: roughly four fifths of Adzuna adverts quarantine as `ambiguous_uk_eligibility`, and it suppresses all 47 sources simultaneously. Measured across fifty live Adzuna adverts, `display_name` published 8 and the most specific area 11. Widening it is worth more than any new connector.
 
-**The common cause is worth more than the list.** Fixtures were written to a shape the real system never produces — a trailing `Z` no database emits, DOCX files with no hyperlinks, an environment loaded by nothing. Green tests measured agreement with those fixtures, not with reality. When something behaves oddly here, **read the row, the header or the wire format before reasoning forward from the code**; three of the fixes above took longer than they needed to because the previous fix was assumed to be the last one instead of the run's `error_code` being re-read each time.
+### What to do next, in order
+
+1. **Widen the gazetteer** — settle the migration question first. Lifts all 47 sources at once.
+2. **Show "Jobs by Adzuna" attribution, then create the source row.** The licence requires it on published listings and the feed carries no source per listing today (`normalisedJobSchema` has no provider field; the feed query selects none). Creating the row first would publish listings in breach of terms the owner accepted. This is why `job_sources` has zero Adzuna rows.
+3. **Keep widening the verified Greenhouse board list** — data only. There is no directory; expansion is always probe-and-verify against `boards-api.greenhouse.io`. Of ~180 well-known UK employers probed, ~135 had no public board, so a list written from memory would be mostly wrong.
+
+### Sources: what exists and what it can actually give you
+
+**Greenhouse, Lever, Ashby and Workable are recruitment software, not job boards.** Each customer has a private endpoint; there is no global feed, for anyone. They are worth adding for specific employers, never for coverage. 46 boards are configured, carrying ~685 UK roles.
+
+Real breadth comes from aggregators and national services, and each is gated on an owner action:
+
+| Source                     | Coverage           | Blocked on                                                                                                               |
+| -------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| **Adzuna**                 | 726,430 GB adverts | attribution UI, then the source row                                                                                      |
+| **Reed**                   | broad aggregator   | free key; terms state no attribution/retention/redistribution grant, so the owner must review what registration presents |
+| **Find an Apprenticeship** | national, DfE      | a free self-service API key                                                                                              |
+| **NHS Jobs**               | national           | NHSBSA terms in writing                                                                                                  |
+
+### Free-tier ceilings, measured rather than assumed
+
+- **Adzuna:** 25/min, 250/day, 1,000/week, **2,500/month** — the monthly figure binds, at roughly 83/day for the whole product.
+- **Reed:** ~1,000 requests/day. The adapter's one search plus ≤50 detail calls is ~51 per run.
+- **Cloudflare Workers AI:** 10,000 neurons/day free. One extraction costs ~202 neurons at worst, so the allowance of 10 is ~2,020 — a fifth of the free tier. **Billing is structurally impossible while the account stays on Workers Free**, and the app refuses to exceed 25/day at a database check constraint regardless.
 
 ### Roadmap work, when production setup is done
 
@@ -128,6 +166,13 @@ Task 37 fixed string **shapes**. Six non-settlement shapes still drop and two ar
 
 ## Handoff
 
+- **Current state, 2026-07-21 evening: `main` clean, live on Vercel at https://jobwarden.jabed.co.uk, 457 jobs, 47 sources, 7 PRs merged today (#70–#77).** Nothing is half-done; the remaining work is scoped and unstarted.
+- **The next three tasks, in order: widen the gazetteer (settle the migration question first — see the landmine above), ship "Jobs by Adzuna" attribution then create the source row, keep widening the Greenhouse board list.**
+- **Run `pnpm format:check`.** It is part of `pnpm verify` and was skipped for several PRs by running the checks individually; four files reached `main` unformatted before it was caught.
+- **`.open-next/` is not gitignored.** An abandoned Cloudflare build left it in the working tree and it was nearly committed. Delete it if it reappears, or ignore it.
+- Local product work needs `apps/web/.env.local`; `ADZUNA_APP_ID` and `ADZUNA_APP_KEY` are in the root `.env.local` for probing the live API.
+- The Supabase CLI has **no `functions logs`** subcommand on this version — read Edge Function logs in the dashboard. `npx supabase db query --linked` does run arbitrary SQL, and `pg_get_functiondef` errors on aggregates, so filter `prokind = 'f'`.
+- **The 6-hour interval on national sources is a politeness control, not a platform limit.** It was never weakened and no audit row was deleted to force a run. Per-employer boards take a 2-hour interval, which lands on 4 runs a day against the fixed cron slots; 5 is not expressible.
 - Current integration branch: `main`, clean at merge `31faf89` (PR #50) as of 2026-07-21
 - Last independently reviewed task implementation commit: **Tasks 37 and 38**, reviewed 2026-07-21 (record below). Tasks 30b, 36 and 26a have still never had an independent review pass
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
@@ -201,6 +246,9 @@ Task 37 fixed string **shapes**. Six non-settlement shapes still drop and two ar
 | 29. Early access list operations                                       | reviewed | Independent pass found a service-role truncate hole; fixed. Needs Turnstile keys    |
 | 31. Ashby adapter                                                      | reviewed | Independent pass found a **critical** 100× salary defect; fixed and pinned          |
 | 32. Workable adapter                                                   | reviewed | Independent pass found hidden-location and ordering defects; both fixed             |
+| 40. Production deployment on Vercel                                    | shipped  | PRs #70–#77; live at jobwarden.jabed.co.uk, Cloudflare path blocked upstream        |
+| 41. First live ingestion                                               | shipped  | 457 jobs, 47 sources; four defects fixed to get there, each a green test on a lie   |
+| 42. Adzuna adapter and provider vocabulary                             | shipped  | PRs #76, #77; migration applied live, **0 source rows until attribution ships**     |
 
 ## Last verification commands
 
