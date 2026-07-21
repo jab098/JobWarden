@@ -65,7 +65,7 @@ supabase link --project-ref <Reference ID>
 pnpm verify:live
 ```
 
-`verify:live` resets a local database, applies all 16 migrations, runs the database linter, and executes every pgTAP file — 17 files covering RLS boundaries, owner fencing, the ingestion runtime, notification ceilings, and CV variant expiry. **It fails rather than skipping if Docker is not running**, so a database check can never be recorded as passed when it did not run.
+`verify:live` resets a local database, applies all **36 migrations**, runs the database linter, and executes every pgTAP file — **29 files, 615 assertions** covering RLS boundaries, owner fencing, the ingestion runtime, notification ceilings, CV variant expiry, the provider vocabulary, and the audit log's append-only rule. **It fails rather than skipping if Docker is not running**, so a database check can never be recorded as passed when it did not run.
 
 Fix anything it reports before continuing. When it is green:
 
@@ -73,7 +73,7 @@ Fix anything it reports before continuing. When it is green:
 supabase db push
 ```
 
-**Proof it worked:** in the Supabase dashboard, **Table Editor** shows 31 tables, and **Database → Roles** shows RLS enabled on all of them.
+**Proof it worked:** in the Supabase dashboard, **Table Editor** shows **34 tables**, and **Database → Roles** shows RLS enabled on all of them. `pnpm check:supabase` prints the same counts locally.
 
 ---
 
@@ -170,7 +170,12 @@ Follow [the scheduled digest operations guide](../operations/notifications.md), 
 
 **Unblocks:** actual jobs. Nothing appears in the feed until a source is enabled.
 
-Start with Greenhouse, which needs no credential. Follow [the shared ingestion operations guide](../operations/ingestion.md) to add a source from `/admin/sources` and trigger a run.
+Five providers need **no credential at all** and are the place to start — Greenhouse, Lever, Ashby and Workable are per-employer boards you add one at a time from `/admin/sources`, and Teaching Vacancies is a national service already implemented. Follow [the shared ingestion operations guide](../operations/ingestion.md) to add a source and trigger a run.
+
+Two national sources need a small owner action first, and both are recorded in [source coverage](../product/source-coverage.md):
+
+- **Find an Apprenticeship** — a free, self-service API key from the DfE developer hub. Cheapest coverage still available.
+- **NHS Jobs** — contact NHSBSA for terms in writing. No code exists for it yet.
 
 Reed requires a separate decision: read [the Reed runbook](../operations/reed-ingestion.md) and the [source coverage rules](../product/source-coverage.md) first. Its terms have not been reviewed, which is why it ships disabled.
 
