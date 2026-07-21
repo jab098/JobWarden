@@ -60,7 +60,11 @@ const handler = createCareerExtractionHandler({
       }),
       signal: options.signal,
     });
-    if (!result.ok) throw new Error("AI request failed.");
+    // A code, not prose: the caller sanitises this into a log line, and
+    // "AI request failed." collapses to "unknown" there. The status is the
+    // whole diagnosis — 404 is a wrong model name, 401 a bad token, 429 the
+    // free allocation. The response body is deliberately not read or logged.
+    if (!result.ok) throw new Error(`ai_http_${result.status}`);
     const envelope = (await result.json()) as {
       success?: unknown;
       result?: { response?: unknown };

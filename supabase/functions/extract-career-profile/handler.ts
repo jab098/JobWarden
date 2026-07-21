@@ -162,6 +162,37 @@ async function evidenceId(runId: string, reference: string): Promise<string> {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+/** Codes only — never a model response, a prompt, or any CV-derived text. */
+const aiOutcomeCodePattern = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
+
+function sanitiseAiCode(value: string): string {
+  return value.length >= 3 &&
+    value.length <= 100 &&
+    aiOutcomeCodePattern.test(value)
+    ? value
+    : "unknown";
+}
+
+/**
+ * Why an optional AI proposal produced nothing.
+ *
+ * The AI path is metered and fails open by design: any problem falls back to
+ * deterministic extraction. That is correct behaviour and must not change. What
+ * was wrong is that it failed *silently* — an unreachable model, a rejected
+ * model name and output the schema refused all looked identical from outside,
+ * so the only evidence was a consumed allowance and `suggestion_count = 0`.
+ *
+ * This records the shape of the outcome and never its content. `AGENTS.md`
+ * keeps CV text out of logs, so nothing here carries the prompt, the response,
+ * or any extracted value — only a code, a count and a field path.
+ */
+function recordAiOutcome(
+  outcome: "accepted" | "rejected_schema" | "call_failed",
+  detail: Record<string, string | number>,
+): void {
+  console.info(JSON.stringify({ event: "ai_suggestions", outcome, ...detail }));
+}
+
 async function optionalAiSuggestions(options: {
   dependencies: CareerExtractionDependencies;
   environment: CareerRuntimeEnvironment;
@@ -185,11 +216,28 @@ async function optionalAiSuggestions(options: {
       },
     );
     const parsed = aiSuggestionsSchema.safeParse(result);
-    return parsed.success ? parsed.data : [];
-  } catch {
+    if (!parsed.success) {
+      // The shape, never the content. A rejected proposal is the likeliest
+      // outcome with a small model, and without this a run is indistinguishable
+      // from one where the model was never reachable at all.
+      recordAiOutcome("rejected_schema", {
+        issueCount: parsed.error.issues.length,
+        firstPath: parsed.error.issues[0]?.path.join(".") ?? "",
+        returnedType: Array.isArray(result) ? "array" : typeof result,
+      });
+      return [];
+    }
+    recordAiOutcome("accepted", { suggestionCount: parsed.data.length });
+    return parsed.data;
+  } catch (error) {
     if (options.signal.aborted) {
       throw new CareerExtractionError("extraction_timeout");
     }
+    recordAiOutcome("call_failed", {
+      reason: sanitiseAiCode(
+        error instanceof Error ? error.message : "unknown",
+      ),
+    });
     return [];
   }
 }
