@@ -47,19 +47,19 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 28   | Repair the history secret scan                                             | reviewed | Proven by a planted secret on a scratch branch, since deleted                         |
 | 29   | Early access list operations                                               | pending  | None for the surface; the list itself needs `202607220001` applied                    |
 | 30a  | Lever adapter (TypeScript only)                                            | reviewed | None; documented public board endpoint, no credential                                 |
-| 30b  | Provider vocabulary widening (850 lines of definer SQL)                    | pending  | None — Docker is installed; sequenced after Task 35 so the SQL lands on a green gate  |
+| 30b  | Provider vocabulary widening (850 lines of definer SQL)                    | next     | None — Task 35 is done, so this now lands on a green gate as intended                 |
 | 31   | Ashby adapter                                                              | pending  | None; documented public board endpoint, no credential                                 |
 | 32   | Workable adapter                                                           | pending  | None; documented public board endpoint, no credential                                 |
 | 33   | Emit `JobPosting` structured data                                          | blocked  | Owner decision: public job content, plus a redistribution grant per source            |
 | 34   | Read `JobPosting` schema from allowlisted career pages                     | pending  | None; per-employer compliance record before each page is allowlisted                  |
-| 35   | Make the live database gate pass                                           | pending  | None; Docker installed 2026-07-20 and the gate now runs                               |
+| 35   | Make the live database gate pass                                           | reviewed | None; the gate passes — 28 migrations, clean lint, 542 tests                          |
 | 36   | Entrance motion, admin in the hub                                          | shipped  | None                                                                                  |
 
 ## Remaining work, in the order it should be done
 
 Task numbers record when work was _specified_, not when it should be _built_. This is the build order, and the reasons are load-bearing.
 
-1. ~~**Task 35 — make the live database gate pass.**~~ **Done, 2026-07-21.** `pnpm verify:live` exits zero, `db lint` is clean, and all 25 pgTAP files run their full plan for 537 tests. The `service_role` privilege question was answered first and with evidence: it was a test artefact, the grants are correct least privilege, and no grant was added to any product table. Three real production defects were found and fixed along the way, and a fourth — no `auth.users` row can be deleted — is recorded in `docs/project-status.md` for an owner decision. See the Task 35 record there.
+1. ~~**Task 35 — make the live database gate pass.**~~ **Done, 2026-07-21.** `pnpm verify:live` exits zero, `db lint` is clean, and all 25 pgTAP files run their full plan for 542 tests. The `service_role` privilege question was answered first and with evidence: it was a test artefact, the grants are correct least privilege, and no grant was added to any product table. Three real production defects were found and fixed along the way, and a fourth — no `auth.users` row can be deleted — is recorded in `docs/project-status.md` for an owner decision. See the Task 35 record there.
 2. **Task 30b — provider vocabulary widening.** Next. 850 lines of security-definer SQL, now landing on a green gate as intended. Unblocks 31 and 32, which then only add a value, an adapter and fixtures.
 3. **Task 31 — Ashby adapter**, then **Task 32 — Workable adapter.** Cheap once 30b exists. Confirm each endpoint against the provider's own documentation at slice start; do not carry one forward from this file.
 4. **Task 29 — early access list operations.** Needs a new migration with two security-definer functions, so it also wants a green gate first. Independent of the source work, so it can move ahead of 31/32 if the owner wants the signup list sooner.

@@ -68,14 +68,17 @@ describe("Supabase foundation static verifier", () => {
     );
     files.set(
       requiredMigrationFiles[1],
+      // The drop must come AFTER the create. Before it, the offset comparison
+      // short-circuits and the rule fires without ever comparing types, so the
+      // test would pass with the type comparison deleted and would not guard it.
       `
-        drop function if exists public.overloaded(uuid);
-
         create function public.overloaded(target uuid, note text)
         returns boolean
         language sql stable security definer
         set search_path = ''
         as $$ select true $$;
+
+        drop function if exists public.overloaded(uuid);
       `,
     );
 
@@ -94,14 +97,15 @@ describe("Supabase foundation static verifier", () => {
     );
     files.set(
       requiredMigrationFiles[1],
+      // Drop after create, for the same reason as the overload test above.
       `
-        drop function if exists public.widened(bit varying);
-
         create function public.widened(label character varying)
         returns boolean
         language sql stable security definer
         set search_path = ''
         as $$ select true $$;
+
+        drop function if exists public.widened(bit varying);
       `,
     );
 
