@@ -76,3 +76,58 @@ These records describe connector eligibility and implementation state. They do n
 - The official [API terms](https://developer.adzuna.com/docs/terms_of_service) list default limits of 25 requests/minute, 250/day, 1,000/week, and 2,500/month. Organisational use outside the stated 14-day validation period may require written consent and a licence.
 - Published listings require the specified “Jobs by Adzuna” attribution. On termination, acquired Adzuna data must be removed from the product's pages.
 - Decision: no connector or credential setup yet. Obtain written permission/licence terms for JobWarden's intended private-beta aggregation, retention, attribution, and deletion behaviour before implementation.
+
+## Official UK public-sector services — reviewed 2026-07-21
+
+Task 38's access-confirmation pass. Coverage layer 1 has been ranked first in this document since it was written while carrying no task at all; this is the record that closes that gap.
+
+Each service below was checked against its own current interface rather than against a summary. Where a claim could not be verified directly, that is stated instead of being smoothed over. Being a public service is **not** by itself a grant, and none of the decisions below assume that Crown copyright or an Open Government Licence applies without the provider saying so.
+
+**Result: one service is usable now, one needs a free self-service key, and three stop at the owner.**
+
+### Teaching Vacancies (Department for Education) — approved for implementation
+
+- **Official interface:** `GET https://teaching-vacancies.service.gov.uk/api/v1/jobs.json`, confirmed by request on 2026-07-21. Read-only. The response carries its own `info` block naming the licence, terms and support contact, so the service documents itself at the endpoint.
+- **Authentication:** none. No API key, registration, approval or agreement is required, confirmed by an unauthenticated request succeeding.
+- **Licence:** Open Government Licence v3.0, declared in the response as `license.name` "Open Government License" with `license.url` `https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/`.
+- **Terms for API users:** the response's own `termsOfService` points at [a dedicated API section](https://teaching-vacancies.service.gov.uk/pages/terms-and-conditions#terms-and-conditions-for-api-users), which states in full: "You are free to reuse job listing data under the terms of the Open Government Licence for public sector information with the following exception: you must not charge any fee or commission for contacting, interviewing or hiring a respondent to your listing if you have reused Teaching Vacancies data."
+- **Why that exception is safe here, and why it must stay safe.** JobWarden has no pricing model — no payments, subscriptions, plans, trials, premium UI or plan-based quotas — and applications are manual links to the employer, never submitted by JobWarden. The single restriction this licence imposes is therefore one the product's own permanent constraints already guarantee structurally rather than by promise. **This is now a licence obligation as well as a product rule: charging a fee or commission around a Teaching Vacancies listing would breach the terms this source is ingested under.**
+- **robots.txt:** fetched 2026-07-21. Disallows `/check`, `/subscriptions/`, `/documents/`, `/attachments/`, `/*-jobs*?*`, `/jobs*radius=*` and `/support-users` for all agents. **`/api` and `/api/v1` are not disallowed.** Re-check before any change to which paths the adapter requests.
+- **Shape:** each vacancy is a schema.org `JobPosting` carrying `title`, `description`, `datePosted`, `validThrough`, `jobLocation` (including postal code), `baseSalary` (currency, value, unit), `employmentType`, `hiringOrganization`, `occupationalCategory`, `directApply` and `url`.
+- **Compensation:** `baseSalary` is advertised by the employer, so it is `advertised` provenance where present and `unknown` where absent. Never estimated. An `occupationalCategory` or pay-band name is not a figure.
+- **Coverage semantics:** **incremental**, not complete, and this is deliberate. The response is paginated and a bounded free-tier run will not read every page, so an absent vacancy is never evidence that the role closed and must never advance an omission counter. `validThrough` may close a listing through the existing bounded expiry process.
+- **Attribution:** OGL v3 requires acknowledging the source. Attribute as Teaching Vacancies with the standard public-sector-information wording wherever listings from this source are shown.
+- **Volume:** the service's own listing page reported roughly 6,400 live vacancies on 2026-07-21. Substantially larger than any single employer ATS board, and smaller than the whole UK market — do not describe it as comprehensive.
+- **To confirm at implementation:** the exact pagination contract. Search results describe 50 results per page with a `page` query parameter and a `links` object; the response observed on 2026-07-21 carried 25 objects in `data` and no top-level `links`. Establish the real behaviour empirically before relying on either, and never treat a short page as a complete snapshot.
+- **Disable/removal:** disable the source on any provider request, terms change or licence change, and remove acquired data on a termination instruction.
+
+### Find an apprenticeship (Department for Education) — needs a free key, owner action
+
+- The [Apprenticeship service developer hub](https://developer.apprenticeships.education.gov.uk/) documents a **Display Advert API** whose stated purpose is getting and displaying adverts from Find an apprenticeship, which is the direction JobWarden needs.
+- **An API key is required**, sent as the `Ocp-Apim-Subscription-Key` request header. The hub states a key is obtained by **self-service registration** — "You can create an account to get an API key" — rather than by commercial negotiation, so this is a small owner action and not a licensing blocker.
+- **Licence:** Open Government Licence v3.0, except where otherwise stated. Callers must also comply with the Department for Education privacy notice.
+- **Rate limit:** stated as 150 requests per 5 minutes, returning HTTP 429 beyond it. That fits a bounded free-tier run comfortably.
+- Decision: **do not implement until the owner has registered and the key exists.** The key is server-only, must never appear in Git, chat, logs, URLs or browser code, and has no paid fallback. Re-read the hub's terms at implementation; they are the provider's and may have changed.
+
+### Find a Job (Department for Work and Pensions) — stopped, needs a written agreement
+
+- The official [DWP section of the government API catalogue](https://www.api.gov.uk/dwp/) was fetched on 2026-07-21 and **lists no Find a Job API.** The ten DWP APIs it does list are unrelated to vacancy retrieval. A secondary search summary claimed such an API existed; the catalogue itself contradicts it, and the catalogue is the authority.
+- The service is operated by Adzuna on DWP's behalf, which means any data grant is likely entangled with the separate Adzuna licence question recorded above rather than being a plain public-sector reuse.
+- Third-party reports describe the site's web application firewall blocking datacentre IP ranges. **If accurate that is an access control, and working around it — with a residential proxy or otherwise — is forbidden outright.** JobWarden does not bypass anti-bot controls, and this source will not be reached that way under any circumstances.
+- Decision: **stop.** Reaching Find a Job needs a written agreement or an authorised feed obtained by the owner. No connector, no credential, no further probing.
+
+### NHS Jobs (NHS Business Services Authority) — stopped, needs owner contact
+
+- NHSBSA publishes an [NHS Jobs integration page](https://www.nhsbsa.nhs.uk/about-nhs-jobs/nhs-jobs-integration-and-benefits) which, per search summaries, describes two API options, one of them explicitly for organisations to retrieve NHS Jobs listings and publish them on their own job boards. That is exactly the direction JobWarden needs.
+- **This could not be verified directly: the page returned HTTP 403 to an automated fetch on 2026-07-21.** The description above is therefore second-hand and must not be treated as confirmed. Do not build against it.
+- Access appears to be arranged by contacting NHSBSA rather than by self-service registration, which makes it an agreement rather than an open endpoint.
+- Decision: **stop.** The owner should contact NHSBSA, obtain the API's actual terms in writing, and record them here before any implementation. High value if it opens — NHS Jobs is among the largest single UK employers' vacancy sources.
+
+### Civil Service Jobs — stopped, no documented public interface found
+
+- No documented public vacancy-retrieval API was found for `civilservicejobs.service.gov.uk` on 2026-07-21. A dataset entry exists on data.gov.uk, and an open government jobs API has been discussed publicly since 2009 without one being published.
+- Decision: **stop.** Absence of evidence is not permission. Do not scrape the site. Revisit only if the owner obtains a documented feed or written permission.
+
+### JobApplyNI — not yet reviewed
+
+Northern Ireland's official service is named as coverage layer 1 in this document and was not reached in this pass. It needs its own dated record before any implementation.

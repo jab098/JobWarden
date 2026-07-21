@@ -20,43 +20,43 @@ Status changes to `reviewed` only after independent review, full verification, p
 
 ## Delivery sequence
 
-| Task | Deliverable                                                                | Status   | External setup gate                                                                   |
-| ---- | -------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------- |
-| 7    | Administrator operations                                                   | reviewed | None for fixture development                                                          |
-| 8    | Shared ingestion runtime                                                   | reviewed | Supabase project for live deployment; local implementation does not wait              |
-| 9    | UK coverage and compensation                                               | reviewed | Reed credential only after terms, pgTAP, and controlled live validation               |
-| 10   | Career profile, onboarding, and CV extraction                              | reviewed | Delivered by PR #11 (`06b5a9c`); real-CV gates remain pending                         |
-| 11   | Target Feed and explainable fit scores                                     | reviewed | Delivered by PR #12 (`c86a14d`)                                                       |
-| 12   | Explore and career pathways                                                | reviewed | Delivered by PR #13 (`124216f`); deterministic taxonomy, no AI dependency             |
-| 13   | Application tracker and follow-ups                                         | reviewed | Delivered by PR #14 (`9e66b32`)                                                       |
-| 14   | Scheduled updates and notifications                                        | reviewed | Delivered by PR #15 (`41ab43f`); Resend account, domain, and DNS remain an owner gate |
-| 15   | Evidence-bound CV tailoring                                                | reviewed | Delivered by PR #16 (`ed75c9d`); no AI dependency was needed                          |
-| 16   | Privacy, production authentication, deployment, and full-path verification | reviewed | Delivered by PR #18 (`46dacb4`); live activation follows the setup runbook            |
-| 17   | Home activity dashboard                                                    | reviewed | Delivered by PR #17 (`2246b49`); no schema change was required                        |
-| 18   | Onboarding gate and state machine                                          | reviewed | Delivered by PR #19 (`51f8eaf`)                                                       |
-| 19   | Guided setup and first-run population                                      | reviewed | Delivered by PR #20 (`00a5ea7`)                                                       |
-| 20   | Administrator audit log and operational health                             | reviewed | Delivered by PR #21 (`babf725`)                                                       |
-| 21   | Authentication activation                                                  | pending  | Supabase project and Google OAuth — setup runbook steps 1–4                           |
-| 22   | Search Jobs, route naming, and onboarding follow-ups                       | reviewed | Delivered by PR #22 (`0fa46de`); no platform setup was required                       |
-| 23   | Single landing destination and public legal footer                         | reviewed | Delivered by PR #23 (`25314de`); no platform setup was required                       |
-| 24   | CV upload client                                                           | reviewed | Delivered by PR #24 (`976065b`)                                                       |
-| 25   | Location and radius, and slices 25a–25c                                    | reviewed | Delivered by PRs #25–#28; see project status for the per-slice record                 |
-| 26   | Settings/sources/support, and 26a card surface                             | shipped  | Delivered at `3aa4283` and PR #30 (`58a80fd`); 26a had no independent review pass     |
-| 26b  | Owner surface complaints, early-access dialog                              | shipped  | Delivered by PR #31 (`53d8fbe`); the dialog needs Turnstile keys and the migration    |
-| 27   | Onboarding hydration defect                                                | reviewed | Not reproducible; the report was a false negative. Regression test delivered          |
-| 28   | Repair the history secret scan                                             | reviewed | Proven by a planted secret on a scratch branch, since deleted                         |
-| 29   | Early access list operations                                               | pending  | None for the surface; the list itself needs `202607220001` applied                    |
-| 30a  | Lever adapter (TypeScript only)                                            | reviewed | None; documented public board endpoint, no credential                                 |
-| 30b  | Provider vocabulary widening                                               | shipped  | None; `lever` accepted, Ashby and Workable rejected until Tasks 31 and 32             |
-| 31   | Ashby adapter                                                              | pending  | None; documented public board endpoint, no credential                                 |
-| 32   | Workable adapter                                                           | pending  | None; documented public board endpoint, no credential                                 |
-| 33   | Emit `JobPosting` structured data                                          | blocked  | Owner decision: public job content, plus a redistribution grant per source            |
-| 34   | Read `JobPosting` schema from allowlisted career pages                     | pending  | None; per-employer compliance record before each page is allowlisted                  |
-| 35   | Make the live database gate pass                                           | reviewed | Delivered by PR #41 (`ab1515b`); 28 migrations, clean lint, 542 tests                 |
-| 36   | Entrance motion, admin in the hub                                          | shipped  | None                                                                                  |
-| 37   | Location string-shape recognition                                          | shipped  | None; deterministic, no provider and no credential                                    |
-| 38   | Official UK public-sector sources                                          | pending  | Owner: access terms confirmed per service before any code reads it                    |
-| 39   | Adzuna licence decision                                                    | blocked  | Owner: written licence and attribution terms from Adzuna                              |
+| Task | Deliverable                                                                | Status      | External setup gate                                                                   |
+| ---- | -------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------- |
+| 7    | Administrator operations                                                   | reviewed    | None for fixture development                                                          |
+| 8    | Shared ingestion runtime                                                   | reviewed    | Supabase project for live deployment; local implementation does not wait              |
+| 9    | UK coverage and compensation                                               | reviewed    | Reed credential only after terms, pgTAP, and controlled live validation               |
+| 10   | Career profile, onboarding, and CV extraction                              | reviewed    | Delivered by PR #11 (`06b5a9c`); real-CV gates remain pending                         |
+| 11   | Target Feed and explainable fit scores                                     | reviewed    | Delivered by PR #12 (`c86a14d`)                                                       |
+| 12   | Explore and career pathways                                                | reviewed    | Delivered by PR #13 (`124216f`); deterministic taxonomy, no AI dependency             |
+| 13   | Application tracker and follow-ups                                         | reviewed    | Delivered by PR #14 (`9e66b32`)                                                       |
+| 14   | Scheduled updates and notifications                                        | reviewed    | Delivered by PR #15 (`41ab43f`); Resend account, domain, and DNS remain an owner gate |
+| 15   | Evidence-bound CV tailoring                                                | reviewed    | Delivered by PR #16 (`ed75c9d`); no AI dependency was needed                          |
+| 16   | Privacy, production authentication, deployment, and full-path verification | reviewed    | Delivered by PR #18 (`46dacb4`); live activation follows the setup runbook            |
+| 17   | Home activity dashboard                                                    | reviewed    | Delivered by PR #17 (`2246b49`); no schema change was required                        |
+| 18   | Onboarding gate and state machine                                          | reviewed    | Delivered by PR #19 (`51f8eaf`)                                                       |
+| 19   | Guided setup and first-run population                                      | reviewed    | Delivered by PR #20 (`00a5ea7`)                                                       |
+| 20   | Administrator audit log and operational health                             | reviewed    | Delivered by PR #21 (`babf725`)                                                       |
+| 21   | Authentication activation                                                  | pending     | Supabase project and Google OAuth — setup runbook steps 1–4                           |
+| 22   | Search Jobs, route naming, and onboarding follow-ups                       | reviewed    | Delivered by PR #22 (`0fa46de`); no platform setup was required                       |
+| 23   | Single landing destination and public legal footer                         | reviewed    | Delivered by PR #23 (`25314de`); no platform setup was required                       |
+| 24   | CV upload client                                                           | reviewed    | Delivered by PR #24 (`976065b`)                                                       |
+| 25   | Location and radius, and slices 25a–25c                                    | reviewed    | Delivered by PRs #25–#28; see project status for the per-slice record                 |
+| 26   | Settings/sources/support, and 26a card surface                             | shipped     | Delivered at `3aa4283` and PR #30 (`58a80fd`); 26a had no independent review pass     |
+| 26b  | Owner surface complaints, early-access dialog                              | shipped     | Delivered by PR #31 (`53d8fbe`); the dialog needs Turnstile keys and the migration    |
+| 27   | Onboarding hydration defect                                                | reviewed    | Not reproducible; the report was a false negative. Regression test delivered          |
+| 28   | Repair the history secret scan                                             | reviewed    | Proven by a planted secret on a scratch branch, since deleted                         |
+| 29   | Early access list operations                                               | pending     | None for the surface; the list itself needs `202607220001` applied                    |
+| 30a  | Lever adapter (TypeScript only)                                            | reviewed    | None; documented public board endpoint, no credential                                 |
+| 30b  | Provider vocabulary widening                                               | shipped     | None; `lever` accepted, Ashby and Workable rejected until Tasks 31 and 32             |
+| 31   | Ashby adapter                                                              | pending     | None; documented public board endpoint, no credential                                 |
+| 32   | Workable adapter                                                           | pending     | None; documented public board endpoint, no credential                                 |
+| 33   | Emit `JobPosting` structured data                                          | blocked     | Owner decision: public job content, plus a redistribution grant per source            |
+| 34   | Read `JobPosting` schema from allowlisted career pages                     | pending     | None; per-employer compliance record before each page is allowlisted                  |
+| 35   | Make the live database gate pass                                           | reviewed    | Delivered by PR #41 (`ab1515b`); 28 migrations, clean lint, 542 tests                 |
+| 36   | Entrance motion, admin in the hub                                          | shipped     | None                                                                                  |
+| 37   | Location string-shape recognition                                          | shipped     | None; deterministic, no provider and no credential                                    |
+| 38   | Official UK public-sector sources                                          | in progress | Access confirmed 2026-07-21; Teaching Vacancies approved, 3 stop at the owner         |
+| 39   | Adzuna licence decision                                                    | blocked     | Owner: written licence and attribution terms from Adzuna                              |
 
 ## Remaining work, in the order it should be done
 
@@ -65,7 +65,7 @@ Task numbers record when work was _specified_, not when it should be _built_. Th
 1. ~~**Task 35 — make the live database gate pass.**~~ **Done, 2026-07-21.** `pnpm verify:live` exits zero, `db lint` is clean, and all 25 pgTAP files run their full plan for 542 tests. The `service_role` privilege question was answered first and with evidence: it was a test artefact, the grants are correct least privilege, and no grant was added to any product table. Three real production defects were found and fixed along the way, and a fourth — no `auth.users` row can be deleted — is recorded in `docs/project-status.md` for an owner decision. See the Task 35 record there.
 2. ~~**Task 30b — provider vocabulary widening.**~~ **Done, 2026-07-21.** `lever` is a value the database accepts, so the Task 30a adapter is configurable. Only `lever` shipped: adding a value with no adapter would let an administrator configure a source that saves, enables and then fails at dispatch, so the vocabulary stays in lockstep with the adapters and Tasks 31 and 32 each add their own value. See the plan for the corrected site map and the generator approach that made the seven-line diff provable.
 3. ~~**Task 37 — location string-shape recognition.**~~ **Done, 2026-07-21.** Full UK postcodes, the ISO code `GB`, multi-location strings and a closed set of nation-wide phrasings are now recognised. Measured on the same 44-shape probe the task was specified from: 16 published before, 23 after, with no regression and nothing new published that should not be. The remaining drops are settlement-name gaps rather than shapes, and belong to their own task — see the section.
-4. **Task 38 — official UK public-sector sources.** The largest lawful coverage available, and the layer `docs/product/source-coverage.md` has always ranked first while carrying no task. Access-confirmation-first; it stops at the owner if any service needs an agreement.
+4. **Task 38 — official UK public-sector sources.** Access-confirmation pass **done, 2026-07-21**; the dated records are in `docs/product/source-coverage.md`. Of six services: **Teaching Vacancies is approved and needs no owner action** — no API key, Open Government Licence v3, `/api` permitted by robots.txt, and its one licence restriction is one JobWarden's no-pricing rule already guarantees. **Find an apprenticeship** needs a free self-service key from the owner. **Find a Job, NHS Jobs and Civil Service Jobs all stop at the owner**, and Find a Job must never be reached by working around its firewall. **JobApplyNI** was not reached and needs its own record. Remaining engineering: the Teaching Vacancies adapter.
 5. **Task 31 — Ashby adapter**, then **Task 32 — Workable adapter.** Each adds its own provider value alongside its adapter, since 30b deliberately left them rejected. Cheap, and the smallest coverage win of the three source tasks: each adds employers one at a time. Confirm each endpoint against the provider's own documentation at slice start; do not carry one forward from this file.
 6. **Task 29 — early access list operations.** Needs a new migration with two security-definer functions, so it also wants a green gate first. Independent of the source work, so it can move ahead of 31/32 if the owner wants the signup list sooner.
 7. **Task 34 — read `JobPosting` schema.** The last source path, and the strictest, since it reads a page rather than an API.
