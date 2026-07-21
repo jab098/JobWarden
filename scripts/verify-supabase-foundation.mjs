@@ -98,6 +98,45 @@ function compact(sql) {
   return sql.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+/**
+ * The argument types of the first parenthesised list in `text`, normalised so a
+ * `create`'s `target_user_id uuid` and a `drop`'s bare `uuid` compare equal.
+ * Parameter names and defaults are discarded; only the type sequence matters,
+ * because that is what identifies an overload to PostgreSQL.
+ */
+function argumentTypeList(text) {
+  const open = text.indexOf("(");
+  if (open === -1) return null;
+  const close = text.indexOf(")", open);
+  if (close === -1) return null;
+
+  const inner = text.slice(open + 1, close).trim();
+  if (inner === "") return [];
+
+  return inner.split(",").map((part) => {
+    const withoutDefault = part.split(/\s+default\s+/i)[0].trim();
+    const tokens = withoutDefault.split(/\s+/);
+    return tokens[tokens.length - 1].toLowerCase();
+  });
+}
+
+function sameArgumentTypes(left, right) {
+  if (left === null || right === null) return false;
+  if (left.length !== right.length) return false;
+  return left.every((type, index) => type === right[index]);
+}
+
+function lastCreateOffsetFor(sql, escapedName) {
+  return [
+    ...sql.matchAll(
+      new RegExp(
+        `create\\s+(?:or\\s+replace\\s+)?function\\s+${escapedName}\\s*\\(`,
+        "gi",
+      ),
+    ),
+  ].reduce((latest, match) => Math.max(latest, match.index ?? -1), -1);
+}
+
 function securityDefinerFunctions(sql) {
   const functions = [];
   const pattern =
@@ -1402,15 +1441,27 @@ export function verifyFoundationSql(files) {
     // is nothing left to revoke on. Without this the rule demanded a revoke for
     // a function that no longer exists, which is unsatisfiable — the only way to
     // silence it would have been to keep the dead function alive.
-    const createPattern = new RegExp(
-      `create\\s+(?:or\\s+replace\\s+)?function\\s+${escapedName}\\s*\\(`,
-      "gi",
+    //
+    // The drop must match THIS function's own argument types, not merely its
+    // name. Overloads share a name, so a `drop function if exists f(uuid)` —
+    // which is a silent no-op if that overload was never created — would
+    // otherwise switch the revoke rule off for a live `f(uuid, text)`. Name-only
+    // matching is what let an anon-executable `finish_source_ingestion` through
+    // once already; see the comment above.
+    const ownArguments = argumentTypeList(definition);
+    const droppedOwnOverload = [
+      ...sql.matchAll(
+        new RegExp(
+          `drop\\s+function\\s+(?:if\\s+exists\\s+)?${escapedName}\\s*\\(([^)]*)\\)`,
+          "gi",
+        ),
+      ),
+    ].some(
+      (match) =>
+        (match.index ?? -1) > lastCreateOffsetFor(sql, escapedName) &&
+        sameArgumentTypes(argumentTypeList(`f(${match[1]})`), ownArguments),
     );
-    const lastCreateOffset = [...sql.matchAll(createPattern)].reduce(
-      (latest, match) => Math.max(latest, match.index ?? -1),
-      -1,
-    );
-    if (lastDropOffset > lastCreateOffset) {
+    if (droppedOwnOverload) {
       continue;
     }
 

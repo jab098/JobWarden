@@ -56,6 +56,56 @@ describe("Supabase foundation static verifier", () => {
     );
   });
 
+  it("still demands a revoke when a different overload of the same name is dropped", () => {
+    // A drop with no later create means the function is gone and there is
+    // nothing left to revoke on, so the revoke rule skips it. Matching that drop
+    // on the name alone would let a no-op `drop function if exists` on one
+    // overload silence the rule for a sibling overload that is still live —
+    // which is the same name-only matching that already let an anon-executable
+    // `finish_source_ingestion` through once.
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+    files.set(
+      requiredMigrationFiles[1],
+      `
+        drop function if exists public.overloaded(uuid);
+
+        create function public.overloaded(target uuid, note text)
+        returns boolean
+        language sql stable security definer
+        set search_path = ''
+        as $$ select true $$;
+      `,
+    );
+
+    expect(verifyFoundationSql(files)).toContain(
+      "security-definer function public.overloaded is dropped and recreated, so it must revoke public and anon execution again afterwards",
+    );
+  });
+
+  it("skips the revoke rule for a function that is dropped and not recreated", () => {
+    const files = new Map(
+      requiredMigrationFiles.map((file) => [file, "select 1;"]),
+    );
+    files.set(
+      requiredMigrationFiles[1],
+      `
+        create function public.retired(target uuid)
+        returns boolean
+        language sql stable security definer
+        set search_path = ''
+        as $$ select true $$;
+
+        drop function if exists public.retired(uuid);
+      `,
+    );
+
+    expect(verifyFoundationSql(files)).not.toContain(
+      "security-definer function public.retired must revoke public and anon execution",
+    );
+  });
+
   it("checks the real migration set when supplied by the caller", () => {
     const files = new Map(
       requiredMigrationFiles.map((file) => [file, "select 1;"]),
@@ -421,8 +471,14 @@ describe("Supabase foundation static verifier", () => {
     expect(
       sql.match(/pg_advisory_xact_lock_shared\(20260718001100\)/gu),
     ).toHaveLength(2);
-    expect(sql).toContain("connection_name = 'first_search_a'");
-    expect(sql).toContain("connection_name = 'first_search_b'");
+    // The overlap used to be expressed by looking up two remembered backend
+    // pids. Those lookups were removed because the pid recorded for a dblink
+    // connection could already be dead, so the assertions watched a backend that
+    // did not exist. The barrier is now queried directly, and requiring two
+    // waiters on it states the overlap this test is named for more exactly than
+    // the presence of two connection names ever did.
+    expect(sql).toContain("await_advisory_waiters(20260718001100, 1)");
+    expect(sql).toContain("await_advisory_waiters(20260718001100, 2)");
     expect(sql).toContain("pg_advisory_unlock(20260718001100)");
   });
 

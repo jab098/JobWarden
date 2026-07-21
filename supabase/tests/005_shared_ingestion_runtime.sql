@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(36);
+select plan(41);
 
 select ok(
   not has_function_privilege('anon', 'public.enqueue_scheduled_ingestion()', 'EXECUTE'),
@@ -39,6 +39,37 @@ select ok(
   'the service role can persist a bounded ingestion batch'
 );
 
+-- The four RPCs above are now covered for both untrusted roles rather than for
+-- whichever one happened to be written first. This matters because the body of
+-- this file no longer runs as `service_role` — these assertions are the whole
+-- of the grant coverage, so a gap in them is a gap in the boundary. Five of the
+-- eight role-by-function pairs were missing, including both roles against
+-- `complete_ingestion_request`.
+select ok(
+  not has_function_privilege('authenticated', 'public.enqueue_scheduled_ingestion()', 'EXECUTE'),
+  'authenticated callers cannot enqueue scheduled ingestion'
+);
+
+select ok(
+  not has_function_privilege('anon', 'public.claim_ingestion_requests(integer)', 'EXECUTE'),
+  'anonymous callers cannot claim the ingestion queue'
+);
+
+select ok(
+  not has_function_privilege('anon', 'public.complete_ingestion_request(uuid)', 'EXECUTE'),
+  'anonymous callers cannot complete an ingestion request'
+);
+
+select ok(
+  not has_function_privilege('authenticated', 'public.complete_ingestion_request(uuid)', 'EXECUTE'),
+  'authenticated callers cannot complete an ingestion request'
+);
+
+select ok(
+  not has_function_privilege('anon', 'public.upsert_ingested_jobs(uuid,jsonb)', 'EXECUTE'),
+  'anonymous callers cannot persist an ingestion batch'
+);
+
 insert into public.job_sources (
   id, provider, board_token, employer_name, enabled, minimum_sync_interval,
   allowed_hosts, terms_reviewed_at, robots_reviewed_at, compliance_notes,
@@ -68,12 +99,13 @@ values
   ('51000000-0000-4000-8000-000000000008', 'greenhouse', 'disabled-source', 'Disabled Source Ltd', false, interval '60 minutes', array['boards.greenhouse.io'], current_date, current_date, 'Disabled source fixture.', null);
 
 -- Deliberately NOT `set local role service_role`. Every ingestion RPC below is
--- security definer, so the executing role changes nothing about its behaviour,
--- and the grants are already asserted explicitly above with
--- `has_function_privilege` — for service_role positively and for anon and
--- authenticated negatively. Running the body as service_role only meant the
--- assertions could not read the tables they verify, because service_role holds
--- no direct table privilege and no runtime path gives it one.
+-- security definer, owned by `postgres`, and none of them branch on the calling
+-- role, so the executing role changes nothing about their behaviour. The grants
+-- that do matter are asserted directly above with `has_function_privilege`,
+-- across all four RPCs and both untrusted roles. Running the body as
+-- service_role only meant the assertions could not read the tables they verify,
+-- because service_role holds no direct table privilege and no runtime path
+-- gives it one.
 
 create temporary table scheduled_enqueue as
 select public.enqueue_scheduled_ingestion() as inserted_count;
