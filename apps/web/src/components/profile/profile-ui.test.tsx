@@ -347,13 +347,60 @@ describe("career profile onboarding", () => {
     );
 
     actionMocks.saveSearchProfileAction.mockClear();
-    await user.click(screen.getByRole("button", { name: "Save named search" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Save named search" }),
+    );
     await waitFor(() =>
       expect(actionMocks.saveSearchProfileAction).toHaveBeenCalledOnce(),
     );
     const submitted = actionMocks.saveSearchProfileAction.mock.calls[0]?.[1];
     expect(submitted).toBeInstanceOf(FormData);
     expect((submitted as FormData).get("searchId")).toBe(createdId);
+  });
+
+  it("withdraws the save button's accessible name while a save is in flight", async () => {
+    const user = userEvent.setup();
+    let releaseSave: (result: {
+      kind: string;
+      message: string;
+    }) => void = () => {};
+    actionMocks.saveSearchProfileAction.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releaseSave = resolve;
+        }),
+    );
+    render(
+      <ProfileOnboarding
+        snapshot={{
+          ...fictionalSnapshot,
+          dataMode: "supabase",
+          uploadCapability: emptySnapshot.uploadCapability,
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "New search" }));
+    await user.click(screen.getByRole("button", { name: "Save named search" }));
+
+    // The button is relabelled "Saving…" and disabled while pending, so
+    // "Save named search" is absent from the accessibility tree for the whole
+    // of the save. Any test that reaches for it with a synchronous getByRole
+    // after an earlier save is therefore racing the pending state, because
+    // useActionState clears `pending` in a later commit than the setFields
+    // call inside the action reducer. Use findByRole, which waits for exactly
+    // this condition.
+    const saving = await screen.findByRole("button", { name: "Saving…" });
+    expect(saving).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Save named search" }),
+    ).toBeNull();
+
+    releaseSave({ kind: "success", message: "Named search saved." });
+
+    expect(
+      await screen.findByRole("button", { name: "Save named search" }),
+    ).toBeEnabled();
   });
 
   it("acknowledges an optimistic search before resetting it when a later refresh prunes it", async () => {
@@ -429,7 +476,9 @@ describe("career profile onboarding", () => {
       kind: "success",
       message: "Named search saved.",
     });
-    await user.click(screen.getByRole("button", { name: "Save named search" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Save named search" }),
+    );
     await waitFor(() =>
       expect(actionMocks.saveSearchProfileAction).toHaveBeenCalledOnce(),
     );
