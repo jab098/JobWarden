@@ -526,6 +526,25 @@ describe("UK eligibility location shapes", () => {
     },
   );
 
+  // The same boundary in the other notation. A UK postcode is written with or
+  // without its space, and the exclusion above was pinned only in the spaced
+  // form — which is the exact shape of the defect it was written to fix, one
+  // notation further on. The unspaced form is refused too, and now says so.
+  it.each(["JE23AB", "GY11AA", "IM11AA", "GX111AA", "je23ab"])(
+    "does not publish the unspaced non-UK postcode %s",
+    (location) => {
+      expect(publishes(location)).toBe(false);
+    },
+  );
+
+  // And the unspaced exclusion must not have cost real UK postcodes either.
+  it.each(["EC2A4NE", "M12AB", "G11AA", "IG11AA"])(
+    "still publishes the unspaced UK postcode %s",
+    (location) => {
+      expect(publishes(location)).toBe(true);
+    },
+  );
+
   // Ireland is the neighbour most likely to appear in a feed JobWarden reads,
   // and its Eircodes are close enough in shape to be worth pinning.
   it.each(["D02 AF30", "A65 F4E2", "T12 X289", "Dublin, D02 AF30"])(
