@@ -34,8 +34,22 @@ describe("administrator source validation", () => {
     });
   });
 
+  it("accepts a Lever board, whose adapter shipped in Task 30a", () => {
+    expect(
+      schema.safeParse({ ...validSource(), provider: "lever" }).success,
+    ).toBe(true);
+  });
+
   it.each([
     ["another provider", { provider: "indeed" }],
+    ["Ashby, whose adapter has not shipped", { provider: "ashby" }],
+    ["Workable, whose adapter has not shipped", { provider: "workable" }],
+    [
+      "Reed, which is a pinned singleton, not an admin board",
+      {
+        provider: "reed",
+      },
+    ],
     ["whitespace in a board token", { boardToken: "north star" }],
     ["a control in a board token", { boardToken: "north\nstar" }],
     ["an interval below 15 minutes", { minimumSyncMinutes: 14 }],

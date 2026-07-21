@@ -1,6 +1,16 @@
 # Task 30b — Provider vocabulary widening
 
-Plan written 2026-07-21. Read with [the roadmap](../../product/roadmap.md), [project status](../../project-status.md), and [source coverage](../../product/source-coverage.md).
+Plan written 2026-07-21, implemented the same day. Read with [the roadmap](../../product/roadmap.md), [project status](../../project-status.md), and [source coverage](../../product/source-coverage.md).
+
+## Implemented, with one decision reversed
+
+**This plan originally said to add `ashby` and `workable` alongside `lever`, so Tasks 31 and 32 would never reopen definer SQL. That was reversed during implementation, and only `lever` shipped.**
+
+The reversal is the important part of this record. Adding a provider value with no adapter behind it means the database accepts a source the runtime cannot ingest: an administrator could configure an Ashby board that parses, saves, enables, and then fails at adapter dispatch. That is a control that looks configured and does nothing — the exact failure mode Task 28 repaired and Task 33 was stopped for. It also contradicts this codebase's own standard that capability is constrained at the database boundary rather than by convention, and the roadmap's own wording, which says Tasks 31 and 32 each "add a value".
+
+So the vocabulary stays in lockstep with the adapters. `lever` shipped because its adapter shipped in Task 30a. Ashby and Workable are now asserted as **rejected**, at the constraint, at `upsert_job_source`, and at the Edge Function row schema, and those assertions are what Tasks 31 and 32 will flip.
+
+The cost this was meant to avoid turned out to be small. The function bodies were widened by extracting each live definition programmatically and substituting only the provider vocabulary, which produced a verified seven-line diff across roughly 750 lines. Tasks 31 and 32 re-run that same extraction with one more value in the list; it is not 750 lines of hand-written SQL each.
 
 ## Goal
 

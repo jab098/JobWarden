@@ -111,6 +111,46 @@ describe("Supabase ingestion repository", () => {
     ]);
   });
 
+  it("claims a Lever board with its own board token rather than Reed's pinned identity", async () => {
+    const leverRow = {
+      ...claimedRow,
+      provider: "lever",
+      board_token: "fictional-lever-board",
+      allowed_hosts: ["jobs.lever.co"],
+    };
+    const fake = client({
+      claim_ingestion_requests: { data: [leverRow], error: null },
+    });
+
+    await expect(
+      createSupabaseIngestionRepository(fake.client).claim(1),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        source: expect.objectContaining({
+          provider: "lever",
+          boardToken: "fictional-lever-board",
+          allowedHosts: ["jobs.lever.co"],
+        }),
+      }),
+    ]);
+  });
+
+  it.each(["ashby", "workable"])(
+    "rejects a %s row, because the vocabulary stays in lockstep with the adapters",
+    async (provider) => {
+      const fake = client({
+        claim_ingestion_requests: {
+          data: [{ ...claimedRow, provider }],
+          error: null,
+        },
+      });
+
+      await expect(
+        createSupabaseIngestionRepository(fake.client).claim(1),
+      ).rejects.toMatchObject({ name: "IngestionRepositoryError" });
+    },
+  );
+
   it("rejects malformed database rows without returning their content", async () => {
     const fake = client({
       claim_ingestion_requests: {
