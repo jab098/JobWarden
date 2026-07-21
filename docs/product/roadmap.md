@@ -54,6 +54,9 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 34   | Read `JobPosting` schema from allowlisted career pages                     | pending  | None; per-employer compliance record before each page is allowlisted                  |
 | 35   | Make the live database gate pass                                           | reviewed | Delivered by PR #41 (`ab1515b`); 28 migrations, clean lint, 542 tests                 |
 | 36   | Entrance motion, admin in the hub                                          | shipped  | None                                                                                  |
+| 37   | Location string-shape recognition                                          | pending  | None; deterministic, no provider and no credential                                    |
+| 38   | Official UK public-sector sources                                          | pending  | Owner: access terms confirmed per service before any code reads it                    |
+| 39   | Adzuna licence decision                                                    | blocked  | Owner: written licence and attribution terms from Adzuna                              |
 
 ## Remaining work, in the order it should be done
 
@@ -61,12 +64,16 @@ Task numbers record when work was _specified_, not when it should be _built_. Th
 
 1. ~~**Task 35 — make the live database gate pass.**~~ **Done, 2026-07-21.** `pnpm verify:live` exits zero, `db lint` is clean, and all 25 pgTAP files run their full plan for 542 tests. The `service_role` privilege question was answered first and with evidence: it was a test artefact, the grants are correct least privilege, and no grant was added to any product table. Three real production defects were found and fixed along the way, and a fourth — no `auth.users` row can be deleted — is recorded in `docs/project-status.md` for an owner decision. See the Task 35 record there.
 2. **Task 30b — provider vocabulary widening.** Next. 850 lines of security-definer SQL, now landing on a green gate as intended. Unblocks 31 and 32, which then only add a value, an adapter and fixtures.
-3. **Task 31 — Ashby adapter**, then **Task 32 — Workable adapter.** Cheap once 30b exists. Confirm each endpoint against the provider's own documentation at slice start; do not carry one forward from this file.
-4. **Task 29 — early access list operations.** Needs a new migration with two security-definer functions, so it also wants a green gate first. Independent of the source work, so it can move ahead of 31/32 if the owner wants the signup list sooner.
-5. **Task 34 — read `JobPosting` schema.** The last source path, and the strictest, since it reads a page rather than an API.
-6. **Task 21 — authentication activation.** Owner platform setup; can happen at any point once the owner is ready.
+3. **Task 37 — location string-shape recognition.** Before any new adapter. It raises the published yield of every source that already exists and every source added after it, which no single adapter can do. Measured evidence is in its section.
+4. **Task 38 — official UK public-sector sources.** The largest lawful coverage available, and the layer `docs/product/source-coverage.md` has always ranked first while carrying no task. Access-confirmation-first; it stops at the owner if any service needs an agreement.
+5. **Task 31 — Ashby adapter**, then **Task 32 — Workable adapter.** Cheap once 30b exists, and the smallest coverage win of the three source tasks: each adds employers one at a time. Confirm each endpoint against the provider's own documentation at slice start; do not carry one forward from this file.
+6. **Task 29 — early access list operations.** Needs a new migration with two security-definer functions, so it also wants a green gate first. Independent of the source work, so it can move ahead of 31/32 if the owner wants the signup list sooner.
+7. **Task 34 — read `JobPosting` schema.** The last source path, and the strictest, since it reads a page rather than an API.
+8. **Task 21 — authentication activation.** Owner platform setup; can happen at any point once the owner is ready.
 
-Not in the order because they are not buildable: **Task 33** is blocked on two owner decisions, not engineering. See its section.
+Ordering note, 2026-07-21: 37 and 38 were inserted ahead of 31 and 32 after an owner review of a proposed ingestion blueprint. The reasoning is that recognition width multiplies across sources while an ATS adapter adds one employer at a time, which is the same principle already recorded in `docs/project-status.md` — widening the gazetteer is cheaper stock than a new adapter.
+
+Not in the order because they are not buildable: **Task 33** is blocked on two owner decisions, and **Task 39** is an owner licensing decision rather than engineering. See their sections.
 
 **Numbering note, 2026-07-20.** Tasks 24, 25 and 26 in an earlier revision of this file described the ATS adapters, Google Jobs schema and early-access operations. Those numbers were already taken by shipped work recorded in `docs/project-status.md`, so that outstanding work was renumbered 29–34 and the sections below match. No section in this file now shares a number with another.
 
@@ -455,6 +462,85 @@ Acceptance:
 - all 25 pgTAP files run their full plan, and `pnpm verify:live` exits zero;
 - every fixture change is a fixture change, and any change to a _migration_ is called out separately and justified; and
 - `docs/project-status.md` stops describing the database checks as never executed.
+
+## Task 37 — Location string-shape recognition
+
+**Specified 2026-07-21**, from a measured probe of the shipped classifier rather than from a report of a missing place name. It comes before Tasks 31, 32 and 38 because recognition width multiplies across every source at once, while an adapter adds one provider.
+
+### The measurement, and the hypothesis it killed
+
+The expected finding was that the place dataset was too small — `knownUkCities` holds two entries, so the gazetteer looks thin on inspection. **That hypothesis was tested and is wrong.** `classifyUkEligibility` was run over 73 plain UK city names and 72 were published. The 230-place bundled dataset in `uk-places.generated.json`, plus the ceremonial-county and region sets, cover ordinary city names well. Do not re-open dataset size as the primary problem.
+
+The loss is in **string shapes**, not place names. The same probe over the formats ATS feeds and aggregators actually emit:
+
+| Dropped input                                   | Why it matters                                                                                       |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `EC2A 4NE`, `SW1A 1AA`, `M1 2AB`                | A valid UK postcode is unambiguous UK evidence, and every one is currently quarantined               |
+| `London, GB`, `GB-London`                       | `GB` is the ISO 3166-1 code Greenhouse and Lever routinely emit; it is absent from `ukNationAnchors` |
+| `London / Manchester`, `Multiple locations, UK` | Multi-location adverts are discarded whole rather than split                                         |
+| `UK Wide`, `Anywhere in the UK`                 | Contain an explicit nation anchor that the tokeniser does not reach                                  |
+| `Shoreditch`, `Camden`                          | London districts, where `Canary Wharf` and `Croydon` already publish                                 |
+| `Stratford-upon-Avon`, `Ashby-de-la-Zouch`      | Hyphenated names, where `Weston-super-Mare` and `Barrow-in-Furness` already publish                  |
+
+Two cautions the probe also produced. `Nationwide` must **not** become a nation anchor: it is also a UK employer name, and treating it as location evidence would publish on an employer string. Crown dependencies — Isle of Man, Jersey, Guernsey, Gibraltar — currently quarantine, and that is **correct and deliberate**: they are outside the UK for right-to-work purposes. Do not "fix" them into eligibility.
+
+The probe measured which shapes fail, not how much feed volume each shape represents. Size the work from the unrecognised-location list on `/admin/ingestion`, which Task 25c populates with real run data, before deciding how far down the table to go.
+
+Acceptance:
+
+- a valid UK postcode is recognised as explicit UK evidence through a documented format check, and an invalid or non-UK postal format is not;
+- `GB` is accepted as a nation anchor wherever `UK` already is, including in a `GB-` prefixed form;
+- a multi-location string is split and each part classified independently, publishing when any part carries UK evidence and recording which part supplied it;
+- `Nationwide` alone remains ambiguous, and a test asserts it, because it is also an employer name;
+- Crown dependencies remain outside UK eligibility and a test asserts each of them, so the boundary cannot be widened by accident;
+- eligibility evidence still names the exact matched text, so a postcode-derived publication is auditable to the postcode that produced it;
+- the classifier still fails closed: an unrecognised shape quarantines and never publishes; and
+- the drop-reason counts and unrecognised-location list show the reduction, measured against the same source before and after.
+
+## Task 38 — Official UK public-sector sources
+
+**Specified 2026-07-21.** `docs/product/source-coverage.md` has ranked official national and public-sector services as coverage layer 1 since it was written, naming GOV.UK Find a Job, JobApplyNI, NHS Jobs, Civil Service Jobs, Teaching Vacancies and Find an Apprenticeship. No task has ever existed for any of them, while three tasks exist for employer ATS boards, which the same document ranks third. This corrects that inversion.
+
+These services carry UK public-sector vacancies at a volume no per-employer ATS board approaches, and they are public services rather than commercial aggregators, so the access question is different in kind from Reed's or Adzuna's.
+
+**The access terms are not stated here, deliberately.** The rule recorded for Tasks 30–32 applies with full force: do not carry a provider endpoint or a licence assumption forward from this file. The first step of this slice is confirming, against each service's own current documentation, whether a documented public interface exists, what it permits, and whether it requires registration or an agreement. Being a public service is not by itself a grant. A service that turns out to need a credential or a written agreement **stops the slice and returns to the owner**; it never becomes a scrape, and it never proceeds on an assumption that Crown copyright or Open Government Licence terms apply without that being confirmed in writing.
+
+Scope one service per slice, highest confirmed volume first. Do not attempt the whole layer in one task.
+
+Acceptance, per service:
+
+- the documented public interface and its terms are confirmed against the provider's own current documentation at slice start, and a dated compliance record lands in `docs/product/source-coverage.md` beside Reed and Adzuna before any code reads the service;
+- registration, attribution, cadence, retention, redistribution and removal obligations are recorded explicitly, including where the provider states none, and an unresolved obligation stops the slice rather than defaulting to permitted;
+- the adapter reuses `retry.ts` and the `ProviderAdapter` contract rather than a second fetching mechanism, with bounded retries, sanitised errors and append-only audit records;
+- `job_sources.provider` accepts the new value through a migration using `create or replace`, and the source's `coverage_mode` and minimum interval are constrained at the database boundary — note that a national service is likely `incremental` like Reed rather than `complete` like an ATS board, and the coverage semantics decide whether omissions may ever close a job;
+- UK eligibility evidence is extracted explicitly and never inferred from the fact that the publisher is a UK public body;
+- compensation keeps advertised, estimated and unknown distinct, and public-sector pay bands are read as advertised only when the advert states a figure — a band name alone is not a figure;
+- duplicate control is proven against a listing that also appears on an existing source, reconciling through the canonical occurrence key without losing either provenance; and
+- the source ships disabled until the owner enables it.
+
+## Task 39 — Adzuna licence decision — owner action, not engineering
+
+The Adzuna GB API was reviewed on 2026-07-18 and the record is in `docs/product/source-coverage.md`. Nothing about it has changed, and it is restated as a numbered item only because it keeps being re-proposed as a free integration.
+
+It is not simply free. The official terms record default limits of 25 requests/minute, 250/day, 1,000/week and 2,500/month; organisational use beyond a stated 14-day validation period may require written consent and a licence; published listings require the specified "Jobs by Adzuna" attribution; and on termination the acquired data must be removed from the product's pages.
+
+The blocking step is a written confirmation from Adzuna covering JobWarden's intended private-beta aggregation, retention, attribution and deletion behaviour. That is an owner action. No connector, credential or fixture work should start before it exists.
+
+## Rejected source approaches, recorded so they are not re-proposed
+
+Recorded 2026-07-21, following an owner review of a proposed ingestion blueprint, in the same spirit as the LinkedIn note in Tasks 30–32 and the Task 33 record. Each of these was proposed in good faith and each fails against a constraint this programme already holds.
+
+**Enumerating ATS company identifiers is not a discovery method.** The proposal was to loop over company IDs against the Greenhouse, Lever and Ashby board endpoints to acquire employers in bulk. The adapters are fine and three of them are roadmapped; the discovery method is not. `AGENTS.md` requires allowlisted sources, and `docs/product/source-coverage.md` states that each employer board is an individual source with its own compliance record and allowed application hosts. Enumeration is the opposite of an allowlist: it acquires employers precisely because nobody chose them. An employer joins the allowlist by decision, never by having a guessable identifier.
+
+**AI must not estimate compensation.** The proposal was to pass raw job descriptions to a model and have it return a `salary_estimate` field. This breaks the compensation provenance rule directly: advertised, estimated and unknown must stay visibly distinct, and AI cannot invent compensation. An advert that states no salary stays `unknown`. A model's guess is not an estimate with provenance, it is a fabricated figure attached to a real employer.
+
+**Do not add a second or third AI provider by default.** The same proposal suggested Gemini and Groq free tiers for enrichment. Cloudflare Workers AI is already the reviewed provider, wired in `supabase/functions/extract-career-profile/environment.ts` with a hard daily allowance that defaults to `0` and resolves to `"disabled"` when credentials are absent. Free-tier-first with hard ceilings is a programme constraint, and two more providers is three ceilings to enforce instead of one. Deterministic local logic is preferred over a model wherever it will do — postcode and location recognition is Task 37's deterministic work precisely because it does not need a model.
+
+**Canonical link tags on job pages would be inert, and publishing to make them work is forbidden.** This is Task 33 restated, because it arrives repeatedly as an SEO suggestion rather than as a structured-data one. Every job surface is under `app/(protected)`, so an unauthenticated request is answered with `redirect()` and no markup; there is no `robots.txt` and no `sitemap.ts`. A canonical tag on a page no crawler can reach is a control that looks configured and does nothing. Making those pages public contradicts the private-beta constraint and would redistribute source content JobWarden holds no grant to redistribute. See Task 33 for the full finding.
+
+**A fixed-age auto-expiry would regress job closure.** The proposal was to archive any posting older than 30 days unless a daily feed reconfirms it. Closure is already implemented and is deliberately stricter: `jobs.consecutive_successful_omissions` requires two consecutive complete successful omissions, incremental sources may never close a job by omission, and failed or incomplete runs never close anything. A fixed-age timer would close live long-running vacancies whenever a source merely failed to confirm them, which is the exact failure the omission counter exists to prevent. An advertised closing date already closes a job through the bounded expiry process.
+
+**Content hashing on title, employer and location alone is weaker than what exists.** The proposal was to hash `Job Title + Company Name + Location` for de-duplication. `packages/ingestion/src/hash.ts` already hashes 21 normalised fields for change detection, alongside a separate `deduplicationKey` for cross-source reconciliation. The two do different jobs: a three-field hash cannot distinguish a re-advertised role from an edited one, so adopting it would lose change detection.
 
 ## Continuous source expansion
 
