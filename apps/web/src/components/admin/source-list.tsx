@@ -100,7 +100,7 @@ export function SourceList({
               <p className="mt-4 max-w-3xl text-sm leading-6 text-[#4f5869]">
                 {source.complianceNotes}
               </p>
-              {!readOnly && saveAction && source.provider === "greenhouse" ? (
+              {!readOnly && saveAction && source.provider !== "reed" ? (
                 <Disclosure
                   label="Edit source configuration"
                   className="mt-4"

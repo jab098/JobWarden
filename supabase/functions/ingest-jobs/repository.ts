@@ -22,7 +22,7 @@ const claimedRowSchema = z
     trigger_type: z.enum(["admin", "scheduled"]),
     source_run_id: z.string().uuid(),
     source_id: z.string().uuid(),
-    provider: z.enum(["greenhouse", "reed"]),
+    provider: z.enum(["greenhouse", "lever", "reed"]),
     board_token: z.string().min(1).max(200),
     employer_name: z.string().min(1).max(300),
     allowed_hosts: z.array(hostSchema).min(1).max(10),
@@ -90,7 +90,7 @@ function mapClaim(row: z.infer<typeof claimedRowSchema>): ClaimedIngestion {
         ? { ...common, provider: "reed", boardToken: "gb-discovery" }
         : {
             ...common,
-            provider: "greenhouse",
+            provider: row.provider,
             boardToken: row.board_token,
           },
   };

@@ -30,7 +30,7 @@ export function createSaveJobSourceInputSchema(today: string) {
   return z
     .object({
       sourceId: z.string().uuid().nullable(),
-      provider: z.literal("greenhouse"),
+      provider: z.enum(["greenhouse", "lever"]),
       boardToken: z.string().min(1).max(200).regex(boardTokenPattern),
       employerName: z.string().trim().min(1).max(300),
       enabled: z.boolean(),

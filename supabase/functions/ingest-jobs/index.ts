@@ -1,6 +1,7 @@
 import {
   AdapterError,
   GreenhouseAdapter,
+  LeverAdapter,
   ReedAdapter,
 } from "@jobwarden/ingestion";
 
@@ -15,6 +16,7 @@ const handler = createIngestionHandler({
     createSupabaseIngestionRepository(createServiceRoleClient(environment)),
   createAdapter: (source, environment) => {
     if (source.provider === "greenhouse") return new GreenhouseAdapter();
+    if (source.provider === "lever") return new LeverAdapter();
     if (!environment.reedApiKey) {
       throw new AdapterError(
         "configuration_error",

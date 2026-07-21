@@ -24,7 +24,20 @@ function SourceFields({ source }: { source?: JobSourceView }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <input type="hidden" name="sourceId" value={source?.sourceId ?? ""} />
-      <input type="hidden" name="provider" value="greenhouse" />
+      <div className="space-y-2">
+        <Label htmlFor={`provider-${source?.sourceId ?? "new"}`}>
+          Applicant tracking system
+        </Label>
+        <select
+          id={`provider-${source?.sourceId ?? "new"}`}
+          name="provider"
+          defaultValue={source?.provider === "lever" ? "lever" : "greenhouse"}
+          className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <option value="greenhouse">Greenhouse</option>
+          <option value="lever">Lever</option>
+        </select>
+      </div>
       <div className="space-y-2">
         <Label htmlFor={`employer-${source?.sourceId ?? "new"}`}>
           Employer
