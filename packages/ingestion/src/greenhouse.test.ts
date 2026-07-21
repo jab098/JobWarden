@@ -102,11 +102,16 @@ describe("Greenhouse read-only adapter", () => {
   });
 
   it("rejects unvalidated metadata value shapes", async () => {
+    // This once asserted that ANY object was refused, which is what discarded
+    // Datadog's and MongoDB's entire boards: Greenhouse really does send
+    // `{"unit": "USD", "min_value": "…"}`, and the fixture pinned an assumption
+    // rather than the provider. A flat object of primitives is now accepted.
+    // The boundary that still matters is nesting beyond one level.
     const invalid = {
       jobs: [
         {
           ...mixedFixture.jobs[0],
-          metadata: [{ name: "Secret", value: { nested: "not allowed" } }],
+          metadata: [{ name: "Secret", value: { nested: { deeper: "no" } } }],
         },
       ],
     };
@@ -402,5 +407,91 @@ describe("Greenhouse read-only adapter", () => {
     expect(attempts).toBe(3);
     expect(error).toMatchObject({ code: "network_error", attempts: 3 });
     expect(JSON.stringify(error)).not.toContain("token:secret");
+  });
+});
+
+describe("object-valued metadata", () => {
+  /**
+   * The exact shapes a live board sends. Datadog attaches a "Pay Transparency
+   * Range" object to 201 of its adverts and MongoDB attaches several to nearly
+   * all of its 392; because the response is validated whole, one such field
+   * discarded every advert on both boards on every run.
+   */
+  function jobWithMetadata(metadata: unknown) {
+    return {
+      id: 9001,
+      title: "Staff Engineer",
+      location: { name: "London, United Kingdom" },
+      content: "<p>Permanent full-time role in London.</p>",
+      absolute_url: "https://boards.greenhouse.io/acme/jobs/9001",
+      updated_at: "2026-07-21T12:39:52.150188+00:00",
+      metadata,
+    };
+  }
+
+  it("reads a board whose metadata carries a pay-range object", async () => {
+    const adapter = adapterWith(async () =>
+      response({
+        jobs: [
+          jobWithMetadata([
+            {
+              name: "Pay Transparency Range",
+              value: { unit: "USD", min_value: "320000.0", max_value: "400000.0" },
+            },
+            { name: "Department", value: "Engineering" },
+          ]),
+        ],
+      }),
+    );
+
+    const result = await adapter.fetchJobs(source);
+    expect(result.jobs).toHaveLength(1);
+    // The primitive survives; the object is not rendered.
+    expect(result.jobs[0]!.metadataText).toEqual(["Department: Engineering"]);
+  });
+
+  it("never renders a zero GBP pay range into compensation evidence", async () => {
+    // Every GBP object observed live is a placeholder: all 24 on MongoDB's
+    // board read exactly this. Rendering it would put "GBP" into the text
+    // `compensationEvidence` searches, advertising a salary of zero.
+    const adapter = adapterWith(async () =>
+      response({
+        jobs: [
+          jobWithMetadata([
+            {
+              name: "Baseline Budgeted Salary",
+              value: { unit: "GBP", min_value: "0.0", max_value: "0.0" },
+            },
+          ]),
+        ],
+      }),
+    );
+
+    const [job] = (await adapter.fetchJobs(source)).jobs;
+    expect(job!.metadataText).toEqual([]);
+    expect(job!.metadataText.join(" ")).not.toMatch(/£|GBP/i);
+  });
+
+  it("still reads primitives and arrays", async () => {
+    const adapter = adapterWith(async () =>
+      response({
+        jobs: [
+          jobWithMetadata([
+            { name: "Salary", value: "£65,000 - £80,000" },
+            { name: "Tags", value: ["Remote", "Hybrid"] },
+            { name: "Headcount", value: 3 },
+            { name: "Confidential", value: null },
+          ]),
+        ],
+      }),
+    );
+
+    const [job] = (await adapter.fetchJobs(source)).jobs;
+    expect(job!.metadataText).toEqual([
+      "Confidential: null",
+      "Headcount: 3",
+      "Salary: £65,000 - £80,000",
+      "Tags: Remote, Hybrid",
+    ]);
   });
 });
