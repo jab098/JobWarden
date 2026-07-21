@@ -8,6 +8,8 @@ export const careerExtractionLimits = {
 } as const;
 
 export type CareerRuntimeEnvironment = {
+  /** The single browser origin permitted to call the function. */
+  siteUrl?: string;
   supabaseUrl: string;
   anonKey: string;
   serviceRoleKey: string;

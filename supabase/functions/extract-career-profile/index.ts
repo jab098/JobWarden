@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
+import { withCors } from "../_shared/cors.ts";
+
 import type { CareerRpcClient, CareerServiceClient } from "./contracts.ts";
 import { readCareerRuntimeEnvironment } from "./environment.ts";
 import { createCareerExtractionHandler } from "./handler.ts";
@@ -76,4 +78,9 @@ const handler = createCareerExtractionHandler({
   log: (record) => console.info(JSON.stringify(record)),
 });
 
-Deno.serve(handler);
+// The browser uploads to Storage directly and then calls this function, so it
+// needs a preflight answer. Without one the invoke throws before the function
+// runs, and the CV silently never extracts.
+Deno.serve(
+  withCors(handler, readCareerRuntimeEnvironment(Deno.env.toObject()).siteUrl),
+);

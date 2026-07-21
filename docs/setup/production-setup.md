@@ -118,7 +118,20 @@ supabase db push
 
 1. In Supabase, **Storage → Create bucket**. Name it exactly `career-documents`. Set it **Private**. Set the file size limit to **5 MB**.
 2. The owner-only policies are already in the migrations — verify them under **Storage → Policies**: a user may only read and write objects under a prefix matching their own user ID.
-3. Only now, enable upload in the application by following the gate documented in [career profile data operations](../operations/career-profile-data.md).
+3. Deploy the extraction function, or an uploaded CV registers and is never read:
+   ```sh
+   supabase functions deploy extract-career-profile
+   ```
+4. **Set `SITE_URL` to the exact origin the browser calls from.** The upload
+   happens in the browser, so the function must answer a CORS preflight, and it
+   answers only for this one origin — there is no wildcard, because the endpoint
+   acts on the caller's bearer token.
+   ```sh
+   supabase secrets set SITE_URL=http://localhost:3000
+   ```
+   **Change this to your real origin at step 6**, or CV upload will work locally
+   and silently stop working on the deployed site.
+5. Only now, enable upload in the application by following the gate documented in [career profile data operations](../operations/career-profile-data.md).
 
 **Proof it worked:** upload a CV as user A. As user B, request user A's storage path directly through the API and confirm you are refused.
 
@@ -137,6 +150,11 @@ supabase db push
    ```
 3. Set every environment variable from step 1 in the Cloudflare **Workers → Settings → Variables** panel. **`SUPABASE_SERVICE_ROLE_KEY` is a secret**, not a plain variable.
 4. Set `NEXT_PUBLIC_SITE_URL` to your real origin, e.g. `https://jobwarden.example`.
+   Then update the Edge Function's own origin to match, or CV upload breaks on
+   the deployed site while still working locally:
+   ```sh
+   supabase secrets set SITE_URL=https://jobwarden.example
+   ```
 5. Go back to Supabase **Authentication → URL Configuration** and change **Site URL** to that same origin, adding it to the redirect allow-list.
 6. Return to Google Cloud and add `https://<Reference ID>.supabase.co/auth/v1/callback` if you changed anything.
 

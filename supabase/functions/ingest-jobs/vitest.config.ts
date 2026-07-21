@@ -16,6 +16,14 @@ export default defineProject({
   test: {
     name: "ingest-jobs-function",
     environment: "node",
-    include: ["supabase/functions/ingest-jobs/**/*.test.ts"],
+    // `_shared` runs here rather than in all three function configs, so it
+    // executes exactly once. It was included by none of them until 2026-07-21,
+    // which meant `_shared/env.test.ts` and `_shared/supabase.test.ts` had
+    // never run at all — a whole directory of assertions that existed and were
+    // never executed.
+    include: [
+      "supabase/functions/ingest-jobs/**/*.test.ts",
+      "supabase/functions/_shared/**/*.test.ts",
+    ],
   },
 });
