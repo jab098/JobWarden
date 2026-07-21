@@ -430,6 +430,28 @@ export async function normaliseProviderJob(
   const hasAdvertisedCompensation =
     compensationCurrency === "GBP" &&
     (compensationMinimum !== null || compensationMaximum !== null);
+  const compensationProvenance =
+    hasStructuredCompensation && structuredCompensation
+      ? structuredCompensation.provenance
+      : hasAdvertisedCompensation
+        ? "advertised"
+        : "unknown";
+  /**
+   * Unknown provenance carries no figures at all, currency included.
+   *
+   * The parser sets a currency the moment it sees a `£`, so an advert naming a
+   * pay scale in prose — "NJC 03- £12.85p/h" — yielded `GBP` with no minimum
+   * and no maximum, which leaves provenance at unknown. The database refuses
+   * that pairing outright (`jobs_compensation_provenance_consistent`), and one
+   * such row aborts the whole batch because the upsert is a single
+   * transaction: 3 adverts in 342 cost every job in the run.
+   *
+   * The invariant is settled here rather than at each adapter because every
+   * provider routes through this function. `compensationRaw` is deliberately
+   * kept — the advert's own words are still worth showing, and no constraint
+   * pairs the raw text with a provenance.
+   */
+  const unpriced = compensationProvenance === "unknown";
   const workplaceType = classifyWorkplace(locationText, classificationText);
   const content: Omit<NormalisedJob, "contentHash"> = {
     sourceId: source.id,
@@ -459,16 +481,11 @@ export async function normaliseProviderJob(
     workplaceType,
     ir35Status: classifyIr35(classificationText),
     compensationRaw,
-    compensationMinimum,
-    compensationMaximum,
-    compensationCurrency,
+    compensationMinimum: unpriced ? null : compensationMinimum,
+    compensationMaximum: unpriced ? null : compensationMaximum,
+    compensationCurrency: unpriced ? null : compensationCurrency,
     compensationPeriod,
-    compensationProvenance:
-      hasStructuredCompensation && structuredCompensation
-        ? structuredCompensation.provenance
-        : hasAdvertisedCompensation
-          ? "advertised"
-          : "unknown",
+    compensationProvenance,
     compensationObservedAt:
       hasStructuredCompensation && structuredCompensation
         ? structuredCompensation.observedAt
