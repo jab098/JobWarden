@@ -398,10 +398,20 @@ export function OnboardingFlow({ view }: { view: OnboardingView }) {
             jump to an arbitrary step. */}
             {previousStep !== null && !readOnly ? (
               <form action={goBack}>
-                <Button type="submit" variant="ghost" disabled={goBackPending}>
-                  {goBackPending
-                    ? "Going back…"
-                    : `Back to ${stepTitles[previousStep].toLowerCase()}`}
+                {/* `aria-label` rather than visually-hidden text. The accessible
+                name algorithm trims each text node before joining them, so a
+                leading space in a sibling span is lost and the button announced
+                itself as "Backto What we read". The visible label stays short
+                because the progress rail above already shows the reader where
+                they are; the destination is announced because "Back" alone
+                tells a screen-reader user nothing about where they will land. */}
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  disabled={goBackPending}
+                  aria-label={`Back to ${stepTitles[previousStep]}`}
+                >
+                  {goBackPending ? "Going back…" : "Back"}
                 </Button>
               </form>
             ) : null}
