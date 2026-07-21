@@ -35,7 +35,7 @@ Task 30b deliberately left `ashby` pinned as **rejected** at three layers — th
 
 ### Open debt, none of it blocking Task 31
 
-- **Task 36 and Task 26a shipped without an independent review pass**, as did 30b, 37 and 38.
+- **Task 36, Task 26a and Task 30b shipped without an independent review pass.** Tasks 37 and 38 have now had one — see the review record below.
 - The **development administrator preview renders no hub rail**; closing it needs a shell refactor separating the rail's presentation from its live sign-out form.
 - **Task 26a left two owner-visible calls unsettled**: the `interviewing` stage dot is still interactive blue, and no gauge or ring component exists.
 - **One schema defect is recorded and undecided — no `auth.users` row can be deleted.** See the bullet further down. Do not stumble into it and assume it is new.
@@ -81,7 +81,7 @@ Task 37 fixed string **shapes**. Six non-settlement shapes still drop and two ar
 ## Handoff
 
 - Current integration branch: `main`, clean at merge `31faf89` (PR #50) as of 2026-07-21
-- Last independently reviewed task implementation commit: **still Task 35** (merge `ab1515b`, PR #41). Tasks 30b, 36, 37, 38 and 26a have shipped since without one
+- Last independently reviewed task implementation commit: **Tasks 37 and 38**, reviewed 2026-07-21 (record below). Tasks 30b, 36 and 26a have still never had an independent review pass
 - Branch baseline before Task 1: `7195a8f8913a7cffec08599fe114f0cbe91e976c`
 - PR #31 merged on 2026-07-20 with one red check standing: the secret scan erroring on a GitHub 403 before scanning anything. That was Task 28 and is now fixed by PR #34, so pull requests from here on have a working secret scan and a red check means something real
 - The early-access dialog needs two things before it accepts an entry: Cloudflare Turnstile keys (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, free) and migration `202607220001_early_access_list.sql` applied. Both are deliberately deferred to the production rollout. Until then the dialog correctly says it is not accepting entries yet and offers sign-in; that is the intended state, not a defect to fix
@@ -147,8 +147,8 @@ Task 37 fixed string **shapes**. Six non-settlement shapes still drop and two ar
 | 36. Entrance motion, administration inside the hub                     | shipped  | Owner request from a reference video; no independent review pass                    |
 | 35. Make the live database gate pass                                   | reviewed | Delivered by PR #41 at `ab1515b`; 542 tests, lint clean, review APPROVED            |
 | 30b. Provider vocabulary widening                                      | shipped  | `lever` accepted; Ashby/Workable rejected until their adapters ship; 561 tests      |
-| 37. Location string-shape recognition                                  | shipped  | Postcodes, `GB`, multi-location, nation-wide phrases; probe 16/44 to 23/44          |
-| 38. Official UK public-sector sources                                  | shipped  | Teaching Vacancies adapter shipped disabled; Apprenticeships/NHS/DWP need the owner |
+| 37. Location string-shape recognition                                  | reviewed | Independent pass 2026-07-21; boundary held under 53 probes, one notation gap closed |
+| 38. Official UK public-sector sources                                  | reviewed | Independent pass 2026-07-21; no code defect, duplicate-control limit now recorded   |
 | 39. Adzuna licence decision                                            | blocked  | Owner action; written licence and attribution terms required before any connector   |
 
 ## Last verification commands
@@ -229,6 +229,24 @@ Task 35 made the live database gate pass for the first time. `pnpm verify:live` 
 **What the independent review changed, recorded because the misses are instructive.** Three rounds, each re-running the gates rather than reading the claims. Round one found that acceptance criterion 5 was unmet: the record said the gate passed and, nine lines later, that it reported `Result: FAIL`. It also found that the justification for removing `005`'s role switch was overstated — three of eight untrusted role-by-function pairs were asserted, not eight, with `complete_ingestion_request` covered for neither role. The five missing assertions were added rather than the claim softened, because with the role switch gone they are the whole of the grant coverage. Round two found that the handover section at the top of this file was **uncommitted**, so a branch diff did not contain it and the pull request would not have shipped it. Round three found that both tests written to guard the new signature comparison placed the `drop` before the `create`, where the offset check short-circuits before any type is compared — so both passed with the comparison deleted and guarded nothing. They now fail under mutation. The lesson worth carrying: a test that passes is not evidence until you have watched it fail.
 
 **`011` had never run in the programme's history and now does.** Three separate faults: `dblink` could not open a second session, because PostgreSQL refuses a non-superuser connection unless the server genuinely demands a password and local Supabase trusts `127.0.0.1` — the connection is now aimed at the scram-authenticated container network with the host derived at run time from `inet_server_addr()`; the fixtures were committed over those separate sessions and so survived the file's own `rollback`, poisoning every later run, which the teardown now clears defensively at both ends; and four assertions watched a backend pid captured from `dblink('name', 'select pg_backend_pid()')` that was already dead when stored, so they could only ever report "not waiting". Those now ask `pg_locks` about the barrier itself, which is what the tests mean, and the advisory barrier and the row-level generation mutex are distinguished because `save_search_profile` holds the latter with `for update` rather than an advisory lock.
+
+## Independent review pass — Tasks 37 and 38, 2026-07-21
+
+Run to clear the review debt these two shipped with. Both are now `reviewed`. **No production code defect was found in either**, which is worth stating plainly because the previous review pass found one immediately and the expectation going in was that it would again.
+
+**What was verified rather than read.** The gate was re-run rather than trusted: `pnpm verify` exits zero at 1,523 tests, `pnpm check:supabase` passes at 30 migrations and 34 forced-RLS tables, and the two script test files pass at 45. The tree carries no `TODO`/`FIXME`; the five `ponytail:` markers are deliberate and documented.
+
+**Task 37 — the boundary holds.** `classifyUkEligibility` was probed with 53 adversarial inputs beyond its own suite: Crown dependency and overseas-territory postcodes in spaced, unspaced and lowercase notation and behind a settlement prefix; all six real UK postcode formats plus `GIR 0AA`; Canadian, US, French, Dutch and Irish postal shapes; all eight four-letter overseas outward codes; multi-location strings mixing UK and foreign parts; and the `Nationwide` employer-name trap. **Every one behaved correctly.** The `gb` anchor's safety claim was checked against the code rather than the comment and holds: `Paris, GB` reaches `ambiguous`, not publication, because the all-labels allowlist refuses it. The shipped Crown fix also correctly pins the over-reach guard — `G1`, `IG1`, `GU1` and `IP1` still publish.
+
+**One real gap, closed.** The Crown exclusion was pinned only in the _spaced_ postcode notation. `JE23AB` was refused in fact but by nothing in the suite — the same "one notation, not the other" shape as the defect the fix was written for, one step further on. Nine assertions now pin the unspaced form in both directions. They were **watched failing under a narrow mutation** that broke only unspaced extraction: exactly five failed and every pre-existing assertion passed, which is what proves they add cover rather than restate it.
+
+**A stale acceptance criterion was the more dangerous find.** Task 37's roadmap acceptance said a multi-location string publishes "when _any_ part carries UK evidence". The shipped classifier is stricter — it refuses when any label is unrecognised, so `London / Paris` and `London, Ontario` both quarantine. The code is right and the criterion was wrong, but a future task reading the two could have "corrected" the classifier toward the spec and opened a right-to-work hole. The criterion is now corrected in the roadmap with the reasoning attached, because the wrong half of this pair was the durable one.
+
+**Task 38 — no defect, one unmet criterion.** The migration uses `create or replace` throughout and contains no `drop function`, so the ACL trap that bit Task 25c is avoided. `coverage_mode` is pinned to `incremental` at the database boundary, which is correct for a bounded five-page read and is what stops an unread advert closing a job. Source identity is pinned twice, at the check constraint and again in the Edge Function row schema. Nothing is inserted, so the source genuinely ships disabled. The `unitText: "YEAR"`-on-an-hourly-rate trap is handled by keeping `unitText` out of the schema entirely. The adapter refuses a `next` link that leaves the provider's endpoint, and its 16 tests cover that, the page bound, the no-leak shape rejection and bounded retries.
+
+**The unmet one is duplicate control, and it is unmeetable as built.** Acceptance asked for reconciliation with an existing source to be proven. Deduplication keys on the exact canonical application URL, and this adapter's canonical destination is the service's own advert page, so a teaching role also on the school's ATS board produces a different key and appears twice. Coding around it would mean fuzzy title/employer merging, which `AGENTS.md` forbids. Recorded as a known property in the source's compliance record rather than papered over.
+
+**Not reviewed here.** Tasks 30b, 36 and 26a still carry review debt.
 
 ## Approved programme update
 

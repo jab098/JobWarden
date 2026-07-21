@@ -54,8 +54,8 @@ Status changes to `reviewed` only after independent review, full verification, p
 | 34   | Read `JobPosting` schema from allowlisted career pages                     | pending  | None; per-employer compliance record before each page is allowlisted                  |
 | 35   | Make the live database gate pass                                           | reviewed | Delivered by PR #41 (`ab1515b`); 28 migrations, clean lint, 542 tests                 |
 | 36   | Entrance motion, admin in the hub                                          | shipped  | None                                                                                  |
-| 37   | Location string-shape recognition                                          | shipped  | None; deterministic, no provider and no credential                                    |
-| 38   | Official UK public-sector sources                                          | shipped  | Teaching Vacancies adapter delivered; Apprenticeships/NHS/DWP need the owner          |
+| 37   | Location string-shape recognition                                          | reviewed | Independent pass 2026-07-21; one notation gap closed, no code defect                  |
+| 38   | Official UK public-sector sources                                          | reviewed | Independent pass 2026-07-21; duplicate-control limit recorded, no code defect         |
 | 39   | Adzuna licence decision                                                    | blocked  | Owner: written licence and attribution terms from Adzuna                              |
 
 ## Remaining work, in the order it should be done
@@ -490,7 +490,12 @@ Acceptance:
 
 - a valid UK postcode is recognised as explicit UK evidence through a documented format check, and an invalid or non-UK postal format is not;
 - `GB` is accepted as a nation anchor wherever `UK` already is, including in a `GB-` prefixed form;
-- a multi-location string is split and each part classified independently, publishing when any part carries UK evidence and recording which part supplied it;
+- a multi-location string is split and each part classified independently, publishing only when at least one part carries UK evidence **and no part is unrecognised**;
+
+  **Corrected 2026-07-21 by the independent review pass, and the correction is load-bearing.** This criterion originally read "publishing when _any_ part carries UK evidence". The shipped classifier is stricter than that and deliberately so: `assessLocation` refuses when any label is unrecognised, so "London / Paris" and "London, Ontario" both quarantine rather than publish. An "any part" rule would publish a job on the strength of one recognised UK city sitting beside a foreign qualifier no denylist happens to carry — which is the exact hole the allowlist exists to close, and which the code comment at `packages/domain/src/classification.ts` calls "the barrier". The criterion was wrong, not the code. It is corrected here so that nobody reads the two, believes the implementation has drifted, and "fixes" the classifier toward a right-to-work hole.
+
+  Evidence is recorded as the whole location string rather than the isolated part that qualified. That still names the matched text — a postcode-derived publication contains its postcode — so the audit trail holds, and isolating the part was not worth restructuring the evidence contract for.
+
 - `Nationwide` alone remains ambiguous, and a test asserts it, because it is also an employer name;
 - Crown dependencies remain outside UK eligibility and a test asserts each of them, so the boundary cannot be widened by accident;
 - eligibility evidence still names the exact matched text, so a postcode-derived publication is auditable to the postcode that produced it;
