@@ -393,3 +393,94 @@ describe("careerPathways taxonomy", () => {
     expect(evaluateExplorePathways(genericEvidence, [])).toHaveLength(0);
   });
 });
+
+
+/**
+ * The concepts a real CV actually produced on a live project, not invented for
+ * this test. They are mostly product names, because that is what CVs say and
+ * what deterministic extraction emits.
+ *
+ * Recorded here because the numbers matter more than the assertions: against
+ * the shipped catalogue this evidence reaches 57% at best, under the 70%
+ * threshold, so the reader is shown nothing. Aliasing lifted that from 36%, and
+ * the rest of the gap is evidence breadth, not vocabulary — the unmatched
+ * skills are generic capabilities extraction never proposed. Pathways will stay
+ * empty for real readers until extraction proposes capabilities as well as
+ * products.
+ */
+const realExtractedConcepts: readonly (readonly [
+  string,
+  string,
+  CareerEvidenceItem["category"],
+])[] = [
+  ["google analytics", "Google Analytics", "tool"],
+  ["tag management", "Tag management", "skill"],
+  ["consent management", "Consent management", "skill"],
+  ["tealium", "Tealium", "tool"],
+  ["sql", "SQL", "tool"],
+  ["martech", "Marketing technology", "domain"],
+  ["power bi", "Power BI", "tool"],
+  ["analytics implementation", "Analytics implementation", "responsibility"],
+  ["looker", "Looker", "tool"],
+];
+
+describe("named products credited to the capability they are", () => {
+  const realEvidence = realExtractedConcepts.map(([concept, label, category]) =>
+    confirmedSkill(concept, label, { category }),
+  );
+
+  /** A pathway built only from skills this evidence reaches through aliases. */
+  const aliasOnlyPathway: CareerPathway = {
+    normalizedConcept: "alias only pathway",
+    label: "Alias-only pathway",
+    summary: "Exists to prove the alias mechanism, not to be suggested.",
+    coreSkills: [
+      { normalizedConcept: "consent and privacy", label: "Consent and privacy", weight: 3, significant: true },
+      { normalizedConcept: "tag management", label: "Tag management", weight: 3, significant: true },
+      { normalizedConcept: "bi dashboard delivery", label: "BI dashboard delivery", weight: 2, significant: false },
+    ],
+  };
+
+  it("credits an aliased skill using the reader's own evidence, never an invented one", () => {
+    const [suggestion] = evaluateExplorePathways(realEvidence, [], [
+      aliasOnlyPathway,
+    ]);
+    expect(suggestion).toBeDefined();
+
+    const tagManagement = suggestion!.matchedSkills.find(
+      (skill) => skill.normalizedConcept === "tag management",
+    );
+    // Tealium is a tag management system, so it credits the skill — and the
+    // suggestion shows the words the reader confirmed, not the catalogue's.
+    expect(tagManagement?.evidenceLabels).toContain("Tealium");
+
+    const consent = suggestion!.matchedSkills.find(
+      (skill) => skill.normalizedConcept === "consent and privacy",
+    );
+    expect(consent?.evidenceLabels).toEqual(["Consent management"]);
+  });
+
+  it("does not credit a capability merely because a product was used", () => {
+    // Using Google Analytics is not implementing analytics. If this ever
+    // passes, an alias has started inferring evidence the reader never gave.
+    const onlyGoogleAnalytics = [
+      confirmedSkill("google analytics", "Google Analytics", {
+        category: "tool",
+      }),
+    ];
+    expect(evaluateExplorePathways(onlyGoogleAnalytics, [])).toHaveLength(0);
+  });
+
+  it("leaves the 70% threshold intact", () => {
+    // One aliased tool cannot carry a seven-skill pathway on its own.
+    const onlyTealium = [confirmedSkill("tealium", "Tealium", { category: "tool" })];
+    expect(evaluateExplorePathways(onlyTealium, [])).toHaveLength(0);
+  });
+
+  it("still suggests nothing from the shipped catalogue, because evidence is too thin", () => {
+    // Not an endorsement of the outcome — a record of it. When extraction
+    // begins proposing capabilities, this will fail and should be revisited
+    // rather than deleted.
+    expect(evaluateExplorePathways(realEvidence, [])).toHaveLength(0);
+  });
+});

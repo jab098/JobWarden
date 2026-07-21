@@ -231,6 +231,46 @@ function normaliseConcept(value: string): string {
   return value.trim().toLowerCase();
 }
 
+/**
+ * Named products credited to the capability they *are*, not one they suggest.
+ *
+ * Extraction reads what a CV says, and CVs name tools. The pathway catalogue is
+ * written in capabilities. Nothing joined the two, so a reader whose evidence
+ * was squarely in a pathway's field still scored below the threshold — the
+ * first real CV reached 36% against 70% while naming the field's own tooling.
+ *
+ * Each entry is an identity a person in the field would state as obvious:
+ * Tealium *is* a tag management system, Looker and Power BI *are* how BI
+ * dashboards get delivered. That is the whole bar, and it is deliberately
+ * narrow. Google Analytics is absent because using a product is not the same as
+ * implementing analytics, and crediting it would be inferring evidence the
+ * reader never gave — which is exactly what this module must not do.
+ *
+ * An alias credits a catalogue skill using the reader's own evidence item, so
+ * the suggestion still shows the words they confirmed. It never invents an
+ * evidence item, and it never lowers the 70% threshold.
+ *
+ * Add to this only where the equivalence is a statement of fact about the
+ * product, never where it is a guess about the person.
+ */
+const conceptAliases: Readonly<Record<string, readonly string[]>> = {
+  // The reader's own wording for the catalogue's "consent and privacy".
+  "consent management": ["consent and privacy"],
+  // Tealium is a tag management system.
+  tealium: ["tag management"],
+  // Both are BI dashboard tools; neither implies modelling or governance.
+  looker: ["bi dashboard delivery"],
+  "power bi": ["bi dashboard delivery"],
+};
+
+/** The concept itself, plus any catalogue skill it is an accepted name for. */
+function creditedConcepts(normalizedConcept: string): readonly string[] {
+  return [
+    normalizedConcept,
+    ...(conceptAliases[normalizedConcept] ?? []),
+  ];
+}
+
 export function evaluateExplorePathways(
   evidence: readonly CareerEvidenceItem[],
   activeTargetRoleFamilyConcepts: readonly string[],
@@ -247,15 +287,17 @@ export function evaluateExplorePathways(
   for (const item of evidence) {
     if (item.confirmationState !== "confirmed") continue;
     if (!isCreditedCategory(item.category)) continue;
-    const entry = evidenceByConcept.get(item.normalizedConcept) ?? {
-      labels: [],
-      categories: [],
-    };
-    if (!entry.labels.includes(item.label)) entry.labels.push(item.label);
-    if (!entry.categories.includes(item.category)) {
-      entry.categories.push(item.category);
+    for (const concept of creditedConcepts(item.normalizedConcept)) {
+      const entry = evidenceByConcept.get(concept) ?? {
+        labels: [],
+        categories: [],
+      };
+      if (!entry.labels.includes(item.label)) entry.labels.push(item.label);
+      if (!entry.categories.includes(item.category)) {
+        entry.categories.push(item.category);
+      }
+      evidenceByConcept.set(concept, entry);
     }
-    evidenceByConcept.set(item.normalizedConcept, entry);
   }
 
   const suggestions: ExploreSuggestion[] = [];
