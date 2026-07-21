@@ -351,28 +351,21 @@ select extensions.dblink_disconnect('evidence_delete');
 -- committed by a separate session, so the enclosing `rollback` does not reach
 -- it, and any residue collides with `users_pkey` on the next run.
 --
--- `delete from auth.users` alone cannot succeed. Every account gets an
--- `access.requested` audit row from `handle_new_user`, `audit_log.actor_user_id`
--- is `on delete set null`, and `audit_log_append_only` refuses that update — so
--- the FK's own action is blocked and the delete always fails. The audit rows are
--- therefore removed first, under a replication role that stands the append-only
--- trigger down, leaving no row pointing at a deleted account.
+-- This used to need a workaround. Every account gets an `access.requested` audit
+-- row from `handle_new_user`, `audit_log.actor_user_id` is `on delete set null`,
+-- and `audit_log_append_only` refused that update — so the foreign key's own
+-- action was blocked and the delete always failed. The audit rows had to be
+-- removed first, under a replication role that stood the append-only trigger
+-- down for the purpose.
 --
--- That contradiction between the FK and the trigger is a schema defect, not a
--- test concern; it is recorded in docs/project-status.md rather than papered
--- over here.
+-- Migration `202607220006_audit_log_actor_nulling.sql` fixed that contradiction
+-- at the schema, so the plain delete now works and the audit rows are left
+-- standing but unattributed, which is what the foreign key always asked for.
+-- Standing down `session_replication_role` in a test file is a blunt instrument
+-- and it is good that this no longer needs one.
 select extensions.dblink_exec(
   'career_race_admin',
   $remote$
-    -- Replication role is stood down only for the append-only audit rows, and
-    -- restored before the account delete so its cascades actually fire.
-    set session_replication_role = replica;
-    delete from public.audit_log
-    where actor_user_id in (
-      '93000000-0000-4000-8000-000000000001',
-      '93000000-0000-4000-8000-000000000002'
-    );
-    set session_replication_role = origin;
     delete from auth.users
     where id in (
       '93000000-0000-4000-8000-000000000001',
