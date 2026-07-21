@@ -2,7 +2,30 @@ import type { NormalisedJob } from "@jobwarden/domain";
 import type { JobSource, ProviderAdapter } from "@jobwarden/ingestion";
 
 export const MAX_SOURCES_PER_INVOCATION = 4;
-export const MAX_JOBS_PER_SOURCE = 500;
+
+/**
+ * The most jobs that may be written for one source in one run.
+ *
+ * This is not a policy number: `upsert_ingested_jobs` refuses a batch above
+ * 500, so it is that limit restated where the run can fail cleanly instead of
+ * throwing inside the repository.
+ *
+ * It counts **eligible** jobs, not received ones. Applying it to the provider's
+ * whole response discarded exactly the boards worth having — Databricks sends
+ * 780 adverts worldwide of which 48 are UK, Stripe 522 of which 39 are — and
+ * both saved nothing while sitting far inside the real limit.
+ */
+export const MAX_ELIGIBLE_PER_SOURCE = 500;
+
+/**
+ * The most adverts one source may return before the run gives up.
+ *
+ * A separate concern from the write limit: every received advert is normalised,
+ * and an unbounded response would spend the whole invocation budget doing it.
+ * Set well above any real board — the largest observed is Databricks at 780 —
+ * so it bounds a runaway provider rather than a big employer.
+ */
+export const MAX_RECEIVED_PER_SOURCE = 5_000;
 
 export type IngestionTrigger = "admin" | "scheduled";
 

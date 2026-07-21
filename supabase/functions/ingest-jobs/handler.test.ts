@@ -6,7 +6,8 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  MAX_JOBS_PER_SOURCE,
+  MAX_ELIGIBLE_PER_SOURCE,
+  MAX_RECEIVED_PER_SOURCE,
   MAX_SOURCES_PER_INVOCATION,
   type ClaimedIngestion,
   type IngestionHandlerDependencies,
@@ -605,10 +606,10 @@ describe("shared ingestion Edge Function handler", () => {
     });
   });
 
-  it("marks a response over the job ceiling incomplete without writing jobs", async () => {
+  it("marks a runaway response incomplete without writing jobs", async () => {
     const claim = source(1);
     const harness = repositoryHarness([claim]);
-    const jobs = Array.from({ length: MAX_JOBS_PER_SOURCE + 1 }, (_, index) =>
+    const jobs = Array.from({ length: MAX_RECEIVED_PER_SOURCE + 1 }, (_, index) =>
       providerJob(index + 1),
     );
     const handler = createIngestionHandler(
@@ -622,11 +623,66 @@ describe("shared ingestion Edge Function handler", () => {
       expect.objectContaining({
         status: "failed",
         responseComplete: false,
-        receivedCount: MAX_JOBS_PER_SOURCE + 1,
-        errorCode: "source_job_cap_reached",
+        receivedCount: MAX_RECEIVED_PER_SOURCE + 1,
+        errorCode: "source_received_cap_reached",
       }),
     );
     expect(harness.completeRequest).toHaveBeenCalledWith(claim.requestId);
+  });
+
+  it("ingests a large board whose UK-eligible subset is small", async () => {
+    // The defect: the ceiling counted the provider's WHOLE response, so
+    // Databricks' 780 worldwide adverts failed outright even though only 48
+    // were UK-eligible and the write limit is 500. This is that exact shape.
+    const claim = source(1);
+    const harness = repositoryHarness([claim]);
+    const jobs = [
+      ...Array.from({ length: 700 }, (_, index) => ({
+        ...providerJob(index + 1),
+        location: "San Francisco, United States",
+      })),
+      ...Array.from({ length: 40 }, (_, index) => providerJob(1000 + index)),
+    ];
+    const handler = createIngestionHandler(
+      dependencies({ harness, adapterFor: () => adapter(jobs) }),
+    );
+
+    await handler(request({ secret: expectedSecret }));
+
+    expect(harness.upsertJobs).toHaveBeenCalledTimes(1);
+    expect(harness.finishSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "succeeded",
+        receivedCount: 740,
+        eligibleCount: 40,
+      }),
+    );
+  });
+
+  it("still refuses a batch larger than the write limit", async () => {
+    // The defect this replaces: the ceiling counted the provider's whole
+    // response, so Databricks' 780 worldwide adverts failed outright even
+    // though only 48 were UK-eligible and the write limit is 500.
+    const claim = source(1);
+    const harness = repositoryHarness([claim]);
+    const jobs = Array.from({ length: MAX_ELIGIBLE_PER_SOURCE + 200 }, (_, index) =>
+      providerJob(index + 1),
+    );
+    const handler = createIngestionHandler(
+      dependencies({ harness, adapterFor: () => adapter(jobs) }),
+    );
+
+    await handler(request({ secret: expectedSecret }));
+
+    // Every fixture job is UK-eligible, so this batch does exceed the write
+    // limit and must still fail — but on the eligible count, not the received.
+    expect(harness.finishSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "failed",
+        errorCode: "source_job_cap_reached",
+        receivedCount: MAX_ELIGIBLE_PER_SOURCE + 200,
+      }),
+    );
   });
 
   it("leaves a request claimed for lease recovery if source finalisation fails", async () => {
