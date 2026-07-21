@@ -782,3 +782,39 @@ describe("advert location survives normalisation", () => {
     expect(job.remoteEligibility).toBe("uk");
   });
 });
+
+describe("unknown compensation provenance carries no figures", () => {
+  /**
+   * The database refuses `unknown` provenance alongside any figure, currency
+   * included, and the upsert is one transaction — so a single offending advert
+   * discards every job in the run. Three live Teaching Vacancies adverts did
+   * exactly that: a pay scale written in prose set the currency to GBP while
+   * resolving no minimum or maximum. The pay text below was observed live.
+   */
+  it("nulls a currency the parser set without resolving a figure", async () => {
+    const job = await eligibleJob({
+      ...baseJob,
+      descriptionHtml:
+        "<p>Permanent full-time role in London. GRADE: NJC 03- £12.85p/h. HOURS: 10 hours per week.</p>",
+    });
+
+    expect(job.compensationProvenance).toBe("unknown");
+    expect(job.compensationCurrency).toBeNull();
+    expect(job.compensationMinimum).toBeNull();
+    expect(job.compensationMaximum).toBeNull();
+    // The advert's own words survive; only the unusable figures are dropped.
+    expect(job.compensationRaw).not.toBeNull();
+  });
+
+  it("keeps a figure the parser did resolve", async () => {
+    const job = await eligibleJob({
+      ...baseJob,
+      descriptionHtml:
+        "<p>Permanent full-time role in London. Salary £45,000 to £55,000 per year.</p>",
+    });
+
+    expect(job.compensationProvenance).toBe("advertised");
+    expect(job.compensationCurrency).toBe("GBP");
+    expect(job.compensationMinimum).not.toBeNull();
+  });
+});
