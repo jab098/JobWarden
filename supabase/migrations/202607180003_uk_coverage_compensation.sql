@@ -981,7 +981,13 @@ begin
       when not source.enabled then 'disabled'
       when latest_run.status = 'failed' then 'failed'
       when source.last_successful_sync_at is null then 'never'
-      when source.last_successful_sync_at + (source.minimum_sync_interval * 2) < clock_timestamp() then 'stale'
+      -- `now()` rather than `clock_timestamp()`: this function is declared
+      -- STABLE, and a VOLATILE expression inside it is a promise the function
+      -- does not keep, which `supabase db lint` reports. Transaction time is
+      -- also the honest clock for a freshness snapshot, where every row should
+      -- be judged against one instant rather than against a clock that moves
+      -- between them.
+      when source.last_successful_sync_at + (source.minimum_sync_interval * 2) < now() then 'stale'
       else 'fresh'
     end,
     source.last_successful_sync_at,

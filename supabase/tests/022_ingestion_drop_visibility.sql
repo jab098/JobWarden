@@ -108,17 +108,21 @@ select throws_ok(
   'more than twenty-five unrecognised locations is rejected'
 );
 
--- Force-RLS is unchanged: this task added columns, never a table.
-select is(
-  (
-    select count(*)::integer
-    from pg_class
-    where relnamespace = 'public'::regnamespace
-      and relrowsecurity
-      and relforcerowsecurity
-  ),
-  32,
-  'the forced-RLS table count is unchanged'
+-- Every public table forces RLS. This replaces a hardcoded count of 32, which
+-- broke whenever a table was legitimately added (it reached 34) and, worse,
+-- could be satisfied while a hole existed: adding one forced table and dropping
+-- RLS from another leaves the count unchanged. Naming the offenders states the
+-- invariant directly and needs no edit when the schema grows.
+select is_empty(
+  $$
+    select c.relname
+    from pg_class as c
+    where c.relnamespace = 'public'::regnamespace
+      and c.relkind = 'r'
+      and not (c.relrowsecurity and c.relforcerowsecurity)
+    order by c.relname
+  $$,
+  'every public table enables and forces row-level security'
 );
 
 select * from finish();

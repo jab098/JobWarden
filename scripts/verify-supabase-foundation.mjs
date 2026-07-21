@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -27,6 +27,10 @@ export const requiredMigrationFiles = [
   "202607200002_location_radius.sql",
   "202607200003_job_locations_writer.sql",
   "202607200004_ingestion_drop_visibility.sql",
+  "202607200005_digest_schedule.sql",
+  "202607220001_early_access_list.sql",
+  "202607220002_uk_places_seed.sql",
+  "202607220003_drop_legacy_upsert_ingested_job.sql",
 ];
 
 const publicTables = [
@@ -62,16 +66,86 @@ const publicTables = [
   "career_notification_deliveries",
   "career_cv_variants",
   "career_onboarding_state",
+  // Both were created before this list had a completeness check and so were
+  // never verified here. Live inspection on 2026-07-21 confirmed each already
+  // enables and forces RLS, and that no public table lacks it.
+  "uk_places",
+  "early_access_signups",
 ];
 
 // Reviewed exceptions to the "definer functions are closed to anon" rule.
 // Adding a name here is a security decision, not a convenience.
 const anonExecutableDefinerFunctions = new Set([
   "public.unsubscribe_career_notifications",
+  // The early-access dialog lives on the public landing page, so the caller is
+  // anonymous by definition and there is no session to bind to. Reviewed on
+  // 2026-07-21, when widening this file to read every migration made
+  // `202607220001_early_access_list.sql` visible to these rules for the first
+  // time; the grant itself shipped earlier, in PR #31.
+  //
+  // What makes it acceptable: `early_access_signups` revokes all from public,
+  // anon and authenticated, so this function is the only way in and no caller
+  // can read the list back. It returns void. The email is format-checked and
+  // length-capped, free text is truncated, `heard_from` collapses to 'other'
+  // outside a fixed allowlist, and the insert is `on conflict (email) do
+  // update`, so a repeated submission updates one row instead of adding rows.
+  // Volume from distinct addresses is a Turnstile concern at the app layer, not
+  // something the grant can settle.
+  "public.join_early_access",
 ]);
 
 function compact(sql) {
   return sql.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/**
+ * The argument types of the first parenthesised list in `text`, normalised so a
+ * `create`'s `target_user_id uuid` and a `drop`'s bare `uuid` compare equal.
+ * Parameter names and defaults are discarded; only the type sequence matters,
+ * because that is what identifies an overload to PostgreSQL.
+ */
+function argumentTypeList(text) {
+  const open = text.indexOf("(");
+  if (open === -1) return null;
+  const close = text.indexOf(")", open);
+  if (close === -1) return null;
+
+  const inner = text.slice(open + 1, close).trim();
+  if (inner === "") return [];
+
+  const types = inner.split(",").map((part) => {
+    const withoutDefault = part.split(/\s+default\s+/i)[0].trim();
+
+    // Multi-word types (`character varying`, `double precision`, `timestamp
+    // with time zone`) cannot be reduced to a final token: `character varying`
+    // and `bit varying` would both collapse to `varying` and compare equal,
+    // which would let a drop of one silence the revoke rule for the other. Fail
+    // closed instead of guessing — an unreadable signature must never be the
+    // thing that switches a security check off.
+    if (/\b(varying|precision|zone)\b/i.test(withoutDefault)) return null;
+
+    const tokens = withoutDefault.split(/\s+/);
+    return tokens[tokens.length - 1].toLowerCase();
+  });
+
+  return types.some((type) => type === null) ? null : types;
+}
+
+function sameArgumentTypes(left, right) {
+  if (left === null || right === null) return false;
+  if (left.length !== right.length) return false;
+  return left.every((type, index) => type === right[index]);
+}
+
+function lastCreateOffsetFor(sql, escapedName) {
+  return [
+    ...sql.matchAll(
+      new RegExp(
+        `create\\s+(?:or\\s+replace\\s+)?function\\s+${escapedName}\\s*\\(`,
+        "gi",
+      ),
+    ),
+  ].reduce((latest, match) => Math.max(latest, match.index ?? -1), -1);
 }
 
 function securityDefinerFunctions(sql) {
@@ -95,6 +169,18 @@ export function verifyFoundationSql(files) {
     if (!files.has(file)) failures.push(`missing required migration: ${file}`);
   }
 
+  // The reverse direction matters just as much. A migration present on disk but
+  // absent from the list used to be invisible to every rule in this file, which
+  // is how four of them — including one that creates a table and grants on it —
+  // went unverified. Adding a migration must mean adding it here.
+  for (const file of files.keys()) {
+    if (!requiredMigrationFiles.includes(file)) {
+      failures.push(
+        `migration not listed in requiredMigrationFiles, so it is unverified: ${file}`,
+      );
+    }
+  }
+
   // The revoke-after-drop check below compares offsets inside the concatenated
   // SQL, which only tracks execution order while this list is chronological.
   // It is sorted by construction — the names are timestamp-prefixed — but the
@@ -116,6 +202,20 @@ export function verifyFoundationSql(files) {
     const force = `alter table public.${table} force row level security;`;
     if (!normalised.includes(enable) || !normalised.includes(force)) {
       failures.push(`public table ${table} must enable and force RLS`);
+    }
+  }
+
+  // As with the migration list, the reverse direction is what stops the list
+  // going quietly stale: a table created in a migration but never added to
+  // `publicTables` had its RLS checked by nothing at all.
+  for (const match of normalised.matchAll(
+    /create table (?:if not exists )?public\.([a-z0-9_]+)/g,
+  )) {
+    const table = match[1];
+    if (!publicTables.includes(table)) {
+      failures.push(
+        `table public.${table} is not listed in publicTables, so its RLS is unverified`,
+      );
     }
   }
 
@@ -1348,6 +1448,34 @@ export function verifyFoundationSql(files) {
       -1,
     );
 
+    // A drop with no create after it is a removal, not a recreation, and there
+    // is nothing left to revoke on. Without this the rule demanded a revoke for
+    // a function that no longer exists, which is unsatisfiable — the only way to
+    // silence it would have been to keep the dead function alive.
+    //
+    // The drop must match THIS function's own argument types, not merely its
+    // name. Overloads share a name, so a `drop function if exists f(uuid)` —
+    // which is a silent no-op if that overload was never created — would
+    // otherwise switch the revoke rule off for a live `f(uuid, text)`. Name-only
+    // matching is what let an anon-executable `finish_source_ingestion` through
+    // once already; see the comment above.
+    const ownArguments = argumentTypeList(definition);
+    const droppedOwnOverload = [
+      ...sql.matchAll(
+        new RegExp(
+          `drop\\s+function\\s+(?:if\\s+exists\\s+)?${escapedName}\\s*\\(([^)]*)\\)`,
+          "gi",
+        ),
+      ),
+    ].some(
+      (match) =>
+        (match.index ?? -1) > lastCreateOffsetFor(sql, escapedName) &&
+        sameArgumentTypes(argumentTypeList(`f(${match[1]})`), ownArguments),
+    );
+    if (droppedOwnOverload) {
+      continue;
+    }
+
     if (!revokeOffsets.some((offset) => offset > lastDropOffset)) {
       failures.push(
         lastDropOffset === -1
@@ -1369,11 +1497,19 @@ export function verifyFoundationSql(files) {
 }
 
 function loadMigrations(migrationsDirectory) {
+  // Every migration on disk, not just the required list. Reading only the list
+  // meant a migration that nobody added to it was never opened at all, so none
+  // of the rules below — forced RLS, definer-function grants, anon-executable
+  // exceptions — ever saw it. `verifyFoundationSql` separately fails when a file
+  // on disk is missing from the list, so the two cannot drift apart again.
   return new Map(
-    requiredMigrationFiles.map((file) => [
-      file,
-      readFileSync(join(migrationsDirectory, file), "utf8"),
-    ]),
+    readdirSync(migrationsDirectory)
+      .filter((file) => file.endsWith(".sql"))
+      .toSorted()
+      .map((file) => [
+        file,
+        readFileSync(join(migrationsDirectory, file), "utf8"),
+      ]),
   );
 }
 

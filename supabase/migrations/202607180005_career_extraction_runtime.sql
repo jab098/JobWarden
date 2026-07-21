@@ -199,9 +199,13 @@ begin
     clock_timestamp()
   ) returning id into claimed_run_id;
 
-  update public.cv_documents
+  -- Aliased like every other statement in this function: `returns table`
+  -- puts an OUT variable named `user_id` in scope for the whole body, so an
+  -- unqualified `user_id` here is ambiguous (42702) and raised at runtime.
+  update public.cv_documents as document
   set lifecycle_status = 'processing', updated_at = clock_timestamp()
-  where id = document_record.id and user_id = actor_user_id;
+  where document.id = document_record.id
+    and document.user_id = actor_user_id;
 
   return query select
     'claimed'::text,

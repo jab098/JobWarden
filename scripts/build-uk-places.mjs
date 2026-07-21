@@ -29,7 +29,16 @@ import { fileURLToPath } from "node:url";
 const endpoint = "https://api.postcodes.io/places";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(root, "packages/domain/src/uk-places.generated.json");
-const sqlOutput = path.join(root, "supabase/seed/uk-places.generated.sql");
+// A migration rather than a seed file. Seeds run on a local `db reset` and
+// never on a production deploy, so the gazetteer has to arrive the same way
+// `explore_pathways` does or `uk_places` is empty in production and radius
+// search silently returns nothing. The whole file is generated, so re-running
+// this script is a clean overwrite; the insert is `on conflict do update`, so
+// replaying the migration is safe.
+const sqlOutput = path.join(
+  root,
+  "supabase/migrations/202607220002_uk_places_seed.sql",
+);
 
 /**
  * Must stay identical to `normalisePlaceName` in the domain package and to

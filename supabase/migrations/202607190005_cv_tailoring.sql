@@ -72,7 +72,11 @@ as $$
       or (
         operation ->> 'kind' = 'replace'
         and (
-          jsonb_typeof(operation -> 'text') <> 'string'
+          -- Presence is checked first, as it is for `paragraphIndex` above.
+          -- Without it an absent key makes `jsonb_typeof` return NULL, the
+          -- comparison NULL rather than true, and the operation valid.
+          not (operation ? 'text')
+          or jsonb_typeof(operation -> 'text') <> 'string'
           or char_length(operation ->> 'text') not between 1 and 4000
         )
       )

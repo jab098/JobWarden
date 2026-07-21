@@ -22,42 +22,85 @@ select * from public.start_source_ingestion(
   'scheduled'
 );
 
+-- `upsert_ingested_jobs`, plural, is the only persistence entry point the
+-- ingestion runtime uses, and since Task 9 the only one that can satisfy the
+-- `deduplication_key` the `jobs` table requires. The singular
+-- `upsert_ingested_job` this file used to call was never updated for that
+-- column, so every call raised a not-null violation; it has been dropped rather
+-- than revived, because nothing called it.
 select results_eq(
   format(
     $sql$
-      select outcome
-      from public.upsert_ingested_job(
-        %L, 'provider-job-1', 'Platform Engineer', 'Ingestion Test Ltd',
-        'A UK role.', 'https://boards.greenhouse.io/ingestion/jobs/1', 'GB',
-        array['Location: England'], 'permanent', 'full_time', 'hybrid',
-        'not_applicable', '£60000 per year', 6000000, null, 'GBP', 'year',
-        '2026-07-17T09:30:00Z', null, %L
-      )
+      select inserted_count, updated_count, unchanged_count
+      from public.upsert_ingested_jobs(%L::uuid, %L::jsonb)
     $sql$,
     (select source_run_id from first_run),
-    repeat('a', 64)
+    jsonb_build_array(jsonb_build_object(
+      'providerJobId', 'provider-job-1',
+      'title', 'Platform Engineer',
+      'employer', 'Ingestion Test Ltd',
+      'descriptionText', 'A UK role.',
+      'applicationUrl', 'https://boards.greenhouse.io/ingestion/jobs/1',
+      'countryCode', 'GB',
+      'ukEligibilityEvidence', jsonb_build_array('Location: England'),
+      'employmentType', 'permanent',
+      'workingTime', 'full_time',
+      'workplaceType', 'hybrid',
+      'ir35Status', 'not_applicable',
+      'compensationRaw', '£60000 per year',
+      'compensationMinimum', 6000000,
+      'compensationMaximum', null,
+      'compensationCurrency', 'GBP',
+      'compensationPeriod', 'year',
+      'compensationProvenance', 'advertised',
+      'compensationObservedAt', '2026-07-17T09:30:00Z',
+      'postedAt', '2026-07-17T09:30:00Z',
+      'closesAt', null,
+      'deduplicationKey', repeat('a', 64),
+      'contentHash', repeat('b', 64)
+    ))::text
   ),
-  $$ values ('inserted'::text) $$,
+  $$ values (1, 0, 0) $$,
   'the first provider identity upsert inserts a job'
 );
 
 select results_eq(
   format(
     $sql$
-      select outcome
-      from public.upsert_ingested_job(
-        %L, 'provider-job-1', 'Changed title ignored for unchanged hash', 'Ingestion Test Ltd',
-        'Changed body ignored for unchanged hash.', 'https://boards.greenhouse.io/ingestion/jobs/1', 'GB',
-        array['Location: England'], 'permanent', 'full_time', 'hybrid',
-        'not_applicable', '£60000 per year', 6000000, null, 'GBP', 'year',
-        '2026-07-17T09:30:00Z', null, %L
-      )
+      select inserted_count, updated_count, unchanged_count
+      from public.upsert_ingested_jobs(%L::uuid, %L::jsonb)
     $sql$,
     (select source_run_id from first_run),
-    repeat('a', 64)
+    jsonb_build_array(jsonb_build_object(
+      'providerJobId', 'provider-job-1',
+      'title', 'Changed title ignored for unchanged hash',
+      'employer', 'Ingestion Test Ltd',
+      'descriptionText', 'Changed body ignored for unchanged hash.',
+      'applicationUrl', 'https://boards.greenhouse.io/ingestion/jobs/1',
+      'countryCode', 'GB',
+      'ukEligibilityEvidence', jsonb_build_array('Location: England'),
+      'employmentType', 'permanent',
+      'workingTime', 'full_time',
+      'workplaceType', 'hybrid',
+      'ir35Status', 'not_applicable',
+      'compensationRaw', '£60000 per year',
+      'compensationMinimum', 6000000,
+      'compensationMaximum', null,
+      'compensationCurrency', 'GBP',
+      'compensationPeriod', 'year',
+      'compensationProvenance', 'advertised',
+      'compensationObservedAt', '2026-07-17T09:30:00Z',
+      'postedAt', '2026-07-17T09:30:00Z',
+      'closesAt', null,
+      'deduplicationKey', repeat('a', 64),
+      -- Same content hash as the insert above: that is what makes this an
+      -- unchanged arrival. The differing title and body are deliberate, and are
+      -- what a provider could never honestly send under an identical hash.
+      'contentHash', repeat('b', 64)
+    ))::text
   ),
-  $$ values ('unchanged'::text) $$,
-  'an unchanged content hash avoids a content rewrite'
+  $$ values (0, 0, 1) $$,
+  'a repeated content hash is counted as unchanged, not updated'
 );
 
 reset role;
@@ -66,10 +109,18 @@ select is(
   1,
   'two upserts for one provider identity produce one job'
 );
+-- This asserted 'Platform Engineer', on the Task 3 rule that an unchanged hash
+-- skipped the content write entirely. Task 9 replaced that: the canonical row is
+-- always rematerialised from its winning occurrence, and `unchanged` now reports
+-- that the canonical content hash did not move, not that nothing was written.
+-- The fixture above deliberately sends a different title under the same hash to
+-- exercise the old short-circuit, which no honest adapter can produce because it
+-- derives the hash from the content. What is still guaranteed, and what is worth
+-- asserting, is that the hash did not move.
 select is(
-  (select title from public.jobs where source_id = '31000000-0000-4000-8000-000000000001'),
-  'Platform Engineer',
-  'unchanged content preserves stored content fields'
+  (select content_hash from public.jobs where source_id = '31000000-0000-4000-8000-000000000001'),
+  repeat('b', 64),
+  'an unchanged arrival leaves the canonical content hash where it was'
 );
 
 set local role service_role;
@@ -85,7 +136,7 @@ select public.finish_source_ingestion(
 
 reset role;
 select is(
-  (select consecutive_successful_omissions from public.jobs where source_id = '31000000-0000-4000-8000-000000000001'),
+  (select consecutive_successful_omissions from public.job_source_occurrences where source_id = '31000000-0000-4000-8000-000000000001'),
   1,
   'one complete successful omission increments the counter once'
 );
@@ -104,7 +155,7 @@ select public.finish_source_ingestion(
 
 reset role;
 select is(
-  (select consecutive_successful_omissions from public.jobs where source_id = '31000000-0000-4000-8000-000000000001'),
+  (select consecutive_successful_omissions from public.job_source_occurrences where source_id = '31000000-0000-4000-8000-000000000001'),
   1,
   'a failed source run never increments omissions'
 );
@@ -123,7 +174,7 @@ select public.finish_source_ingestion(
 
 reset role;
 select is(
-  (select consecutive_successful_omissions from public.jobs where source_id = '31000000-0000-4000-8000-000000000001'),
+  (select consecutive_successful_omissions from public.job_source_occurrences where source_id = '31000000-0000-4000-8000-000000000001'),
   1,
   'an incomplete response never increments omissions'
 );
@@ -137,7 +188,7 @@ select public.finish_source_ingestion(
 
 reset role;
 select is(
-  (select consecutive_successful_omissions from public.jobs where source_id = '31000000-0000-4000-8000-000000000001'),
+  (select consecutive_successful_omissions from public.job_source_occurrences where source_id = '31000000-0000-4000-8000-000000000001'),
   2,
   'two consecutive successful omissions reach the close threshold'
 );

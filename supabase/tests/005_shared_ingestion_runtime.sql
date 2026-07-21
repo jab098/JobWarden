@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(36);
+select plan(41);
 
 select ok(
   not has_function_privilege('anon', 'public.enqueue_scheduled_ingestion()', 'EXECUTE'),
@@ -39,6 +39,37 @@ select ok(
   'the service role can persist a bounded ingestion batch'
 );
 
+-- The four RPCs above are now covered for both untrusted roles rather than for
+-- whichever one happened to be written first. This matters because the body of
+-- this file no longer runs as `service_role` — these assertions are the whole
+-- of the grant coverage, so a gap in them is a gap in the boundary. Five of the
+-- eight role-by-function pairs were missing, including both roles against
+-- `complete_ingestion_request`.
+select ok(
+  not has_function_privilege('authenticated', 'public.enqueue_scheduled_ingestion()', 'EXECUTE'),
+  'authenticated callers cannot enqueue scheduled ingestion'
+);
+
+select ok(
+  not has_function_privilege('anon', 'public.claim_ingestion_requests(integer)', 'EXECUTE'),
+  'anonymous callers cannot claim the ingestion queue'
+);
+
+select ok(
+  not has_function_privilege('anon', 'public.complete_ingestion_request(uuid)', 'EXECUTE'),
+  'anonymous callers cannot complete an ingestion request'
+);
+
+select ok(
+  not has_function_privilege('authenticated', 'public.complete_ingestion_request(uuid)', 'EXECUTE'),
+  'authenticated callers cannot complete an ingestion request'
+);
+
+select ok(
+  not has_function_privilege('anon', 'public.upsert_ingested_jobs(uuid,jsonb)', 'EXECUTE'),
+  'anonymous callers cannot persist an ingestion batch'
+);
+
 insert into public.job_sources (
   id, provider, board_token, employer_name, enabled, minimum_sync_interval,
   allowed_hosts, terms_reviewed_at, robots_reviewed_at, compliance_notes,
@@ -67,7 +98,14 @@ values
   ('51000000-0000-4000-8000-000000000007', 'greenhouse', 'recent-source', 'Recent Source Ltd', true, interval '60 minutes', array['boards.greenhouse.io'], current_date, current_date, 'Recently completed source.', clock_timestamp()),
   ('51000000-0000-4000-8000-000000000008', 'greenhouse', 'disabled-source', 'Disabled Source Ltd', false, interval '60 minutes', array['boards.greenhouse.io'], current_date, current_date, 'Disabled source fixture.', null);
 
-set local role service_role;
+-- Deliberately NOT `set local role service_role`. Every ingestion RPC below is
+-- security definer, owned by `postgres`, and none of them branch on the calling
+-- role, so the executing role changes nothing about their behaviour. The grants
+-- that do matter are asserted directly above with `has_function_privilege`,
+-- across all four RPCs and both untrusted roles. Running the body as
+-- service_role only meant the assertions could not read the tables they verify,
+-- because service_role holds no direct table privilege and no runtime path
+-- gives it one.
 
 create temporary table scheduled_enqueue as
 select public.enqueue_scheduled_ingestion() as inserted_count;
@@ -230,8 +268,12 @@ select lives_ok(
       'compensationMaximum', null,
       'compensationCurrency', null,
       'compensationPeriod', 'unknown',
+      -- Every amount above is null, and `jobs_compensation_provenance_consistent`
+      -- requires 'unknown' in exactly that case.
+      'compensationProvenance', 'unknown',
       'postedAt', null,
       'closesAt', null,
+      'deduplicationKey', repeat('c', 64),
       'contentHash', repeat('b', 64)
     ))::text
   ),
@@ -274,7 +316,6 @@ select is(
   'a failed source cannot close an unseen job'
 );
 
-reset role;
 
 update public.ingestion_requests
 set
@@ -282,7 +323,6 @@ set
   claim_expires_at = clock_timestamp() - interval '1 minute'
 where id = (select request_id from first_claims order by request_id limit 1 offset 2);
 
-set local role service_role;
 
 create temporary table recovered_claim as
 select * from public.claim_ingestion_requests(1);
@@ -313,7 +353,6 @@ select is(
   'the abandoned source run records one sanitised lease error'
 );
 
-reset role;
 
 update public.ingestion_requests
 set
@@ -322,7 +361,6 @@ set
   claim_expires_at = clock_timestamp() - interval '1 minute'
 where id = (select request_id from first_claims order by request_id limit 1 offset 3);
 
-set local role service_role;
 create temporary table exhaustion_followup as
 select * from public.claim_ingestion_requests(1);
 
@@ -346,7 +384,6 @@ select is(
   'attempt exhaustion retains only a sanitised terminal code'
 );
 
-reset role;
 
 insert into public.job_sources (
   id, provider, board_token, employer_name, enabled, minimum_sync_interval,
@@ -359,16 +396,13 @@ values (
   'Source disabled after queue fixture.'
 );
 
-set local role service_role;
 create temporary table disabled_enqueue as
 select public.enqueue_scheduled_ingestion() as inserted_count;
-reset role;
 
 update public.job_sources
 set enabled = false
 where id = '51000000-0000-4000-8000-000000000009';
 
-set local role service_role;
 create temporary table disabled_followup as
 select * from public.claim_ingestion_requests(1);
 
