@@ -59,11 +59,15 @@ export function createDevelopmentTargetFeedRepository(): TargetFeedRepository {
         confirmedEvidence,
         decisions: new Map<string, JobDecision>(),
         includeDismissed,
+        mutedEmployers: [],
         now: new Date(),
         dataMode: "fixtures",
       });
     },
     decide() {
+      return Promise.reject(new PreviewDecisionUnavailableError());
+    },
+    setEmployerMute() {
       return Promise.reject(new PreviewDecisionUnavailableError());
     },
     async getDecisions() {

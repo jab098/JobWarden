@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 
-import { decideJobAction } from "@/app/(protected)/matches/actions";
+import {
+  decideJobAction,
+  muteEmployerAction,
+} from "@/app/(protected)/matches/actions";
 import { Button } from "@/components/ui/button";
 import { Disclosure } from "@/components/ui/disclosure";
 import {
@@ -68,6 +71,10 @@ export function TargetFeedItem({
     decideJobAction,
     initialState,
   );
+  const [muteState, muteAction, mutePending] = useActionState(
+    muteEmployerAction,
+    initialState,
+  );
 
   // Optimistic while the action is in flight or after it succeeded; a failed
   // action falls back to the server-known decision so the row (and its
@@ -79,6 +86,12 @@ export function TargetFeedItem({
 
   const collapsed = decision === "dismissed" && !includeDismissed;
   const current = decision ? decisionMeta[decision] : null;
+  const errorMessage =
+    state.kind !== "idle" && state.kind !== "success"
+      ? state.message
+      : muteState.kind !== "idle" && muteState.kind !== "success"
+        ? muteState.message
+        : null;
 
   return (
     <li
@@ -268,15 +281,27 @@ export function TargetFeedItem({
               </Button>
             ) : null}
           </form>
+          <form action={muteAction}>
+            <input type="hidden" name="employer" value={job.employer} />
+            <input type="hidden" name="muted" value="mute" />
+            <button
+              type="submit"
+              disabled={mutePending}
+              aria-label={`Mute ${job.employer} across your matches`}
+              className="rounded-sm text-xs font-medium text-ink-faint outline-none transition-colors duration-150 hover:text-danger focus-visible:ring-2 focus-visible:ring-ring/60 disabled:opacity-50"
+            >
+              Mute employer
+            </button>
+          </form>
           <Link
             href={`/jobs/${job.id}`}
             className="ml-auto rounded-sm text-xs font-medium text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
           >
             View details
           </Link>
-          {state.kind !== "idle" && state.kind !== "success" ? (
+          {errorMessage ? (
             <span role="alert" className="text-xs text-danger">
-              {state.message}
+              {errorMessage}
             </span>
           ) : null}
           {state.kind === "success" ? (

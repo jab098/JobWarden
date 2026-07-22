@@ -13,6 +13,8 @@ export type TargetFeedItem = {
 export type TargetFeedResult = {
   items: readonly TargetFeedItem[];
   enabledProfileNames: readonly string[];
+  /** Employers this owner has muted; every listing from them is hidden. */
+  mutedEmployers: readonly string[];
   candidateCap: 200;
   dataMode: "supabase" | "fixtures";
 };

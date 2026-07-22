@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { MutedEmployers } from "@/components/target-feed/muted-employers";
 import { TargetFeedItem } from "@/components/target-feed/target-feed-item";
 import { matchesHref } from "@/lib/target-feed/view";
 import type { TargetFeedResult } from "@/lib/target-feed/types";
@@ -80,6 +81,8 @@ export function TargetFeedView({
           ) : null}
         </div>
       </header>
+
+      <MutedEmployers employers={result.mutedEmployers} />
 
       <section aria-label="Target feed results" className="mt-4 min-w-0">
         {!hasProfiles ? (

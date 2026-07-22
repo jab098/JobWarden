@@ -6,9 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const actionMocks = vi.hoisted(() => ({
   decideJobAction: vi.fn(),
+  muteEmployerAction: vi.fn(),
 }));
 vi.mock("@/app/(protected)/matches/actions", () => ({
   decideJobAction: actionMocks.decideJobAction,
+  muteEmployerAction: actionMocks.muteEmployerAction,
 }));
 
 import { SignInView } from "@/components/auth/sign-in-view";
@@ -63,6 +65,7 @@ function makeResult(
   return {
     items: [makeItem()],
     enabledProfileNames: ["Data platform lead"],
+    mutedEmployers: [],
     candidateCap: 200,
     dataMode: "fixtures",
     ...overrides,
@@ -139,6 +142,31 @@ describe("target feed view", () => {
     );
     expect(
       screen.getByText(/Closes (in \d+ days?|tomorrow|today)/),
+    ).toBeInTheDocument();
+  });
+
+  it("offers to mute an employer and lists muted employers to undo", () => {
+    render(
+      <TargetFeedView
+        result={makeResult({
+          mutedEmployers: ["Fictional Noisy Recruiter Ltd"],
+        })}
+        includeDismissed={false}
+        latestListingUpdate={null}
+      />,
+    );
+    // A mute control on the match card.
+    expect(
+      screen.getByRole("button", { name: /Mute .* across your matches/ }),
+    ).toBeInTheDocument();
+    // The muted-employers section with an undo control.
+    expect(
+      screen.getByRole("region", { name: "Muted employers" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Unmute Fictional Noisy Recruiter Ltd",
+      }),
     ).toBeInTheDocument();
   });
 

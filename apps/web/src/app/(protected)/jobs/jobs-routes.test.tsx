@@ -93,10 +93,12 @@ function targetFeedRepository(enabledProfileNames: string[] = []) {
     getFeed: vi.fn().mockResolvedValue({
       items: [],
       enabledProfileNames,
+      mutedEmployers: [],
       candidateCap: 200 as const,
       dataMode: "fixtures" as const,
     }),
     decide: vi.fn(),
+    setEmployerMute: vi.fn(),
     getDecisions: vi.fn().mockResolvedValue(new Map()),
   };
 }

@@ -11,10 +11,12 @@ const fixtureRepository: TargetFeedRepository = {
   getFeed: vi.fn(async () => ({
     items: [],
     enabledProfileNames: [],
+    mutedEmployers: [],
     candidateCap: 200 as const,
     dataMode: "fixtures" as const,
   })),
   decide: vi.fn(async () => undefined),
+  setEmployerMute: vi.fn(async () => undefined),
   getDecisions: vi.fn(async () => new Map<string, never>()),
 };
 
