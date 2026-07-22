@@ -441,6 +441,58 @@ describe("UK eligibility location shapes", () => {
     expect(publishes("London, EC2A 4NE")).toBe(true);
   });
 
+  // The real drop shape from /admin/ingestion (2026-07-22). Feeds write a full
+  // "Town, Region, Postcode", and the town is often not in the gazetteer, so
+  // the barrier quarantined every one on the strength of the town alone even
+  // though the postcode beside it is decisive UK evidence. The towns here are
+  // deliberately ones the dataset does not carry, so the postcode is doing the
+  // work — unlike "London, EC2A 4NE" above, where London is recognised anyway.
+  it.each([
+    "Blandford Forum, South West, DT11 8EL",
+    "Burton-on-Trent, West Midlands, DE14 3TE",
+    "Chatham, South East, ME4 5JB",
+    "Chorleywood, WD3 6EW",
+  ])(
+    "publishes an unrecognised town beside its UK postcode: %s",
+    (location) => {
+      expect(publishes(location)).toBe(true);
+    },
+  );
+
+  it("carries the whole postcode location into the eligibility evidence", () => {
+    const result = classifyUkEligibility(
+      "Blandford Forum, South West, DT11 8EL",
+      neutral,
+    );
+    expect(result.evidence.join(" ")).toContain("DT11 8EL");
+  });
+
+  // A postcode locates the role; it does not overrule an advert that excludes
+  // the UK in words. The description check runs before the location-eligible
+  // branch, and must still win now that more locations reach that branch.
+  it("still refuses a postcode location when the description excludes the UK", () => {
+    const result = classifyUkEligibility(
+      "Blandford Forum, South West, DT11 8EL",
+      "This role is not available in the UK.",
+    );
+    expect(result).toMatchObject({ eligible: false, reason: "non_uk" });
+  });
+
+  // The postcode rule must not become a foreign back door: a real UK postcode
+  // is the only thing that publishes an unrecognised sibling, and these carry
+  // none, so they stay quarantined or refused exactly as before.
+  it.each([
+    "St Helier, JE2 3QA",
+    "London, Ontario",
+    "Springfield, IL 62701",
+    "San Francisco, CA 94103",
+  ])(
+    "does not publish a non-UK string without a UK postcode: %s",
+    (location) => {
+      expect(publishes(location)).toBe(false);
+    },
+  );
+
   // A bare outward code is not evidence: M1 is also a motorway.
   it.each(["EC2A", "M1", "SW1A"])(
     "leaves the bare outward code %s ambiguous",
