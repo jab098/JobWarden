@@ -52,11 +52,11 @@ The same holds for Lever, Ashby and Workable. Each is a per-employer board, so e
 
 There is also **no directory of Greenhouse boards**. Expanding coverage is always probe-and-verify against `boards-api.greenhouse.io`: confirm the board exists, count the UK roles, and read the host. Of roughly 180 well-known UK-hiring employers probed, about 135 had no public board at all — so a list written from memory would be mostly wrong, and confidently so.
 
-### Verified candidates, 2026-07-22 — pending owner configuration
+### Added 2026-07-22 — eleven boards, now configured and enabled
 
-Eleven more well-known UK-hiring employers were probed-and-verified against `boards-api.greenhouse.io` (about a hundred named candidates probed across two rounds; most 404, and several public boards carried no UK roles at all — Cleo, Stability AI, PlanetScale, Mediatonic, Pleo — so they were dropped). These eleven are **not configured**: they carry no `job_sources` row and contribute nothing until an administrator adds and enables each one in `/admin/sources`, at which point the standard "ships disabled until enabled" rule applies. This is why the `46 boards` / `19 hosts` figures above are unchanged — the count moves only when a row is actually created.
+Eleven more well-known UK-hiring employers were probed-and-verified against `boards-api.greenhouse.io` (about a hundred named candidates probed across two rounds; most 404, and several public boards carried no UK roles at all — Cleo, Stability AI, PlanetScale, Mediatonic, Pleo — so they were dropped). All eleven are **now configured and enabled** in the live project — SumUp via the admin form, the other ten via the audited `upsert_job_source` RPC (actor set to the administrator, one atomic transaction) — taking the Greenhouse board count from 46 to **57**. The `46 boards` / `19 hosts` figures in the section above are the 2026-07-21 snapshot and predate this; four employer-own hosts here (`sumup.com`, `www.dojo.careers`, `www.fireblocks.com`, `www.cockroachlabs.com`) are new to the host set.
 
-UK role counts are a point-in-time snapshot. The `allowed_hosts` value below was read from each board with the one-liner above and is the value that must be entered; getting it wrong quarantines every advert on the board while the run reports success.
+UK role counts are a point-in-time snapshot read the day they were added. The `allowed_hosts` value below was read from each board with the one-liner above; getting it wrong quarantines every advert on the board while the run reports success.
 
 | Board token     | Employer    | UK roles (2026-07-22) | `allowed_hosts`               |
 | --------------- | ----------- | --------------------- | ----------------------------- |
@@ -72,7 +72,7 @@ UK role counts are a point-in-time snapshot. The `allowed_hosts` value below was
 | `cockroachlabs` | CockroachDB | 5                     | `www.cockroachlabs.com`       |
 | `heycar`        | heycar      | 3                     | `job-boards.greenhouse.io`    |
 
-All are `coverage_mode = complete` like every Greenhouse board — one request returns the whole board, so the two-consecutive-omissions closure rule applies — and take the standard per-employer Greenhouse cadence. Four use an employer-own host that must be read from the board rather than assumed (`sumup.com`, `www.dojo.careers`, `www.fireblocks.com`, `www.cockroachlabs.com`); `ebury` uses the EU Greenhouse host and the rest the common default. UK eligibility is still decided per advert by the classifier at ingestion — these counts are the ceiling, not a guarantee every one publishes.
+All are `coverage_mode = complete` like every Greenhouse board — one request returns the whole board, so the two-consecutive-omissions closure rule applies — and were enabled with a 2-hour (`120`-minute) cadence. `ebury` uses the EU Greenhouse host and the rest the common default, apart from the four employer-own hosts noted above. UK eligibility is still decided per advert by the classifier at ingestion — these counts are the ceiling, not a guarantee every one publishes, and jobs appear after the next weekday ingestion run.
 
 ## Non-negotiable source rules
 
