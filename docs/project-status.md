@@ -155,6 +155,7 @@ Task 37 fixed string **shapes**. Six non-settlement shapes still drop and two ar
 
 ## Source of truth
 
+- [Hardening & functionality audit delivery record (2026-07-22)](handoffs/2026-07-22-hardening-and-functionality-audit.md) — the diagnosis, the ten PRs, the production migration workflow, and the traps that bit
 - [Approved foundation design](superpowers/specs/2026-07-17-jobwarden-foundation-design.md)
 - [Historical Tasks 1–6 foundation plan](superpowers/plans/2026-07-17-jobwarden-foundation.md)
 - [Task 10 implementation plan](superpowers/plans/2026-07-18-task-10-career-profile-onboarding.md)
