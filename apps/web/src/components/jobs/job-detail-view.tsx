@@ -3,6 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 
 import { formatPostedAge } from "@/components/jobs/job-format";
 import { JobFacts } from "@/components/jobs/job-facts";
+import { sourceAttribution } from "@/lib/jobs/source-attribution";
 import type { JobDetail } from "@/lib/jobs/types";
 
 export function JobDetailView({
@@ -95,7 +96,7 @@ export function JobDetailView({
           <div>
             <dt className="text-xs text-ink-faint">Source</dt>
             <dd className="mt-1 font-medium text-foreground">
-              {job.sourceLabel}
+              {sourceAttribution(job.sourceProvider) ?? job.sourceLabel}
             </dd>
           </div>
           <div>

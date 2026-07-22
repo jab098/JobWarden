@@ -89,6 +89,12 @@ export type JobListItem = {
    * search repositories always set it so the source filter can apply.
    */
   sourceId?: string;
+  /**
+   * The provider that supplied this listing (e.g. "adzuna"), denormalised onto
+   * the job row so a signed-in user can be shown the required source
+   * attribution without reading the administrator-only source registry.
+   */
+  sourceProvider?: string | null;
   title: string;
   employer: string;
   location: string;

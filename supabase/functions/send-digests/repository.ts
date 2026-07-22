@@ -116,6 +116,7 @@ const recipientRowSchema = z.object({
 
 const candidateRowSchema = z.object({
   id: z.string().uuid(),
+  source_provider: z.string().min(1).max(50).nullish(),
   title: z.string().min(1).max(300),
   employer: z.string().min(1).max(300),
   description_text: z.string().max(100_000),
@@ -215,6 +216,7 @@ function toJobInput(
 ): TargetFeedJobInput {
   return {
     id: row.id,
+    sourceProvider: row.source_provider ?? null,
     title: row.title,
     employer: row.employer,
     descriptionText: row.description_text,

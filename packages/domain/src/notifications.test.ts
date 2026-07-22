@@ -384,6 +384,21 @@ describe("buildDigestMessage", () => {
     expect(message.subject).toBe("1 new UK match in JobWarden");
   });
 
+  it("credits Adzuna listings and no others in both text and HTML", () => {
+    const message = buildDigestMessage({
+      jobs: [
+        { ...jobs[0], sourceProvider: "adzuna" },
+        { ...jobs[1], sourceProvider: "greenhouse" },
+      ],
+      ...urls,
+    });
+
+    expect(message.text).toContain("Jobs by Adzuna");
+    expect(message.html).toContain("Jobs by Adzuna");
+    // The credit appears once — only for the Adzuna listing.
+    expect(message.text.match(/Jobs by Adzuna/g)).toHaveLength(1);
+  });
+
   it("states the true total even when the listing is capped", () => {
     const many = Array.from({ length: 9 }, (_, index) => ({
       ...jobs[0],

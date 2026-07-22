@@ -72,6 +72,7 @@ const recipientRow = {
 
 const candidateRow = {
   id: "10000000-0000-4000-8000-000000000001",
+  source_provider: "adzuna",
   title: "Senior Analytics Engineer",
   employer: "Fictionex Ltd",
   description_text: "Analytics work in python.",
@@ -195,6 +196,7 @@ describe("listCandidateJobs", () => {
     });
     expect(job).toEqual({
       id: "10000000-0000-4000-8000-000000000001",
+      sourceProvider: "adzuna",
       title: "Senior Analytics Engineer",
       employer: "Fictionex Ltd",
       descriptionText: "Analytics work in python.",

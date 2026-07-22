@@ -34,6 +34,7 @@ const locationSchema = z.object({
 
 const candidateRowSchema = z.object({
   id: z.string().uuid(),
+  source_provider: z.string().min(1).max(50).nullish(),
   title: z.string().min(1).max(300),
   employer: z.string().min(1).max(300),
   employment_type: z.enum(employmentTypes),
@@ -60,6 +61,7 @@ const mutedRowSchema = z.object({ employer: z.string().min(1).max(300) });
 
 const candidateColumns = [
   "id",
+  "source_provider",
   "title",
   "employer",
   "employment_type",
@@ -119,6 +121,7 @@ function selectLocation(
 function toCandidate(row: CandidateRow): TargetFeedCandidate {
   return {
     id: row.id,
+    sourceProvider: row.source_provider ?? null,
     title: row.title,
     employer: row.employer,
     location: selectLocation(row.job_locations),

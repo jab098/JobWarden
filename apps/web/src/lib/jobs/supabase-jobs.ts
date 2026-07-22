@@ -22,6 +22,7 @@ const locationSchema = z.object({
 const listRowSchema = z.object({
   id: z.string().uuid(),
   source_id: z.string().uuid(),
+  source_provider: z.string().min(1).max(50).nullish(),
   title: z.string().min(1).max(300),
   employer: z.string().min(1).max(300),
   employment_type: z.enum(employmentTypes),
@@ -50,6 +51,7 @@ const detailRowSchema = listRowSchema.extend({
 const baseColumns = [
   "id",
   "source_id",
+  "source_provider",
   "title",
   "employer",
   "employment_type",
@@ -146,6 +148,7 @@ function toListItem(row: ListRow): JobListItem {
   return {
     id: row.id,
     sourceId: row.source_id,
+    sourceProvider: row.source_provider ?? null,
     title: row.title,
     employer: row.employer,
     location: selectLocation(row.job_locations),

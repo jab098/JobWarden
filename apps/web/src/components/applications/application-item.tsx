@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ActionFeedback } from "@/components/ui/action-feedback";
 import { Disclosure } from "@/components/ui/disclosure";
+import { JobAttribution } from "@/components/jobs/job-attribution";
 import { formatCompensation } from "@/components/jobs/job-format";
 import { Input } from "@/components/ui/input";
 import {
@@ -162,6 +163,10 @@ export function ApplicationItem({
             {item.job ? (
               <p className="mt-0.5 text-sm text-ink-secondary">
                 {item.job.employer}
+                <JobAttribution
+                  sourceProvider={item.job.sourceProvider}
+                  className="ml-2"
+                />
               </p>
             ) : (
               <p className="mt-0.5 text-sm text-ink-faint">
