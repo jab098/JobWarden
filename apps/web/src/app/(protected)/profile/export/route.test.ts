@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   getExportRepository: vi.fn(),
   requireProtectedAccess: vi.fn(),
   resolveDevelopmentAccessMode: vi.fn(),
+  withinRateLimit: vi.fn(),
+  createClient: vi.fn(),
 }));
 vi.mock("@/lib/profile/export-repository", () => ({
   getExportRepository: mocks.getExportRepository,
@@ -17,6 +19,12 @@ vi.mock("@/lib/auth/access-server", () => ({
 vi.mock("@/lib/development/access-mode", () => ({
   resolveDevelopmentAccessMode: mocks.resolveDevelopmentAccessMode,
 }));
+vi.mock("@/lib/rate-limit", () => ({
+  withinRateLimit: mocks.withinRateLimit,
+}));
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: mocks.createClient,
+}));
 
 import { GET } from "./route";
 
@@ -26,6 +34,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.resolveDevelopmentAccessMode.mockReturnValue({ enabled: false });
   mocks.requireProtectedAccess.mockResolvedValue({ kind: "allow" });
+  mocks.createClient.mockResolvedValue({});
+  mocks.withinRateLimit.mockResolvedValue(true);
   exportOwnData.mockResolvedValue({ schemaVersion: 1, evidence: [] });
   mocks.getExportRepository.mockResolvedValue({ exportOwnData });
 });
@@ -35,6 +45,15 @@ describe("data export route", () => {
     await GET();
 
     expect(mocks.requireProtectedAccess).toHaveBeenCalled();
+  });
+
+  it("returns 429 and reads nothing when the export rate limit is exceeded", async () => {
+    mocks.withinRateLimit.mockResolvedValue(false);
+
+    const response = await GET();
+
+    expect(response.status).toBe(429);
+    expect(exportOwnData).not.toHaveBeenCalled();
   });
 
   it("refuses to export when the access gate rejects the caller", async () => {
