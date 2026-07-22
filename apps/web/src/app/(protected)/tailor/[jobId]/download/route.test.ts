@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   getTailoringRepository: vi.fn(),
   requireProtectedAccess: vi.fn(),
   resolveDevelopmentAccessMode: vi.fn(),
+  withinRateLimit: vi.fn(),
+  createClient: vi.fn(),
 }));
 vi.mock("@/lib/tailoring/get-repository", () => ({
   getTailoringRepository: mocks.getTailoringRepository,
@@ -16,6 +18,12 @@ vi.mock("@/lib/auth/access-server", () => ({
 }));
 vi.mock("@/lib/development/access-mode", () => ({
   resolveDevelopmentAccessMode: mocks.resolveDevelopmentAccessMode,
+}));
+vi.mock("@/lib/rate-limit", () => ({
+  withinRateLimit: mocks.withinRateLimit,
+}));
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: mocks.createClient,
 }));
 
 import { GET } from "./route";
@@ -31,6 +39,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.resolveDevelopmentAccessMode.mockReturnValue({ enabled: false });
   mocks.requireProtectedAccess.mockResolvedValue({ kind: "allow" });
+  mocks.createClient.mockResolvedValue({});
+  mocks.withinRateLimit.mockResolvedValue(true);
   renderVariant.mockResolvedValue({
     fileName: "cv-tailored.docx",
     bytes: new Uint8Array([0x50, 0x4b, 0x03, 0x04]),
@@ -43,6 +53,15 @@ describe("tailored variant download", () => {
     await GET(request(`?variantId=${variantId}`));
 
     expect(mocks.requireProtectedAccess).toHaveBeenCalled();
+  });
+
+  it("returns 429 and renders nothing when the download rate limit is exceeded", async () => {
+    mocks.withinRateLimit.mockResolvedValue(false);
+
+    const response = await GET(request(`?variantId=${variantId}`));
+
+    expect(response.status).toBe(429);
+    expect(renderVariant).not.toHaveBeenCalled();
   });
 
   it("refuses to render when the access gate rejects the caller", async () => {

@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { requireProtectedAccess } from "@/lib/auth/access-server";
 import { resolveDevelopmentAccessMode } from "@/lib/development/access-mode";
+import { withinRateLimit } from "@/lib/rate-limit";
+import { createClient } from "@/lib/supabase/server";
 import { getTailoringRepository } from "@/lib/tailoring/get-repository";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +26,19 @@ export async function GET(request: Request): Promise<Response> {
     nodeEnv: process.env.NODE_ENV,
     bypassFlag: process.env.JOBWARDEN_DEV_ACCESS_BYPASS,
   });
-  if (!developmentAccess.enabled) await requireProtectedAccess();
+  if (!developmentAccess.enabled) {
+    await requireProtectedAccess();
+    // Every download re-renders the DOCX from the stored original; thirty a
+    // minute allows normal retries while capping a session that loops on it.
+    if (
+      !(await withinRateLimit(await createClient(), "tailor_download", 30, 60))
+    ) {
+      return NextResponse.json(
+        { error: "rate_limited" },
+        { status: 429, headers: { "retry-after": "60" } },
+      );
+    }
+  }
 
   const variantId = z
     .string()
