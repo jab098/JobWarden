@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { JobAttribution } from "@/components/jobs/job-attribution";
 import {
   formatClosingSoon,
   formatPostedAge,
@@ -37,6 +38,7 @@ export function JobCard({
         {closing ? (
           <span className="text-xs font-medium text-warning">{closing}</span>
         ) : null}
+        <JobAttribution sourceProvider={job.sourceProvider} />
         <Link
           href={`/jobs/${job.id}`}
           className="ml-auto rounded-sm text-xs font-medium text-link outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"

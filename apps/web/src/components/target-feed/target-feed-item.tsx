@@ -9,6 +9,7 @@ import {
 } from "@/app/(protected)/matches/actions";
 import { Button } from "@/components/ui/button";
 import { Disclosure } from "@/components/ui/disclosure";
+import { JobAttribution } from "@/components/jobs/job-attribution";
 import {
   formatClosingSoon,
   formatPostedAge,
@@ -183,6 +184,7 @@ export function TargetFeedItem({
           {closing ? (
             <span className="text-xs font-medium text-warning">{closing}</span>
           ) : null}
+          <JobAttribution sourceProvider={job.sourceProvider} />
         </div>
 
         {matchedSkills.length > 0 || explanation.importantGaps.length > 0 ? (

@@ -108,6 +108,7 @@ describe("RLS-bound Supabase jobs list", () => {
         {
           id: listRow.id,
           sourceId: "5c000000-0000-4000-8000-000000000001",
+          sourceProvider: null,
           title: "Platform Engineer",
           employer: "Example Employer",
           location: "Edinburgh, Scotland",
