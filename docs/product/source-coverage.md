@@ -52,6 +52,22 @@ The same holds for Lever, Ashby and Workable. Each is a per-employer board, so e
 
 There is also **no directory of Greenhouse boards**. Expanding coverage is always probe-and-verify against `boards-api.greenhouse.io`: confirm the board exists, count the UK roles, and read the host. Of roughly 180 well-known UK-hiring employers probed, about 135 had no public board at all — so a list written from memory would be mostly wrong, and confidently so.
 
+### Verified candidates, 2026-07-22 — pending owner configuration
+
+Five more well-known UK-hiring employers were probed-and-verified against `boards-api.greenhouse.io` (about sixty named candidates probed; most 404, and several public boards carried no UK roles at all — Cleo, Stability AI, PlanetScale — so they were dropped). These five are **not configured**: they carry no `job_sources` row and contribute nothing until an administrator adds and enables each one in `/admin/sources`, at which point the standard "ships disabled until enabled" rule applies. This is why the `46 boards` / `19 hosts` figures above are unchanged — the count moves only when a row is actually created.
+
+UK role counts are a point-in-time snapshot. The `allowed_hosts` value below was read from each board with the one-liner above and is the value that must be entered; getting it wrong quarantines every advert on the board while the run reports success.
+
+| Board token     | Employer    | UK roles (2026-07-22) | `allowed_hosts`               |
+| --------------- | ----------- | --------------------- | ----------------------------- |
+| `sumup`         | SumUp       | 80                    | `sumup.com`                   |
+| `ebury`         | Ebury       | 35                    | `job-boards.eu.greenhouse.io` |
+| `postman`       | Postman     | 17                    | `job-boards.greenhouse.io`    |
+| `cockroachlabs` | CockroachDB | 5                     | `www.cockroachlabs.com`       |
+| `heycar`        | heycar      | 3                     | `job-boards.greenhouse.io`    |
+
+All are `coverage_mode = complete` like every Greenhouse board — one request returns the whole board, so the two-consecutive-omissions closure rule applies — and take the standard per-employer Greenhouse cadence. `sumup.com` and `www.cockroachlabs.com` are two more employer-own hosts; `ebury` reuses the EU host and `postman`/`heycar` the common default. UK eligibility is still decided per advert by the classifier at ingestion — these counts are the ceiling, not a guarantee every one publishes.
+
 ## Non-negotiable source rules
 
 - A listing is published only when it contains explicit evidence that the work is in, or open to workers in, the UK.
