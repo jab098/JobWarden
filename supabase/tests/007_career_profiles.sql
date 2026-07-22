@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(54);
+select plan(56);
 
 select has_table('public', 'career_profiles', 'career profiles are persisted');
 select has_table(
@@ -438,6 +438,44 @@ select is(
   (select state from public.profile_suggestions where id = '74000000-0000-4000-8000-000000000001'),
   'accepted',
   'accepted suggestion state is persisted'
+);
+
+-- S4 registration rate limit. The owner already registered two CVs this
+-- transaction; eight more reach the ten-per-24h ceiling, and the eleventh is
+-- refused before it writes anything. The setup registrations run in a loop with
+-- distinct paths and digests; only the ceiling behaviour is asserted.
+do $$
+declare
+  i integer;
+  path text;
+begin
+  for i in 3..10 loop
+    path := '70000000-0000-4000-8000-000000000001/rate-' || i || '.pdf';
+    perform public.begin_career_cv_upload(0, path);
+    insert into storage.objects (bucket_id, name)
+    values ('career-documents', path);
+    perform public.register_cv_document(
+      0, path, 'rate.pdf', 'pdf', 'application/pdf', 4096, lpad(i::text, 64, '0')
+    );
+  end loop;
+end $$;
+select is(
+  (
+    select count(*)::integer
+    from public.cv_documents
+    where user_id = '70000000-0000-4000-8000-000000000001'
+  ),
+  10,
+  'ten CV registrations within 24h are allowed'
+);
+select throws_ok(
+  $$ select public.register_cv_document(
+    0, '70000000-0000-4000-8000-000000000001/rate-11.pdf', 'rate.pdf', 'pdf',
+    'application/pdf', 4096, lpad('11', 64, '0')
+  ) $$,
+  '53400',
+  'daily CV upload limit reached',
+  'the eleventh CV registration within 24h is refused'
 );
 
 select set_config('request.jwt.claim.sub', '70000000-0000-4000-8000-000000000002', true);
