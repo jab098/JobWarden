@@ -8,7 +8,16 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 - **Live at https://jobwarden.jabed.co.uk** — Vercel, valid certificate, sign-in works end to end.
 - **457 UK jobs** across **47 enabled sources** (46 Greenhouse employer boards + Teaching Vacancies).
-- `main` is clean; seven pull requests merged today, #70 through #77.
+- `main` is clean; seven pull requests merged 2026-07-21, #70 through #77.
+
+### Hardening and functionality workstream — started 2026-07-22
+
+A deep-dive audit opened an ordered task list covering security hardening, abuse/quota limits, feed scalability, and functionality (mute controls, closing-soon awareness, richer digests). Landed so far:
+
+- **PR #79 — unblock CI.** `pnpm verify` had gone red on `main` for two clock/registry reasons, not code: the applications **fixtures** repository read `new Date()` while carrying fixed dates, so the follow-up-overdue count drifted on 2026-07-22 (now anchored to a frozen fictional `now`, with a determinism test); and `pnpm audit --prod` flagged three advisories — `shadcn` was a **production** dependency (build-time only) dragging `fast-uri`/`@hono/node-server` into the prod tree (moved to `devDependencies`), and `sharp` 0.34.x carried the libvips CVEs (pinned to 0.35.0 via a pnpm override).
+- **PR #80 — security response headers (S1) + private-beta robots (S5).** The hub served private CV data with **no** CSP and was framable. Added a per-route, environment-derived header set — CSP (`frame-ancestors 'none'`, connect/script scoped to self + Supabase + Turnstile), `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, production-only HSTS (2y, includeSubDomains, no `preload`) — as a unit-tested pure module in `apps/web/src/lib/security-headers.ts`, plus `app/robots.ts` disallowing all crawlers, and deleted the dead `create-next-app` SVGs. **Verified live on production**: all headers present, landing + hub render under CSP with zero violations. `security.txt` was deliberately deferred pending an owner-chosen disclosure contact.
+
+Remaining, in order: closing-soon awareness (F2), per-user AI + CV/storage caps (S3/S4), app-layer rate limiting via a Supabase counter table (S2, owner-approved), mute/negative preferences (F1), then tsvector search + estimated count before Adzuna volume (S8/S9). Held for an owner decision: adjustable match weights (spec change) and error monitoring/Sentry.
 
 ### The platform changed, and the architecture record was wrong until now
 
