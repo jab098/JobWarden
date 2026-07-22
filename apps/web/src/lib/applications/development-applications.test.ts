@@ -28,6 +28,32 @@ describe("development applications repository", () => {
     expect(result.insights.followUps.overdue).toBe(1);
   });
 
+  it("computes identical insights whatever the wall clock says", async () => {
+    // The fixtures are anchored to a frozen fictional "now". If the repository
+    // ever reads the real clock again, these two runs diverge and this fails —
+    // which is the daily drift that turned the assertion above red on
+    // 2026-07-22 and took `pnpm verify` with it.
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-07-21T09:00:00.000Z"));
+      const sameDay =
+        await createDevelopmentApplicationsRepository().getApplications();
+      vi.setSystemTime(new Date("2027-03-15T00:00:00.000Z"));
+      const muchLater =
+        await createDevelopmentApplicationsRepository().getApplications();
+
+      expect(muchLater.insights.followUps.overdue).toBe(
+        sameDay.insights.followUps.overdue,
+      );
+      expect(muchLater.insights.outcomes.quietFourteenPlusDays).toBe(
+        sameDay.insights.outcomes.quietFourteenPlusDays,
+      );
+      expect(muchLater.insights.followUps.overdue).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("rejects every mutation in the fictional preview", async () => {
     const repository = createDevelopmentApplicationsRepository();
 
