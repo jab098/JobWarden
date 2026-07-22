@@ -236,6 +236,26 @@ describe("selectNewMatches", () => {
     expect(result.jobs).toEqual([]);
   });
 
+  it("does not announce a job the feed's relevance gate would drop", () => {
+    // Eligible (UK, permanent, full-time) but touches none of the profile's
+    // skills — the digest must not spam it, just as the feed would not show it.
+    const result = selectNewMatches({
+      candidates: [
+        baseJob({
+          title: "Facilities Coordinator",
+          descriptionText: "Coordination work with no listed tooling.",
+        }),
+      ],
+      searches: [search("20000000-0000-4000-8000-000000000001")],
+      confirmedEvidence: evidence(),
+      announced: new Set(),
+      now,
+    });
+
+    expect(result.jobs).toEqual([]);
+    expect(result.announcements).toEqual([]);
+  });
+
   it("applies the hard eligibility gate before announcing", () => {
     const result = selectNewMatches({
       candidates: [baseJob({ workplaceType: "onsite" })],
@@ -258,8 +278,10 @@ describe("selectNewMatches", () => {
       candidates: [
         baseJob({
           id: "10000000-0000-4000-8000-00000000000a",
-          title: "Data Coordinator",
-          descriptionText: "Coordination work with no listed tooling.",
+          // A real but weaker match: it uses python (so it clears the relevance
+          // gate) but names no seniority, so it scores below the senior roles.
+          title: "Analytics Engineer",
+          descriptionText: "Analytics engineer using python for measurement.",
           postedAt: "2026-07-10T00:00:00.000Z",
         }),
         baseJob({

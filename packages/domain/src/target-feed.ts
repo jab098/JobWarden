@@ -70,6 +70,19 @@ export interface TargetFeedExplanation {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/**
+ * Minimum core relevance a match must earn to surface, measured on the two
+ * components that describe the actual work — skills (45) and responsibilities
+ * (20), 65 together. Deliberately not a floor on the total score: seniority,
+ * industry and preference-fit award ~30 points before any skill matches, so a
+ * total floor is polluted by them and, because the skills score is averaged
+ * over the whole profile, a genuine match against a long skill list still lands
+ * low. Measuring the core directly is robust to both. A single weak hit (one
+ * tool of many) clears "at least one match" but not this — which is the line
+ * between "mentions one of your tools" and "is about your work". One knob.
+ */
+export const TARGET_FEED_MIN_CORE = 15;
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -578,4 +591,63 @@ export function scoreJobForProfile(
       profile.compensation,
     ),
   };
+}
+
+/**
+ * Whether a profile has anything concrete to match a job's content against —
+ * skills, tools, or responsibilities, from the profile or confirmed evidence.
+ * Mirrors the categories `buildConceptCandidates` reads for the two core
+ * components. A profile built only from aspirations has none, so the relevance
+ * gate below leaves it alone rather than emptying its feed.
+ */
+export function profileHasCoreConcepts(
+  profile: NamedSearchProfileDraft,
+  confirmedEvidence: readonly CareerEvidenceItem[],
+): boolean {
+  if (
+    profile.skillConcepts.length > 0 ||
+    profile.responsibilityConcepts.length > 0
+  ) {
+    return true;
+  }
+  return confirmedEvidence.some(
+    (item) =>
+      item.category === "skill" ||
+      item.category === "tool" ||
+      item.category === "responsibility",
+  );
+}
+
+/**
+ * Whether a scored match is relevant enough to surface. The eligibility gate
+ * answers "could you do this job"; this answers "is it actually about your
+ * work". Without it the feed showed every eligible job, because seniority,
+ * industry and preference-fit award ~30 points before a single skill matches —
+ * so a job touching none of your skills still scored ~30 and appeared, which is
+ * the mass-match complaint this closes.
+ *
+ * A profile with real skills/responsibilities must land at least one genuine
+ * core match AND earn `TARGET_FEED_MIN_CORE` core points. A profile with no core
+ * concepts to match on keeps the prior behaviour, because there is nothing to
+ * require a hit against and gating it would just empty the feed.
+ */
+export function meetsRelevanceThreshold(
+  explanation: TargetFeedExplanation,
+  hasCoreConcepts: boolean,
+): boolean {
+  if (!hasCoreConcepts) return true;
+  const coreComponents = explanation.components.filter(
+    (component) =>
+      component.key === "skills" || component.key === "responsibilities",
+  );
+  const coreMatches = coreComponents.reduce(
+    (total, component) => total + component.matched.length,
+    0,
+  );
+  if (coreMatches === 0) return false;
+  const coreAwarded = coreComponents.reduce(
+    (total, component) => total + component.awarded,
+    0,
+  );
+  return coreAwarded >= TARGET_FEED_MIN_CORE;
 }

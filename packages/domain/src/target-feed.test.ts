@@ -6,7 +6,11 @@ import type {
 } from "./career-profile.ts";
 import {
   applyEligibilityGate,
+  meetsRelevanceThreshold,
+  profileHasCoreConcepts,
   scoreJobForProfile,
+  TARGET_FEED_MIN_CORE,
+  type TargetFeedExplanation,
   type TargetFeedJobInput,
 } from "./target-feed.ts";
 
@@ -650,5 +654,132 @@ describe("scoreJobForProfile: explanation payload", () => {
     expect(
       explanation.matchedEvidence.filter((label) => label === "Python"),
     ).toHaveLength(1);
+  });
+});
+
+describe("profileHasCoreConcepts", () => {
+  it("is true when the profile carries skill concepts", () => {
+    expect(
+      profileHasCoreConcepts(baseProfile({ skillConcepts: ["sql"] }), []),
+    ).toBe(true);
+  });
+
+  it("is true when the profile carries responsibility concepts", () => {
+    expect(
+      profileHasCoreConcepts(
+        baseProfile({ responsibilityConcepts: ["stakeholder management"] }),
+        [],
+      ),
+    ).toBe(true);
+  });
+
+  it("is true when confirmed evidence carries a skill, tool, or responsibility", () => {
+    expect(
+      profileHasCoreConcepts(baseProfile(), [
+        evidenceItem({ category: "tool" }),
+      ]),
+    ).toBe(true);
+  });
+
+  it("is false for an aspiration-only profile with no core concepts or evidence", () => {
+    expect(profileHasCoreConcepts(baseProfile(), [])).toBe(false);
+    // Industry evidence is not a core concept and must not flip the gate.
+    expect(
+      profileHasCoreConcepts(baseProfile(), [
+        evidenceItem({ category: "industry" }),
+      ]),
+    ).toBe(false);
+  });
+});
+
+describe("meetsRelevanceThreshold", () => {
+  function explanationWith(
+    core: { skills: number; responsibilities: number },
+    matched: { skills: string[]; responsibilities: string[] },
+  ): TargetFeedExplanation {
+    return {
+      profileName: "P",
+      // Total score deliberately high, to prove the gate reads the core
+      // components rather than the total the free points inflate.
+      score: 90,
+      components: [
+        {
+          key: "skills",
+          weight: 45,
+          awarded: core.skills,
+          matched: matched.skills,
+          gaps: [],
+        },
+        {
+          key: "responsibilities",
+          weight: 20,
+          awarded: core.responsibilities,
+          matched: matched.responsibilities,
+          gaps: [],
+        },
+        { key: "seniority", weight: 15, awarded: 15, matched: [], gaps: [] },
+        { key: "industry", weight: 10, awarded: 10, matched: [], gaps: [] },
+        {
+          key: "preference_fit",
+          weight: 10,
+          awarded: 10,
+          matched: [],
+          gaps: [],
+        },
+      ],
+      matchedEvidence: [],
+      importantGaps: [],
+      synonymCredits: [],
+      compensationTreatment: { kind: "unknown", allowed: true },
+    };
+  }
+
+  // A job that earns real core points is relevant.
+  it("keeps a job whose core contribution clears the floor", () => {
+    const profile = baseProfile({ skillConcepts: ["python", "postgres"] });
+    const explanation = scoreJobForProfile(baseJob(), profile, [], now);
+    expect(meetsRelevanceThreshold(explanation, true)).toBe(true);
+  });
+
+  // The mass-match complaint: a job touching none of the profile's skills still
+  // scores ~30 on free points. It must be dropped when the profile has skills.
+  it("drops a job with zero core matches even though it scores on free points", () => {
+    const profile = baseProfile({ skillConcepts: ["rust", "kubernetes"] });
+    const explanation = scoreJobForProfile(baseJob(), profile, [], now);
+    expect(explanation.score).toBeGreaterThan(0); // free points were awarded
+    expect(meetsRelevanceThreshold(explanation, true)).toBe(false);
+  });
+
+  // A single weak hit (one tool of many) does not clear the core floor, even
+  // though the total score is high — the gate reads the core, not the total.
+  it("drops a weak core hit that stays below the core floor", () => {
+    const weak = explanationWith(
+      { skills: TARGET_FEED_MIN_CORE - 1, responsibilities: 0 },
+      { skills: ["SQL"], responsibilities: [] },
+    );
+    expect(meetsRelevanceThreshold(weak, true)).toBe(false);
+    // The same hit at the floor is kept — proves the boundary, not just "low".
+    const atFloor = explanationWith(
+      { skills: TARGET_FEED_MIN_CORE, responsibilities: 0 },
+      { skills: ["SQL"], responsibilities: [] },
+    );
+    expect(meetsRelevanceThreshold(atFloor, true)).toBe(true);
+  });
+
+  // Responsibility points count toward the core: matching the actual work
+  // qualifies even with no skill hit.
+  it("counts responsibility points toward the core floor", () => {
+    const explanation = explanationWith(
+      { skills: 0, responsibilities: TARGET_FEED_MIN_CORE },
+      { skills: [], responsibilities: ["Analytics implementation"] },
+    );
+    expect(meetsRelevanceThreshold(explanation, true)).toBe(true);
+  });
+
+  // An aspiration profile has nothing to require a core hit against, so it is
+  // left alone rather than emptied.
+  it("leaves an aspiration profile (no core concepts) unfiltered", () => {
+    const explanation = scoreJobForProfile(baseJob(), baseProfile(), [], now);
+    expect(meetsRelevanceThreshold(explanation, false)).toBe(true);
   });
 });

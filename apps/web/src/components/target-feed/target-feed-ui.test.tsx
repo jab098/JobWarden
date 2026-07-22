@@ -99,7 +99,7 @@ describe("matches view state", () => {
 });
 
 describe("target feed view", () => {
-  it("shows the fit score with an accessible label and all four disclosure elements", async () => {
+  it("shows matched skills highlighted on the card without expanding, and keeps detail behind a disclosure", async () => {
     const user = userEvent.setup();
     render(
       <TargetFeedView
@@ -115,13 +115,21 @@ describe("target feed view", () => {
     expect(screen.getByLabelText("Fit 82 of 100")).toBeInTheDocument();
     expect(screen.getByText("Data platform lead")).toBeInTheDocument();
 
-    await user.click(screen.getByText("Why this match"));
+    // The matched skills and gaps are on the card face — not hidden inside a
+    // collapsed (inert) disclosure. `inert` is the real signal, since jsdom
+    // does not apply the Tailwind classes that visually collapse the panel.
+    expect(screen.getByText("Why this match")).toBeInTheDocument();
+    const matched = screen.getByText("Apache Spark pipelines");
+    expect(matched.closest("[inert]")).toBeNull();
+    // Highlighted, not regular text: the chip carries the success accent.
+    expect(matched.closest("li")?.className).toMatch(/text-success/);
+    expect(screen.getByText("Kubernetes").closest("[inert]")).toBeNull();
 
-    expect(screen.getByText("Matching evidence")).toBeInTheDocument();
-    expect(screen.queryByText(/Evidence that contributed/i)).toBeNull();
-    expect(screen.getByText("Apache Spark pipelines")).toBeInTheDocument();
-    expect(screen.getByText("Kubernetes")).toBeInTheDocument();
-    expect(screen.getByText(/ETL/)).toBeInTheDocument();
+    // The secondary detail (synonym credit, compensation) sits inside the slim
+    // "Match detail" disclosure, inert until it is opened.
+    expect(screen.getByText(/ETL/).closest("[inert]")).not.toBeNull();
+    await user.click(screen.getByText("Match detail"));
+    expect(screen.getByText(/ETL/).closest("[inert]")).toBeNull();
     expect(screen.getAllByText(/Advertised salary/i).length).toBeGreaterThan(0);
   });
 

@@ -300,7 +300,9 @@ describe("Supabase target-feed repository", () => {
             id: "00000000-0000-4000-8000-000000000001",
             posted_at: "2026-07-10T09:00:00.000Z",
             closes_at: null,
-            description_text: "No matching skills here.",
+            // Both match the profile's SQL skill (so both clear the relevance
+            // gate); the older one sorts second on the recency tie-break.
+            description_text: "A fictional older role using SQL daily.",
           }),
           jobRow({
             id: "00000000-0000-4000-8000-000000000002",

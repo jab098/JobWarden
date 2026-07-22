@@ -6,6 +6,8 @@ import {
   compensationProvenances,
   employmentTypes,
   ir35Statuses,
+  meetsRelevanceThreshold,
+  profileHasCoreConcepts,
   scoreJobForProfile,
   workingTimes,
   workplaceTypes,
@@ -199,6 +201,7 @@ export function buildTargetFeedResult(input: {
 
     const jobInput = toJobInput(candidate);
     let best: TargetFeedExplanation | null = null;
+    let bestHasCoreConcepts = false;
     for (const profile of input.enabledSearches) {
       const gate = applyEligibilityGate(jobInput, profile, input.now);
       if (!gate.eligible) continue;
@@ -208,9 +211,19 @@ export function buildTargetFeedResult(input: {
         input.confirmedEvidence,
         input.now,
       );
-      if (best === null || explanation.score > best.score) best = explanation;
+      if (best === null || explanation.score > best.score) {
+        best = explanation;
+        bestHasCoreConcepts = profileHasCoreConcepts(
+          profile,
+          input.confirmedEvidence,
+        );
+      }
     }
     if (best === null) continue;
+    // Passing the eligibility gate only means "you could do this job". A job
+    // must also be about the reader's actual work, or a niche profile drowns in
+    // roles that scored on seniority/industry/preference alone.
+    if (!meetsRelevanceThreshold(best, bestHasCoreConcepts)) continue;
 
     items.push({ job: toListItem(candidate), explanation: best, decision });
   }
