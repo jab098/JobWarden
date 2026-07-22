@@ -1,0 +1,4 @@
+Contact: mailto:consulting@jabed.co.uk
+Expires: 2027-07-22T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://jobwarden.jabed.co.uk/.well-known/security.txt
