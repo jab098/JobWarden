@@ -30,6 +30,7 @@ const locationSchema = z.object({
 
 const jobRowSchema = z.object({
   id: z.string().uuid(),
+  source_provider: z.string().min(1).max(50).nullish(),
   title: z.string().min(1).max(300),
   employer: z.string().min(1).max(300),
   employment_type: z.enum(employmentTypes),
@@ -72,7 +73,7 @@ export const applicationColumns = [
   "notes",
   "updated_at",
   [
-    "jobs(id,title,employer,employment_type,working_time,workplace_type",
+    "jobs(id,source_provider,title,employer,employment_type,working_time,workplace_type",
     "ir35_status,compensation_minimum,compensation_maximum",
     "compensation_currency,compensation_period,compensation_provenance",
     "posted_at,closes_at,job_locations(raw_location))",
@@ -111,6 +112,7 @@ function selectLocation(
 function toJob(row: z.infer<typeof jobRowSchema>): JobListItem {
   return {
     id: row.id,
+    sourceProvider: row.source_provider ?? null,
     title: row.title,
     employer: row.employer,
     location: selectLocation(row.job_locations),

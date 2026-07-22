@@ -46,6 +46,7 @@ export const requiredMigrationFiles = [
   "202607220016_muted_employers.sql",
   "202607220017_route_rate_limits.sql",
   "202607220018_job_source_provider.sql",
+  "202607220019_notification_candidate_source_provider.sql",
 ];
 
 const publicTables = [

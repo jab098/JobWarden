@@ -2,6 +2,7 @@ import type {
   CareerEvidenceItem,
   NamedSearchProfileDraft,
 } from "./career-profile.ts";
+import { sourceAttribution } from "./source-attribution.ts";
 import {
   applyEligibilityGate,
   meetsRelevanceThreshold,
@@ -69,6 +70,8 @@ export interface DigestJobSummary {
   employer: string;
   location: string;
   profileName: string;
+  /** Provider, so a listing that requires source attribution can carry it. */
+  sourceProvider?: string | null;
 }
 
 export interface NotificationAnnouncement {
@@ -161,6 +164,7 @@ export function selectNewMatches(input: {
             employer: job.employer,
             location: job.location,
             profileName: search.draft.name,
+            sourceProvider: job.sourceProvider ?? null,
           },
         });
       }
@@ -211,10 +215,14 @@ export function buildDigestMessage(input: {
   const textLines = [
     subject,
     "",
-    ...listed.flatMap((job) => [
-      `${job.title} — ${job.employer} (${job.location})`,
-      `  Search profile: ${job.profileName}`,
-    ]),
+    ...listed.flatMap((job) => {
+      const attribution = sourceAttribution(job.sourceProvider);
+      return [
+        `${job.title} — ${job.employer} (${job.location})`,
+        `  Search profile: ${job.profileName}`,
+        ...(attribution ? [`  ${attribution}`] : []),
+      ];
+    }),
   ];
   if (remaining > 0) {
     textLines.push("", `And ${remaining} more waiting in your target feed.`);
@@ -226,14 +234,17 @@ export function buildDigestMessage(input: {
   );
 
   const htmlItems = listed
-    .map(
-      (job) =>
-        `<li><strong>${escapeHtml(job.title)}</strong> — ${escapeHtml(
-          job.employer,
-        )} (${escapeHtml(job.location)})<br /><span>Search profile: ${escapeHtml(
-          job.profileName,
-        )}</span></li>`,
-    )
+    .map((job) => {
+      const attribution = sourceAttribution(job.sourceProvider);
+      const attributionHtml = attribution
+        ? `<br /><span>${escapeHtml(attribution)}</span>`
+        : "";
+      return `<li><strong>${escapeHtml(job.title)}</strong> — ${escapeHtml(
+        job.employer,
+      )} (${escapeHtml(job.location)})<br /><span>Search profile: ${escapeHtml(
+        job.profileName,
+      )}</span>${attributionHtml}</li>`;
+    })
     .join("");
   const htmlRemaining =
     remaining > 0

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { sourceAttribution } from "./source-attribution";
+import { sourceAttribution } from "./source-attribution.ts";
 
 describe("sourceAttribution", () => {
   it("credits Adzuna with the exact required wording", () => {

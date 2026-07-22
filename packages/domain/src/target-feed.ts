@@ -18,6 +18,8 @@ export type CompensationProvenance = (typeof compensationProvenances)[number];
 
 export interface TargetFeedJobInput {
   id: string;
+  /** Provider, carried so digest emails can credit a listing's source. */
+  sourceProvider?: string | null;
   title: string;
   employer: string;
   descriptionText: string;
