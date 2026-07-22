@@ -23,7 +23,14 @@ A deep-dive audit opened an ordered task list covering security hardening, abuse
 
 **Production migration pipeline:** migrations reach production via `npx supabase db push --linked` (the owner added a Bash permission rule for it on 2026-07-22); confirm with `npx supabase db query --linked`. The `db push` pg-delta "failed to cache migrations catalog" cert warning is non-fatal — verify the apply landed via `migration list --linked` and query the live object, never the warning.
 
-**Remaining from the audit:** app-layer rate limiting (S2) — but the highest-value abuse paths are now covered (S4 caps CV upload, the AI ceiling + per-user concurrency cap extraction, Turnstile gates early access), so the only unguarded expensive paths are the two regeneration route handlers (`/profile/export`, `/tailor/[jobId]/download`); a focused per-user cooldown on those is the sensible scope, not a general all-actions limiter. **Recommended deferred (YAGNI):** per-user AI sub-cap (S3 — fail-open, the global ceiling already bounds cost, few beta users) and tsvector search + estimated count (S8/S9 — speculative for Adzuna's ~726k volume while the catalogue holds 457 rows and Adzuna is owner-blocked on the licence). **Held for an owner decision:** adjustable match weights (spec change) and error monitoring/Sentry.
+- **PR #87 — per-user rate limit on the expensive routes (S2).** The costly abuse paths already have ceilings (S4, the AI allowance, Turnstile), so this scoped S2 to the genuine gap: the two GET routes that regenerate content per request (`/profile/export` rebuilds the JSON bundle, `/tailor/[jobId]/download` re-renders a DOCX). A fixed-window per-user counter in `private` (no PostgREST exposure, no RLS) plus a security-definer `consume_rate_limit` RPC; both routes return 429 over the limit (10 exports / 30 downloads per minute) and the limiter **fails open**. **Applied to production and confirmed.**
+
+**The audit's actionable backlog is complete.** What remains is deliberately not built:
+
+- **Recommended deferred (YAGNI):** per-user AI sub-cap (S3) — the AI path is fail-open, the global ceiling bounds total cost, and S4's 10-uploads-per-24h cap now indirectly caps a single user's AI attempts, so one user "draining" the shared budget is already mitigated; and tsvector search + estimated count (S8/S9) — speculative for Adzuna's ~726k volume while the catalogue holds 457 rows and Adzuna is owner-blocked on the licence (Task 39). The author already documented the tsvector upgrade as the ceiling to reach when volume justifies it.
+- **Held for an owner decision:** adjustable match weights (a change to the approved deterministic 45/20/15/10/10 spec) and error monitoring/Sentry.
+
+Everything else is the existing product roadmap (source coverage, the gazetteer, the Adzuna licence).
 
 ### The platform changed, and the architecture record was wrong until now
 
