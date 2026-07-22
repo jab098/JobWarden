@@ -598,13 +598,26 @@ function assessLocation(location: string): LocationAssessment {
     return { outcome: "non_uk" };
   }
 
-  // Publication requires every label to be recognised, not merely one. This is
-  // the barrier: "London, Ont." carries a real UK city beside a qualifier no
-  // denylist happens to hold, and only an allowlist refuses it.
+  // A full UK postcode pins the advert to a specific UK address, so it is
+  // decisive on its own and publishes even when a sibling label — the town it
+  // sits beside — is not in the gazetteer. Feeds write "Blandford Forum, South
+  // West, DT11 8EL" far more often than a bare town, and the barrier below
+  // otherwise quarantined every one on the strength of the unrecognised town.
+  // This is not a hole: the foreign-region check above already refused a known
+  // foreign anchor, Crown-dependency areas are excluded from isUkPostcode, and
+  // the inward digit-letter-letter shape a foreign advert cannot forge.
+  const hasUkPostcode = labels.some(isUkPostcode);
+
+  // Publication otherwise requires every label to be recognised, not merely
+  // one. This is the barrier: "London, Ont." carries a real UK city beside a
+  // qualifier no denylist happens to hold, and only an allowlist refuses it.
   const hasUnknownQualifier = labels.some(
     (label) => !isQualifiedUkLabel(label) && !nonLocationLabels.has(label),
   );
-  if (labels.some(isQualifiedUkLabel) && !hasUnknownQualifier) {
+  if (
+    hasUkPostcode ||
+    (labels.some(isQualifiedUkLabel) && !hasUnknownQualifier)
+  ) {
     return {
       outcome: "eligible",
       evidence: formatEvidence("Location", location.trim()),
