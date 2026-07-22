@@ -42,6 +42,7 @@ export const requiredMigrationFiles = [
   "202607220012_bootstrap_admin_approves.sql",
   "202607220013_revisit_onboarding_step.sql",
   "202607220014_adzuna_provider.sql",
+  "202607220015_cv_upload_rate_limit.sql",
 ];
 
 const publicTables = [
