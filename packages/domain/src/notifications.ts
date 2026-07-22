@@ -4,6 +4,8 @@ import type {
 } from "./career-profile.ts";
 import {
   applyEligibilityGate,
+  meetsRelevanceThreshold,
+  profileHasCoreConcepts,
   scoreJobForProfile,
   type TargetFeedJobInput,
 } from "./target-feed.ts";
@@ -136,6 +138,16 @@ export function selectNewMatches(input: {
         input.confirmedEvidence,
         input.now,
       );
+      // A digest must not announce what the feed itself would not surface: only
+      // relevant matches, never a role that scored on free points alone.
+      if (
+        !meetsRelevanceThreshold(
+          explanation,
+          profileHasCoreConcepts(search.draft, input.confirmedEvidence),
+        )
+      ) {
+        continue;
+      }
       announcements.push({ searchProfileId: search.id, jobId: job.id });
 
       const existing = bestByJob.get(job.id);

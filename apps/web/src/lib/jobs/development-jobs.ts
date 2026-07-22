@@ -30,7 +30,7 @@ export const developmentJobs = [
     postedAt: "2026-07-15T09:00:00.000Z",
     closesAt: "2026-08-14T23:00:00.000Z",
     descriptionText:
-      "A fictional permanent role building internal workflow tools. Two days each week are spent with the Manchester team.",
+      "A fictional permanent role building analytics implementation tooling and SQL data models. Two days each week are spent with the Manchester team.",
     applicationUrl: "https://example.test/apply/senior-software-engineer",
     ukEligibilityEvidence: [
       "The fictional advert states that the role is based in Manchester, England.",
@@ -108,7 +108,7 @@ export const developmentJobs = [
     postedAt: "2026-07-16T08:00:00.000Z",
     closesAt: "2026-07-24T23:00:00.000Z",
     descriptionText:
-      "A fictional six-month delivery contract explicitly assessed as inside IR35 and open to remote workers located in the UK.",
+      "A fictional six-month delivery contract explicitly assessed as inside IR35 and open to remote workers located in the UK, leading analytics implementation for a marketing technology programme with heavy stakeholder management, SQL, and experimentation.",
     applicationUrl: "https://example.test/apply/digital-delivery-lead",
     ukEligibilityEvidence: [
       "The fictional advert explicitly permits remote delivery from within the United Kingdom.",
@@ -134,7 +134,7 @@ export const developmentJobs = [
     postedAt: "2026-07-12T14:30:00.000Z",
     closesAt: "2026-09-01T23:00:00.000Z",
     descriptionText:
-      "A fictional outside-IR35 platform contract maintaining SQL reporting pipelines, with one agreed team day each fortnight in Edinburgh.",
+      "A fictional outside-IR35 platform contract maintaining SQL reporting pipelines and experimentation tooling, with one agreed team day each fortnight in Edinburgh.",
     applicationUrl: "https://example.test/apply/platform-engineer-contract",
     ukEligibilityEvidence: [
       "The fictional advert explicitly names Edinburgh, Scotland as the hybrid work location.",
@@ -160,7 +160,7 @@ export const developmentJobs = [
     postedAt: null,
     closesAt: null,
     descriptionText:
-      "A fictional Bristol-based data migration contract. The fictional advert does not state an IR35 determination.",
+      "A fictional Bristol-based data migration contract focused on SQL, data quality and governance, and event instrumentation. The fictional advert does not state an IR35 determination.",
     applicationUrl: "https://example.test/apply/data-migration-analyst",
     ukEligibilityEvidence: [
       "The fictional advert explicitly states that work is performed in Bristol, England.",

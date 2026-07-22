@@ -64,6 +64,16 @@ export function TargetFeedItem({
 }) {
   const { job, explanation } = item;
   const closing = formatClosingSoon(job.closesAt);
+  // The skills that actually drove the score, from the two core components —
+  // not `matchedEvidence`, which is only confirmed-evidence text found in the
+  // listing and misses a profile-declared skill with no confirmed backing.
+  const matchedSkills = [
+    ...new Set(
+      explanation.components
+        .filter((c) => c.key === "skills" || c.key === "responsibilities")
+        .flatMap((c) => c.matched),
+    ),
+  ];
   const [submitted, setSubmitted] = useState<JobDecision | null | undefined>(
     undefined,
   );
@@ -175,24 +185,49 @@ export function TargetFeedItem({
           ) : null}
         </div>
 
+        {matchedSkills.length > 0 || explanation.importantGaps.length > 0 ? (
+          <div className="mt-4 space-y-2.5">
+            {matchedSkills.length > 0 ? (
+              <div>
+                <h3 className="text-xs font-semibold text-foreground">
+                  Why this match
+                </h3>
+                <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                  {matchedSkills.map((item) => (
+                    <li
+                      key={item}
+                      className="rounded-sm border border-success/35 bg-success/10 px-2 py-0.5 text-xs font-medium text-success"
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {explanation.importantGaps.length > 0 ? (
+              <div>
+                <h3 className="text-xs font-medium text-ink-secondary">Gaps</h3>
+                <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                  {explanation.importantGaps.map((item) => (
+                    <li
+                      key={item}
+                      className="rounded-sm border border-border bg-surface-sunken px-2 py-0.5 text-xs text-ink-faint"
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <Disclosure
-          label="Why this match"
-          className="mt-4"
+          label="Match detail"
+          className="mt-3"
           panelClassName="px-3.5 py-3.5 text-sm"
         >
           <div className="space-y-4">
-            <EvidenceList
-              heading="Matching evidence"
-              items={explanation.matchedEvidence}
-            >
-              No confirmed evidence text matched this listing.
-            </EvidenceList>
-            <EvidenceList
-              heading="Important gaps"
-              items={explanation.importantGaps}
-            >
-              No important gaps were recorded for this listing.
-            </EvidenceList>
             <section>
               <h3 className="text-xs font-semibold text-foreground">
                 Synonym credit
@@ -312,35 +347,5 @@ export function TargetFeedItem({
         </div>
       </article>
     </li>
-  );
-}
-
-function EvidenceList({
-  heading,
-  items,
-  children,
-}: {
-  heading: string;
-  items: readonly string[];
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <h3 className="text-xs font-semibold text-foreground">{heading}</h3>
-      {items.length > 0 ? (
-        <ul className="mt-1.5 flex flex-wrap gap-1.5">
-          {items.map((item) => (
-            <li
-              key={item}
-              className="rounded-sm border border-border bg-surface-sunken px-2 py-0.5 text-xs text-ink-secondary"
-            >
-              {item}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-1.5 text-ink-faint">{children}</p>
-      )}
-    </section>
   );
 }

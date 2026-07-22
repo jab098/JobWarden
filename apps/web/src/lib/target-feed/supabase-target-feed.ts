@@ -6,6 +6,8 @@ import {
   compensationProvenances,
   employmentTypes,
   ir35Statuses,
+  meetsRelevanceThreshold,
+  profileHasCoreConcepts,
   scoreJobForProfile,
   workingTimes,
   workplaceTypes,
@@ -208,6 +210,21 @@ export function buildTargetFeedResult(input: {
         input.confirmedEvidence,
         input.now,
       );
+      // Relevance is a per-profile property, so it is applied here, before a
+      // profile can win — never once to the top scorer. Passing eligibility
+      // only means "you could do this job"; a job must also be about that
+      // profile's actual work, or a niche profile drowns in roles that scored
+      // on seniority/industry/preference alone. Gating per profile also keeps
+      // the feed in step with the digest, which decides the same way, so a
+      // digest never announces a job the feed would hide.
+      if (
+        !meetsRelevanceThreshold(
+          explanation,
+          profileHasCoreConcepts(profile, input.confirmedEvidence),
+        )
+      ) {
+        continue;
+      }
       if (best === null || explanation.score > best.score) best = explanation;
     }
     if (best === null) continue;
