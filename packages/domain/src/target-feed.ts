@@ -80,6 +80,13 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  * low. Measuring the core directly is robust to both. A single weak hit (one
  * tool of many) clears "at least one match" but not this — which is the line
  * between "mentions one of your tools" and "is about your work". One knob.
+ *
+ * Applied to the summed skills + responsibilities points, the bar is
+ * skills-primary: ~a third of skills, or the responsibility plus a little,
+ * clears it. A responsibility-only profile therefore needs most of its
+ * responsibilities to match; that is an accepted tuning choice while profiles
+ * carry skills, and the knob is the place to revisit it if they routinely do
+ * not.
  */
 export const TARGET_FEED_MIN_CORE = 15;
 

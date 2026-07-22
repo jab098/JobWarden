@@ -201,7 +201,6 @@ export function buildTargetFeedResult(input: {
 
     const jobInput = toJobInput(candidate);
     let best: TargetFeedExplanation | null = null;
-    let bestHasCoreConcepts = false;
     for (const profile of input.enabledSearches) {
       const gate = applyEligibilityGate(jobInput, profile, input.now);
       if (!gate.eligible) continue;
@@ -211,19 +210,24 @@ export function buildTargetFeedResult(input: {
         input.confirmedEvidence,
         input.now,
       );
-      if (best === null || explanation.score > best.score) {
-        best = explanation;
-        bestHasCoreConcepts = profileHasCoreConcepts(
-          profile,
-          input.confirmedEvidence,
-        );
+      // Relevance is a per-profile property, so it is applied here, before a
+      // profile can win — never once to the top scorer. Passing eligibility
+      // only means "you could do this job"; a job must also be about that
+      // profile's actual work, or a niche profile drowns in roles that scored
+      // on seniority/industry/preference alone. Gating per profile also keeps
+      // the feed in step with the digest, which decides the same way, so a
+      // digest never announces a job the feed would hide.
+      if (
+        !meetsRelevanceThreshold(
+          explanation,
+          profileHasCoreConcepts(profile, input.confirmedEvidence),
+        )
+      ) {
+        continue;
       }
+      if (best === null || explanation.score > best.score) best = explanation;
     }
     if (best === null) continue;
-    // Passing the eligibility gate only means "you could do this job". A job
-    // must also be about the reader's actual work, or a niche profile drowns in
-    // roles that scored on seniority/industry/preference alone.
-    if (!meetsRelevanceThreshold(best, bestHasCoreConcepts)) continue;
 
     items.push({ job: toListItem(candidate), explanation: best, decision });
   }

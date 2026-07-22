@@ -291,6 +291,49 @@ describe("Supabase target-feed repository", () => {
     expect(result.items[0]?.explanation.profileName).toBe("High match");
   });
 
+  it("gates relevance per profile, so a higher-scoring irrelevant profile does not suppress an aspiration profile that would surface the job", async () => {
+    const fake = createFakeClient({
+      searches: [
+        // Scores higher (one weak skill hit + free points) but fails the
+        // relevance gate: 1 of 5 skills is below the core floor.
+        searchRow({
+          id: "63000000-0000-4000-8000-000000000001",
+          name: "Niche",
+          skill_concepts: ["sql", "python", "rust", "golang", "elixir"],
+        }),
+        // Aspiration-only: a target role family but no skills or
+        // responsibilities, so it is exempt and should still surface the job.
+        // Were relevance applied only to the top scorer, the Niche profile's
+        // failure would wrongly drop the job entirely.
+        searchRow({
+          id: "63000000-0000-4000-8000-000000000002",
+          name: "Exploring",
+          role_families: [
+            {
+              normalizedConcept: "analytics leadership",
+              label: "Analytics leadership",
+            },
+          ],
+          skill_concepts: [],
+          responsibility_concepts: [],
+        }),
+      ],
+      jobsResponse: {
+        data: [
+          jobRow({ description_text: "A fictional remote role using SQL." }),
+        ],
+        error: null,
+      },
+    });
+
+    const result = await createSupabaseTargetFeedRepository(
+      fake.client,
+    ).getFeed({ includeDismissed: false });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.explanation.profileName).toBe("Exploring");
+  });
+
   it("sorts by score desc, then postedAt desc, then id, within the 200 candidate cap", async () => {
     const fake = createFakeClient({
       searches: [searchRow({ skill_concepts: ["sql"] })],

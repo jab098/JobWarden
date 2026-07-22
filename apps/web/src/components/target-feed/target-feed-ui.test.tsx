@@ -47,7 +47,22 @@ function makeItem(overrides: Partial<TargetFeedItem> = {}): TargetFeedItem {
     explanation: {
       profileName: "Data platform lead",
       score: 82,
-      components: [],
+      components: [
+        {
+          key: "skills",
+          weight: 45,
+          awarded: 30,
+          matched: ["Apache Spark pipelines", "Team leadership"],
+          gaps: ["Kubernetes"],
+        },
+        {
+          key: "responsibilities",
+          weight: 20,
+          awarded: 0,
+          matched: [],
+          gaps: [],
+        },
+      ],
       matchedEvidence: ["Apache Spark pipelines", "Team leadership"],
       importantGaps: ["Kubernetes"],
       synonymCredits: [
