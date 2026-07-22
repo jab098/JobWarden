@@ -35,6 +35,19 @@ function toJob(job: (typeof developmentJobs)[number]) {
   };
 }
 
+/**
+ * The fictional "today" these fixtures are anchored to. Record 1's follow-up
+ * is due on this date, record 2's is a day overdue, and record 2 has been quiet
+ * for over two weeks — so the counts the preview shows are fixed and correct.
+ *
+ * It must be a frozen date, not `new Date()`. Reading the wall clock made the
+ * fixtures drift daily: on 2026-07-22 the "due today" follow-up became overdue
+ * too, flipping the count from 1 to 2 and turning the fixtures-repo test — and
+ * therefore `pnpm verify` — red for no code reason. The Home dashboard preview
+ * froze its own `previewNow` for exactly this reason.
+ */
+const previewNow = new Date("2026-07-21T09:00:00.000Z");
+
 /** Frozen fictional applications covering active, quiet, and closed states. */
 const fictionalRecords: readonly ApplicationRecordInput[] = [
   {
@@ -82,7 +95,7 @@ export function createDevelopmentApplicationsRepository(): ApplicationsRepositor
     async getApplications() {
       return buildApplicationsResult({
         records: fictionalRecords,
-        now: new Date(),
+        now: previewNow,
         dataMode: "fixtures",
       });
     },
