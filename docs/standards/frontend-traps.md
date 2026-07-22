@@ -202,3 +202,27 @@ supporting evidence, never the proof. When the two disagree, believe
 Console logs also persist across navigations, so errors from an earlier broken
 edit keep appearing after the code is fixed. Check timestamps before chasing a
 ghost.
+
+---
+
+## The pricing guardrail rejects standard HTTP-header directive words
+
+`scripts/check-project-guardrails.mjs` forbids `payment`, `upgrade`, `pricing`,
+`subscribe`, `billing`, `premium`, `trial`, `checkout` in any `.ts/.tsx/.json`
+source. Adding security response headers (2026-07-22, `next.config.ts` +
+`src/lib/security-headers.ts`) collided with it three times: the CSP directive
+`upgrade-insecure-requests` contains **upgrade**, the Permissions-Policy
+`payment=()` directive contains **payment**, and a comment saying "the pricing
+guardrail" contains **pricing**.
+
+**Do not weaken the guardrail** — the standard says reword, and here both
+directives were redundant anyway. `upgrade-insecure-requests` adds nothing when
+every resource is same-origin https and HSTS forces the transport, and the
+funds-transfer Permissions-Policy directive is moot with no such flow. Both were
+omitted, and comments were worded around the forbidden terms. The CSP itself is
+dev-vs-prod: `'unsafe-eval'` and `ws://localhost:*` are dev-only (React Refresh
+and HMR); production must not carry them. `next/font/google` self-hosts fonts at
+build, so `font-src 'self'` is enough — no external font origin.
+
+The wider record, including the database traps from the same audit, is in
+[`../handoffs/2026-07-22-hardening-and-functionality-audit.md`](../handoffs/2026-07-22-hardening-and-functionality-audit.md).
