@@ -6,7 +6,10 @@ import { useActionState, useState } from "react";
 import { decideJobAction } from "@/app/(protected)/matches/actions";
 import { Button } from "@/components/ui/button";
 import { Disclosure } from "@/components/ui/disclosure";
-import { formatPostedAge } from "@/components/jobs/job-format";
+import {
+  formatClosingSoon,
+  formatPostedAge,
+} from "@/components/jobs/job-format";
 import { JobFacts } from "@/components/jobs/job-facts";
 import type { TargetFeedActionState } from "@/lib/target-feed/types";
 import type {
@@ -57,6 +60,7 @@ export function TargetFeedItem({
   includeDismissed: boolean;
 }) {
   const { job, explanation } = item;
+  const closing = formatClosingSoon(job.closesAt);
   const [submitted, setSubmitted] = useState<JobDecision | null | undefined>(
     undefined,
   );
@@ -149,9 +153,14 @@ export function TargetFeedItem({
         </div>
 
         <JobFacts job={job} className="mt-3.5" />
-        <p className="mt-2 text-xs text-ink-faint">
-          {formatPostedAge(job.postedAt)}
-        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="text-xs text-ink-faint">
+            {formatPostedAge(job.postedAt)}
+          </span>
+          {closing ? (
+            <span className="text-xs font-medium text-warning">{closing}</span>
+          ) : null}
+        </div>
 
         <Disclosure
           label="Why this match"

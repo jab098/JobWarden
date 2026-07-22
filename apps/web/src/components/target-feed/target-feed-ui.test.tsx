@@ -122,6 +122,26 @@ describe("target feed view", () => {
     expect(screen.getAllByText(/Advertised salary/i).length).toBeGreaterThan(0);
   });
 
+  it("surfaces a closing-soon deadline on a match", () => {
+    // formatClosingSoon reads `new Date()`, which the beforeEach Date.now spy
+    // does not touch, so anchor the deadline to the real clock and keep it
+    // relative so it never drifts.
+    const soon = new Date();
+    soon.setDate(soon.getDate() + 3);
+    render(
+      <TargetFeedView
+        result={makeResult({
+          items: [makeItem({ job: { ...job, closesAt: soon.toISOString() } })],
+        })}
+        includeDismissed={false}
+        latestListingUpdate={null}
+      />,
+    );
+    expect(
+      screen.getByText(/Closes (in \d+ days?|tomorrow|today)/),
+    ).toBeInTheDocument();
+  });
+
   it("has no sparkle or AI-match copy", () => {
     render(
       <TargetFeedView
