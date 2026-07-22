@@ -270,3 +270,53 @@ export async function queueSourceIngestion(
     return mapRepositoryError(error);
   }
 }
+
+/**
+ * Queues a coalesced ingestion request for every enabled source in one action,
+ * so an administrator does not have to click each source in turn. Each request
+ * goes through the same per-source path — coalesced and interval-bound — so a
+ * source already syncing, or inside its minimum interval, is not double-run; it
+ * is reported as already active rather than failing the batch. A single source
+ * error never aborts the rest.
+ */
+export async function queueAllSourceIngestion(
+  repository: AdminRepository,
+  context: MutationContext,
+): Promise<AdminActionState> {
+  if (!trusted(context)) return forbiddenState;
+
+  let enabledSources: JobSourceView[];
+  try {
+    enabledSources = (await repository.listSources()).filter(
+      (source) => source.enabled,
+    );
+  } catch (error) {
+    return mapRepositoryError(error);
+  }
+  if (enabledSources.length === 0) {
+    return { kind: "success", message: "No enabled source to refresh." };
+  }
+
+  const results = await Promise.allSettled(
+    enabledSources.map((source) =>
+      repository.requestSourceIngestion(source.sourceId),
+    ),
+  );
+
+  let queued = 0;
+  let active = 0;
+  let failed = 0;
+  for (const result of results) {
+    if (result.status === "rejected") failed += 1;
+    else if (result.value.state === "queued") queued += 1;
+    else active += 1;
+  }
+
+  const parts = [`${queued} queued`];
+  if (active > 0) parts.push(`${active} already active`);
+  if (failed > 0) parts.push(`${failed} failed`);
+  const message = `Refresh requested across ${enabledSources.length} sources: ${parts.join(", ")}.`;
+  // Only an outright failure of every source is an error; a mix still did work.
+  if (queued === 0 && active === 0) return { kind: "unavailable", message };
+  return { kind: "success", message };
+}

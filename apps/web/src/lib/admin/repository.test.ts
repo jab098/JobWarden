@@ -9,11 +9,18 @@ import {
   changeAccessRequestSetting,
   decideAccessRequest,
   markEarlyAccessInvited,
+  queueAllSourceIngestion,
   queueSourceIngestion,
   saveJobSource,
   type AdminRepository,
   type MutationContext,
 } from "./repository";
+import type { JobSourceView } from "./types";
+
+/** Minimal source rows; queueAllSourceIngestion only reads id and enabled. */
+function sourceRow(id: string, enabled: boolean): JobSourceView {
+  return { sourceId: id, enabled } as unknown as JobSourceView;
+}
 
 const userId = "8ef843bb-75d7-4cca-b3d6-ab51dfa28bf2";
 const sourceId = "ae2e5258-afd0-48a4-bd0e-a42cb84bbc56";
@@ -258,5 +265,105 @@ describe("marking an early-access signup invited", () => {
       kind: "success",
       message: "That signup was already marked as invited.",
     });
+  });
+});
+
+describe("queueAllSourceIngestion", () => {
+  it("requests only the enabled sources and reports the counts", async () => {
+    const repository = createRepository();
+    vi.mocked(repository.listSources).mockResolvedValue([
+      sourceRow("11111111-1111-4111-8111-111111111111", true),
+      sourceRow("22222222-2222-4222-8222-222222222222", true),
+      sourceRow("33333333-3333-4333-8333-333333333333", false),
+    ]);
+
+    const result = await queueAllSourceIngestion(repository, context);
+
+    expect(repository.requestSourceIngestion).toHaveBeenCalledTimes(2);
+    expect(result.kind).toBe("success");
+    expect(result).toMatchObject({
+      message: expect.stringContaining("2 queued"),
+    });
+  });
+
+  it("counts an already-active source without failing the batch", async () => {
+    const repository = createRepository();
+    vi.mocked(repository.listSources).mockResolvedValue([
+      sourceRow("11111111-1111-4111-8111-111111111111", true),
+      sourceRow("22222222-2222-4222-8222-222222222222", true),
+    ]);
+    vi.mocked(repository.requestSourceIngestion)
+      .mockResolvedValueOnce({
+        requestId: "8b62cdf3-dc0f-4127-888d-083d5dad0a9f",
+        correlationId: "f3229a26-c019-42cd-a4ef-a3a7010e974e",
+        state: "queued",
+        eligibleAfter: "2026-07-18T09:00:00.000Z",
+      })
+      .mockResolvedValueOnce({
+        requestId: "8b62cdf3-dc0f-4127-888d-083d5dad0a9f",
+        correlationId: "f3229a26-c019-42cd-a4ef-a3a7010e974e",
+        state: "coalesced",
+        eligibleAfter: "2026-07-18T09:00:00.000Z",
+      });
+
+    const result = await queueAllSourceIngestion(repository, context);
+
+    expect(result.kind).toBe("success");
+    expect(result).toMatchObject({
+      message: expect.stringContaining("1 already active"),
+    });
+  });
+
+  it("does not let one source error abort the rest", async () => {
+    const repository = createRepository();
+    vi.mocked(repository.listSources).mockResolvedValue([
+      sourceRow("11111111-1111-4111-8111-111111111111", true),
+      sourceRow("22222222-2222-4222-8222-222222222222", true),
+    ]);
+    vi.mocked(repository.requestSourceIngestion)
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValueOnce({
+        requestId: "8b62cdf3-dc0f-4127-888d-083d5dad0a9f",
+        correlationId: "f3229a26-c019-42cd-a4ef-a3a7010e974e",
+        state: "queued",
+        eligibleAfter: "2026-07-18T09:00:00.000Z",
+      });
+
+    const result = await queueAllSourceIngestion(repository, context);
+
+    expect(result.kind).toBe("success");
+    expect(result).toMatchObject({
+      message: expect.stringContaining("1 failed"),
+    });
+  });
+
+  it("refuses an untrusted origin without requesting anything", async () => {
+    const repository = createRepository();
+    vi.mocked(repository.listSources).mockResolvedValue([
+      sourceRow("11111111-1111-4111-8111-111111111111", true),
+    ]);
+
+    const result = await queueAllSourceIngestion(repository, {
+      ...context,
+      requestOrigin: "https://attacker.test",
+    });
+
+    expect(result.kind).toBe("forbidden");
+    expect(repository.requestSourceIngestion).not.toHaveBeenCalled();
+  });
+
+  it("reports plainly when there is no enabled source", async () => {
+    const repository = createRepository();
+    vi.mocked(repository.listSources).mockResolvedValue([
+      sourceRow("33333333-3333-4333-8333-333333333333", false),
+    ]);
+
+    const result = await queueAllSourceIngestion(repository, context);
+
+    expect(result).toEqual({
+      kind: "success",
+      message: "No enabled source to refresh.",
+    });
+    expect(repository.requestSourceIngestion).not.toHaveBeenCalled();
   });
 });

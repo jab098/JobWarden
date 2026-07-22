@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 
+import { IngestionRefreshAllForm } from "@/components/admin/ingestion-refresh-all-form";
 import { IngestionRequestForm } from "@/components/admin/ingestion-request-form";
 import { IngestionRequestList } from "@/components/admin/ingestion-request-list";
 import { IngestionRunList } from "@/components/admin/ingestion-run-list";
 import { SourceHealthList } from "@/components/admin/source-health-list";
 import { getAdminRepository } from "@/lib/admin/get-repository";
-import { requestIngestionAction } from "./actions";
+import { requestAllIngestionAction, requestIngestionAction } from "./actions";
 
 export const metadata: Metadata = {
   title: "Ingestion | JobWarden administration",
@@ -45,6 +46,10 @@ export default async function IngestionPage() {
               interval.
             </p>
           </div>
+          <IngestionRefreshAllForm
+            action={requestAllIngestionAction}
+            count={enabledSources.length}
+          />
           {enabledSources.length === 0 ? (
             <p className="text-sm text-ink-secondary">
               No enabled source is available for a manual request.
