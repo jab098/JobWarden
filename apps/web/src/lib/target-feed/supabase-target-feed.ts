@@ -54,6 +54,8 @@ const decisionRowSchema = z.object({
   decision: z.enum(["saved", "dismissed", "considering"]),
 });
 
+const mutedRowSchema = z.object({ employer: z.string().min(1).max(300) });
+
 const candidateColumns = [
   "id",
   "title",
@@ -93,6 +95,7 @@ type DecisionQuery = { select(columns: string): Promise<QueryResponse> };
 type TargetFeedClient = {
   from(table: "jobs"): CandidateQuery;
   from(table: "career_job_decisions"): DecisionQuery;
+  from(table: "career_muted_employers"): DecisionQuery;
   rpc(
     name: string,
     parameters?: Record<string, unknown>,
@@ -181,12 +184,16 @@ export function buildTargetFeedResult(input: {
   confirmedEvidence: readonly CareerEvidenceItem[];
   decisions: ReadonlyMap<string, JobDecision>;
   includeDismissed: boolean;
+  mutedEmployers?: readonly string[];
   now: Date;
   dataMode: "supabase" | "fixtures";
 }): TargetFeedResult {
   const items: TargetFeedItem[] = [];
+  const muted = new Set(input.mutedEmployers ?? []);
 
   for (const candidate of input.candidates) {
+    // A muted employer never appears, whatever its fit or decision state.
+    if (muted.has(candidate.employer)) continue;
     const decision = input.decisions.get(candidate.id) ?? null;
     if (decision === "dismissed" && !input.includeDismissed) continue;
 
@@ -213,6 +220,7 @@ export function buildTargetFeedResult(input: {
   return {
     items,
     enabledProfileNames: input.enabledSearches.map((profile) => profile.name),
+    mutedEmployers: [...muted].sort((a, b) => a.localeCompare(b)),
     candidateCap,
     dataMode: input.dataMode,
   };
@@ -265,10 +273,21 @@ export function createSupabaseTargetFeedRepository(
         const enabledSearches = snapshot.searches.filter(
           (search) => search.enabled,
         );
+        const mutedResponse = await supabaseClient
+          .from("career_muted_employers")
+          .select("employer");
+        const mutedEmployers = z
+          .array(mutedRowSchema)
+          .parse(data(mutedResponse))
+          .map((row) => row.employer);
+
         if (enabledSearches.length === 0) {
           return {
             items: [],
             enabledProfileNames: [],
+            mutedEmployers: [...mutedEmployers].sort((a, b) =>
+              a.localeCompare(b),
+            ),
             candidateCap,
             dataMode: snapshot.dataMode,
           };
@@ -310,6 +329,7 @@ export function createSupabaseTargetFeedRepository(
           confirmedEvidence,
           decisions,
           includeDismissed,
+          mutedEmployers,
           now: new Date(),
           dataMode: snapshot.dataMode,
         });
@@ -332,6 +352,20 @@ export function createSupabaseTargetFeedRepository(
         );
       } catch {
         throw new Error("Unable to update job decision");
+      }
+    },
+
+    async setEmployerMute(employer, muted) {
+      const targetEmployer = z.string().min(1).max(300).parse(employer);
+      try {
+        data(
+          await supabaseClient.rpc("set_employer_mute", {
+            target_employer: targetEmployer,
+            muted,
+          }),
+        );
+      } catch {
+        throw new Error("Unable to update employer mute");
       }
     },
 

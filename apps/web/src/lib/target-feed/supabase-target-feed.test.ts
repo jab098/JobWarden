@@ -101,6 +101,7 @@ function createFakeClient(options: {
   profile?: unknown;
   jobsResponse?: QueryResponse;
   decisionsResponse?: QueryResponse;
+  mutedResponse?: QueryResponse;
   rpcResponse?: QueryResponse;
 }) {
   const jobsResponse = options.jobsResponse ?? {
@@ -108,6 +109,10 @@ function createFakeClient(options: {
     error: null,
   };
   const decisionsResponse = options.decisionsResponse ?? {
+    data: [],
+    error: null,
+  };
+  const mutedResponse = options.mutedResponse ?? {
     data: [],
     error: null,
   };
@@ -128,9 +133,14 @@ function createFakeClient(options: {
     select: vi.fn().mockResolvedValue(decisionsResponse),
   };
 
+  const mutedBuilder = {
+    select: vi.fn().mockResolvedValue(mutedResponse),
+  };
+
   const from = vi.fn((table: string) => {
     if (table === "jobs") return candidateBuilder;
     if (table === "career_job_decisions") return decisionBuilder;
+    if (table === "career_muted_employers") return mutedBuilder;
     throw new Error(`unexpected table ${table}`);
   });
 
@@ -334,6 +344,24 @@ describe("Supabase target-feed repository", () => {
     expect(shown.items[0]?.decision).toBe("dismissed");
   });
 
+  it("hides every listing from a muted employer and reports the mute", async () => {
+    const fake = createFakeClient({
+      searches: [searchRow({ skill_concepts: ["sql"] })],
+      mutedResponse: {
+        data: [{ employer: "Fictional Northstar Tools UK Ltd" }],
+        error: null,
+      },
+    });
+
+    const result = await createSupabaseTargetFeedRepository(
+      fake.client,
+    ).getFeed({ includeDismissed: true });
+
+    // The candidate would otherwise score and appear; the mute removes it.
+    expect(result.items).toEqual([]);
+    expect(result.mutedEmployers).toEqual(["Fictional Northstar Tools UK Ltd"]);
+  });
+
   it("produces deterministic results across repeated calls with no AI involved", async () => {
     const fake = createFakeClient({
       searches: [searchRow({ skill_concepts: ["sql"] })],
@@ -408,6 +436,7 @@ describe("Supabase target-feed repository", () => {
     expect(result).toEqual({
       items: [],
       enabledProfileNames: [],
+      mutedEmployers: [],
       candidateCap: 200,
       dataMode: "supabase",
     });

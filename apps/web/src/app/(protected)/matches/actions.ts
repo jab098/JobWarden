@@ -17,6 +17,13 @@ const decisionSchema = z
   })
   .strict();
 
+const muteSchema = z
+  .object({
+    employer: z.string().trim().min(1).max(300),
+    muted: z.enum(["mute", "unmute"]),
+  })
+  .strict();
+
 function value(formData: FormData, key: string): string {
   const result = formData.get(key);
   return typeof result === "string" ? result : "";
@@ -68,6 +75,35 @@ export async function decideJobAction(
     revalidatePath("/matches");
     revalidatePath("/jobs");
     return { kind: "success", message: "Job decision saved." };
+  } catch (error) {
+    return mapError(error);
+  }
+}
+
+export async function muteEmployerAction(
+  _previousState: TargetFeedActionState,
+  formData: FormData,
+): Promise<TargetFeedActionState> {
+  if (!isTrustedMutationOrigin(await getJobsMutationContext())) {
+    return forbidden;
+  }
+
+  const parsed = muteSchema.safeParse({
+    employer: value(formData, "employer"),
+    muted: value(formData, "muted"),
+  });
+  if (!parsed.success) return invalid;
+
+  try {
+    await (
+      await getTargetFeedRepository()
+    ).setEmployerMute(parsed.data.employer, parsed.data.muted === "mute");
+    revalidatePath("/matches");
+    return {
+      kind: "success",
+      message:
+        parsed.data.muted === "mute" ? "Employer muted." : "Employer unmuted.",
+    };
   } catch (error) {
     return mapError(error);
   }

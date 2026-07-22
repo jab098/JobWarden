@@ -43,6 +43,7 @@ export const requiredMigrationFiles = [
   "202607220013_revisit_onboarding_step.sql",
   "202607220014_adzuna_provider.sql",
   "202607220015_cv_upload_rate_limit.sql",
+  "202607220016_muted_employers.sql",
 ];
 
 const publicTables = [
@@ -67,6 +68,7 @@ const publicTables = [
   "cv_extraction_runs",
   "career_ai_daily_usage",
   "career_job_decisions",
+  "career_muted_employers",
   "career_explore_settings",
   "career_pathway_decisions",
   "explore_pathway_analytics",

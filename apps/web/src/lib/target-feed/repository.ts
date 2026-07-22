@@ -11,6 +11,8 @@ import type { JobDecision, TargetFeedResult } from "./types";
 export interface TargetFeedRepository {
   getFeed(options: { includeDismissed: boolean }): Promise<TargetFeedResult>;
   decide(jobId: string, decision: JobDecision | "clear"): Promise<void>;
+  /** Hide (or unhide) every listing from an employer across the Target Feed. */
+  setEmployerMute(employer: string, muted: boolean): Promise<void>;
   /**
    * Every decision this user has made, by job. Search results need it so a job
    * already saved from the feed does not offer to save it again; scoring the

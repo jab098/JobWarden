@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(21);
+select plan(32);
 
 select has_table('public', 'career_job_decisions', 'career job decisions are persisted');
 select has_function(
@@ -41,6 +41,29 @@ select ok(
 select ok(
   not has_table_privilege('authenticated', 'public.career_job_decisions', 'DELETE'),
   'approved users cannot delete job decisions directly'
+);
+
+-- F1: per-user employer mute, mirrors the decisions ownership model.
+select has_function(
+  'public', 'set_employer_mute', array['text', 'boolean'],
+  'the owner-fenced employer-mute RPC exists'
+);
+select is(
+  (
+    select count(*)::integer
+    from pg_catalog.pg_class
+    join pg_catalog.pg_namespace on pg_namespace.oid = pg_class.relnamespace
+    where pg_namespace.nspname = 'public'
+      and pg_class.relname = 'career_muted_employers'
+      and pg_class.relrowsecurity
+      and pg_class.relforcerowsecurity
+  ),
+  1,
+  'career muted employers enable and force RLS'
+);
+select ok(
+  not has_function_privilege('anon', 'public.set_employer_mute(text,boolean)', 'EXECUTE'),
+  'anonymous callers cannot mute employers'
 );
 
 select throws_ok(
@@ -177,6 +200,63 @@ select is(
   0,
   'another owner cannot see a different owner''s job decisions'
 );
+
+-- Employer mute: mute, idempotent trim, empty rejection, isolation, unmute.
+select set_config('request.jwt.claim.sub', '90000000-0000-4000-8000-000000000001', true);
+select is(
+  public.set_employer_mute('Target Feed Ltd', true),
+  true,
+  'an owner can mute an employer'
+);
+select is(
+  (
+    select count(*)::integer from public.career_muted_employers
+    where owner_id = '90000000-0000-4000-8000-000000000001'
+      and employer = 'Target Feed Ltd'
+  ),
+  1,
+  'the mute is persisted'
+);
+select is(
+  public.set_employer_mute('  Target Feed Ltd  ', true),
+  true,
+  'muting again trims whitespace and stays idempotent'
+);
+select is(
+  (
+    select count(*)::integer from public.career_muted_employers
+    where owner_id = '90000000-0000-4000-8000-000000000001'
+  ),
+  1,
+  'a repeat mute does not duplicate the row'
+);
+select throws_ok(
+  $$ select public.set_employer_mute('   ', true) $$,
+  '22023',
+  null,
+  'an empty employer name is rejected'
+);
+select set_config('request.jwt.claim.sub', '90000000-0000-4000-8000-000000000002', true);
+select is(
+  (select count(*)::integer from public.career_muted_employers),
+  0,
+  'another owner cannot see a different owner''s muted employers'
+);
+select set_config('request.jwt.claim.sub', '90000000-0000-4000-8000-000000000001', true);
+select is(
+  public.set_employer_mute('Target Feed Ltd', false),
+  false,
+  'an owner can unmute an employer'
+);
+select is(
+  (
+    select count(*)::integer from public.career_muted_employers
+    where owner_id = '90000000-0000-4000-8000-000000000001'
+  ),
+  0,
+  'unmuting deletes the row'
+);
+select set_config('request.jwt.claim.sub', '90000000-0000-4000-8000-000000000002', true);
 
 reset role;
 set local role service_role;
