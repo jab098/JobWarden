@@ -467,6 +467,19 @@ describe("UK eligibility location shapes", () => {
     expect(result.evidence.join(" ")).toContain("DT11 8EL");
   });
 
+  // Deliberate decision, pinned so it stays deliberate: a full UK postcode is
+  // decisive UK-location evidence, so it publishes even beside an unrecognised
+  // label that is not a *known* foreign anchor — the realistic case being a
+  // real UK location in a multi-location advert. The barrier's human-review net
+  // for this exact shape is given up on purpose, because the postcode is real
+  // UK evidence, any recognised foreign anchor is still refused first (see
+  // "London, Ontario" below), and the whole string is carried into the evidence
+  // for an auditor. A bare "EC1A 1BB" already published; a foreign name beside
+  // it does not remove that evidence.
+  it("treats a UK postcode as decisive even beside an unrecognised label", () => {
+    expect(publishes("Los Angeles, EC1A 1BB")).toBe(true);
+  });
+
   // A postcode locates the role; it does not overrule an advert that excludes
   // the UK in words. The description check runs before the location-eligible
   // branch, and must still win now that more locations reach that branch.

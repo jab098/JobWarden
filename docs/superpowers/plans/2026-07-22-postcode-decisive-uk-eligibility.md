@@ -48,6 +48,10 @@ The existing `publishes("London, EC2A 4NE")` test is left in place but is known-
 - `pnpm verify` — format, lint, typecheck, deno check, full test suite, guardrails, build.
 - No SQL is touched, so `verify:live`/Docker is **not** in scope; `check:supabase` is unaffected (no migration added).
 
+## Accepted decision — flagged by the independent review pass
+
+The review observed that a `foreign-city, UK-postcode` string with no *recognised* foreign anchor now auto-publishes (`Los Angeles, EC1A 1BB`), where the barrier previously sent it to human review. This is accepted deliberately: a full UK postcode is decisive UK-location evidence under `AGENTS.md`, a bare `EC1A 1BB` already published, and adding a foreign name beside it should not erase that evidence. The recognised-foreign-anchor check still refuses `London, Ontario` first, and the whole string (foreign token included) is carried into the eligibility evidence for an auditor. The behaviour is pinned by a test so it stays a conscious choice, not an accident of the rule. Zero such rows existed in the 220-row live drop sample.
+
 ## Rollback
 
 Single-commit revert of the `assessLocation` change restores the prior barrier exactly; there is no data or schema state to unwind.
