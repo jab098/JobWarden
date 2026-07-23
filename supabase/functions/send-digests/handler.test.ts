@@ -32,7 +32,8 @@ function candidate(overrides: Record<string, unknown> = {}) {
     id: "10000000-0000-4000-8000-000000000001",
     title: "Senior Analytics Engineer",
     employer: "Fictionex Ltd",
-    descriptionText: "A senior analytics engineer role using python daily.",
+    descriptionText:
+      "A senior analytics engineer role using python and SQL daily.",
     location: "Manchester, UK",
     employmentType: "permanent" as const,
     workingTime: "full_time" as const,
@@ -63,7 +64,9 @@ function recipient(overrides: Partial<DigestRecipient> = {}): DigestRecipient {
           excludeTerms: [],
           industries: [],
           domains: [],
-          skillConcepts: ["python"],
+          // Two concepts, both named by the candidate job, so the match clears
+          // the two-match relevance minimum the digest shares with the feed.
+          skillConcepts: ["python", "sql"],
           responsibilityConcepts: [],
           currentSeniority: "senior",
           targetSeniority: "senior",
