@@ -20,7 +20,11 @@ const MAX_INVOCATION_MS = 120_000;
 const MIN_SOURCE_START_BUDGET_MS = 90_000;
 const PERSISTENCE_RESERVE_MS = 15_000;
 const LONDON_TIME_ZONE = "Europe/London";
-const SCHEDULED_HOURS = new Set([9, 12, 15, 18]);
+// Must match the Europe/London hours the ingestion cron gate fires on
+// (`private.invoke_jobwarden_ingestion`, migration 202607230001). enqueue runs
+// only when the cron actually invokes this function, so any hour missing here is
+// a slot where new due sources are silently never enqueued.
+const SCHEDULED_HOURS = new Set([8, 9, 10, 12, 15, 17]);
 
 type AggregateResult = {
   sourceCount: number;
