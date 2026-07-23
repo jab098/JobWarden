@@ -240,7 +240,9 @@ describe("shared ingestion Edge Function handler", () => {
     const handler = createIngestionHandler(
       dependencies({
         harness,
-        at: new Date("2026-07-20T09:00:00.000Z"),
+        // 10:00 UTC is 11:00 Europe/London (BST), which is not one of the
+        // scheduled hours 8/9/10/12/15/17.
+        at: new Date("2026-07-20T10:00:00.000Z"),
       }),
     );
 
