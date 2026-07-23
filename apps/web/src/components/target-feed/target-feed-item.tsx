@@ -8,6 +8,7 @@ import {
   muteEmployerAction,
 } from "@/app/(protected)/matches/actions";
 import { Button } from "@/components/ui/button";
+import { MeterRow } from "@/components/ui/card";
 import { Disclosure } from "@/components/ui/disclosure";
 import { JobAttribution } from "@/components/jobs/job-attribution";
 import {
@@ -24,6 +25,18 @@ import type { TargetFeedExplanation } from "@jobwarden/domain";
 import { cn } from "@/lib/utils";
 
 const initialState: TargetFeedActionState = { kind: "idle" };
+
+/** Readable names for the five scored components, in the order they are drawn. */
+const componentLabel: Record<
+  TargetFeedExplanation["components"][number]["key"],
+  string
+> = {
+  skills: "Skills",
+  responsibilities: "Responsibilities",
+  seniority: "Seniority",
+  industry: "Industry",
+  preference_fit: "Preferences",
+};
 
 const decisionMeta: Record<JobDecision, { label: string; dot: string }> = {
   saved: { label: "Saved", dot: "bg-success" },
@@ -232,9 +245,25 @@ export function TargetFeedItem({
           <div className="space-y-4">
             <section>
               <h3 className="text-xs font-semibold text-foreground">
-                Synonym credit
+                Score breakdown
               </h3>
-              {explanation.synonymCredits.length > 0 ? (
+              <dl className="mt-2 space-y-1.5">
+                {explanation.components.map((component) => (
+                  <MeterRow
+                    key={component.key}
+                    label={componentLabel[component.key]}
+                    value={component.awarded}
+                    max={component.weight}
+                    labelWidth="w-32"
+                  />
+                ))}
+              </dl>
+            </section>
+            {explanation.synonymCredits.length > 0 ? (
+              <section>
+                <h3 className="text-xs font-semibold text-foreground">
+                  Synonym credit
+                </h3>
                 <ul className="mt-1.5 space-y-1">
                   {explanation.synonymCredits.map((credit) => (
                     <li
@@ -248,12 +277,8 @@ export function TargetFeedItem({
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <p className="mt-1.5 text-ink-faint">
-                  No synonym credit was applied.
-                </p>
-              )}
-            </section>
+              </section>
+            ) : null}
             <section>
               <h3 className="text-xs font-semibold text-foreground">
                 Compensation treatment
