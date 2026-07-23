@@ -506,6 +506,58 @@ describe("UK eligibility location shapes", () => {
     },
   );
 
+  // Provider-asserted UK jurisdiction (Adzuna's GB endpoint, where area[0] is
+  // always "UK") is decisive UK evidence for the small settlements the gazetteer
+  // does not carry — which no free-text rule can tell from foreign towns, since
+  // an unrecognised label is unrecognised either way. It applies only after the
+  // location and description have both had their say (owner-authorised
+  // 2026-07-23). These are the real quarantined `Village, Town` shapes from a
+  // live Adzuna run; each is decisively UK.
+  const withUkAssertion = (location: string, description = neutral) =>
+    classifyUkEligibility(location, description, {
+      providerAssertsUkJurisdiction: true,
+    });
+
+  it.each([
+    "West Bowling, Bradford",
+    "Canal Foot, Ulverston",
+    "Annandale, Kilmarnock",
+    "Padanaram, Forfar",
+  ])(
+    "publishes an unrecognised UK settlement when the provider asserts UK jurisdiction: %s",
+    (location) => {
+      expect(withUkAssertion(location).eligible).toBe(true);
+      // Without the assertion the barrier still quarantines it, so the
+      // assertion — not a free-text rule — is doing the work.
+      expect(publishes(location)).toBe(false);
+    },
+  );
+
+  // The assertion never overrides the advert's own words. A recognised foreign
+  // location label still returns non_uk before the assertion is even consulted —
+  // a country-scoped provider should never emit this, but the classifier refuses
+  // it regardless.
+  it("does not let a UK assertion publish a recognised foreign location", () => {
+    expect(withUkAssertion("London, Ontario").eligible).toBe(false);
+  });
+
+  // A UK-excluding description wins over the assertion: the description check
+  // runs before the assertion rule.
+  it("does not let a UK assertion override a UK-excluding description", () => {
+    expect(
+      withUkAssertion(
+        "West Bowling, Bradford",
+        "This role is not available in the UK.",
+      ),
+    ).toMatchObject({ eligible: false, reason: "non_uk" });
+  });
+
+  // Defence in depth: even under a UK assertion, a Crown dependency named in the
+  // location is refused by name (the adapter also withholds the assertion here).
+  it("refuses a Crown dependency in the location even under a UK assertion", () => {
+    expect(withUkAssertion("Douglas, Isle of Man").eligible).toBe(false);
+  });
+
   // A bare outward code is not evidence: M1 is also a motorway.
   it.each(["EC2A", "M1", "SW1A"])(
     "leaves the bare outward code %s ambiguous",

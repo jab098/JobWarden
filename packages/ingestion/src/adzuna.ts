@@ -133,24 +133,49 @@ function readCompensation(
 }
 
 /**
- * The place the advert names.
+ * Crown dependencies and overseas territories Adzuna may surface under a GB
+ * search but which are outside the UK for right-to-work. They never carry the
+ * UK-jurisdiction assertion below; the classifier also refuses them by name, as
+ * defence in depth.
+ */
+const overseasAreaNames = new Set([
+  "isle of man",
+  "jersey",
+  "guernsey",
+  "gibraltar",
+]);
+
+/**
+ * Whether the provider is asserting UK jurisdiction for this advert.
  *
- * `area[0]` is always the literal `"UK"` — the provider asserting the country —
- * and it is never used. The Lever and Teaching Vacancies adapters record why:
- * making a provider's country assertion into the eligibility evidence changes
- * the contract for every provider and is its own task. `display_name` is the
- * settlement the advert itself names, which is what `classifyUkEligibility` is
- * built to read, with the most specific area as a fallback when it is absent.
+ * `area[0]` is always the literal `"UK"` on the GB endpoint — the provider
+ * classifying the advert as British. Around four fifths of adverts name a
+ * settlement the gazetteer does not carry (Caputh, West Bowling, Padanaram), so
+ * reading `display_name` alone quarantines them as `ambiguous_uk_eligibility`
+ * despite being decisively UK — and no free-text location rule can tell those
+ * small villages from foreign towns, because an unrecognised label is
+ * unrecognised either way. `classifyUkEligibility` therefore takes this
+ * assertion as decisive UK evidence (owner-authorised 2026-07-23; see
+ * `docs/superpowers/specs/2026-07-23-adzuna-uk-recognition-design.md`), except
+ * for the Crown dependencies and overseas territories above.
+ */
+function assertsUkJurisdiction(
+  location: z.infer<typeof locationSchema> | null,
+): boolean {
+  const areas = (location?.area ?? []).map((value) => value.trim());
+  return (
+    areas[0]?.toUpperCase() === "UK" &&
+    !areas.some((value) => overseasAreaNames.has(value.toLowerCase()))
+  );
+}
+
+/**
+ * The settlement the advert names.
  *
- * **The gazetteer, not this function, is what limits Adzuna's yield.** Measured
- * over fifty live adverts: `display_name` alone published 8, the most specific
- * area 11, and joining the whole hierarchy only 9 of 100 — every strategy loses
- * roughly four fifths to `ambiguous_uk_eligibility`, because Adzuna surfaces
- * small settlements the gazetteer does not carry: Caputh, Helsington,
- * Whittington Moor, Newport-On-Tay. That is the same missing-settlement gap
- * already recorded against `uk-places.generated.json`, and widening it is a
- * data task that lifts every source at once rather than something to tune here.
- * Do not be tempted to read `area[0]` to close it.
+ * `display_name` is the place the advert itself carries, with the most specific
+ * area as a fallback when it is absent. The UK jurisdiction rides on
+ * `assertsUkJurisdiction`, not this string, so the stored location stays the
+ * honest place the advert named for display and matching.
  */
 function locationText(location: z.infer<typeof locationSchema> | null): string {
   const named = (location?.display_name ?? "").trim();
@@ -221,6 +246,7 @@ export class AdzunaAdapter implements ProviderAdapter {
           providerJobId,
           title: result.title,
           location: locationText(result.location ?? null),
+          assertsUkJurisdiction: assertsUkJurisdiction(result.location ?? null),
           // Adzuna truncates every description to 500 characters and appends an
           // ellipsis. It is plain text, not markup, and the full advert exists
           // only behind the redirect.

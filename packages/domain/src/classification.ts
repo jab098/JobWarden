@@ -399,6 +399,14 @@ const foreignRegionAnchors = new Set([
   "colombia",
   "mexico",
   "peru",
+  // Crown dependencies and overseas territories: outside the UK for
+  // right-to-work, so refused by name here as they already are by postcode area
+  // (`nonUkPostcodeAreas`). Naming one is decisive against the UK, which also
+  // stops a provider's "United Kingdom" jurisdiction tag from rescuing them.
+  "isle of man",
+  "jersey",
+  "guernsey",
+  "gibraltar",
 ]);
 
 const ukAnchorSource = String.raw`(?:United Kingdom|UK|Northern Ireland|Scotland|Wales|England)`;
@@ -611,6 +619,9 @@ function assessLocation(location: string): LocationAssessment {
   // Publication otherwise requires every label to be recognised, not merely
   // one. This is the barrier: "London, Ont." carries a real UK city beside a
   // qualifier no denylist happens to hold, and only an allowlist refuses it.
+  // A free-text rule cannot tell an unknown UK village from an unknown foreign
+  // city, so recovering a country-scoped provider's small UK settlements is done
+  // with its jurisdiction assertion in `classifyUkEligibility`, not here.
   const hasUnknownQualifier = labels.some(
     (label) => !isQualifiedUkLabel(label) && !nonLocationLabels.has(label),
   );
@@ -694,6 +705,7 @@ function assessDescription(description: string): DescriptionAssessment {
 export function classifyUkEligibility(
   location: string,
   description: string,
+  options: { providerAssertsUkJurisdiction?: boolean } = {},
 ): UkEligibilityResult {
   const locationAssessment = assessLocation(location);
   if (locationAssessment.outcome === "non_uk") {
@@ -720,6 +732,23 @@ export function classifyUkEligibility(
     return {
       eligible: true,
       evidence: [locationAssessment.evidence],
+      reason: "explicit_uk_location",
+    };
+  }
+
+  // A country-scoped provider (Adzuna's GB endpoint, where area[0] is always
+  // "UK") asserts this specific advert is UK. Decisive only here, after the
+  // location and description have both had their say: a foreign anchor in either
+  // already returned non_uk above, so the assertion never overrides the advert's
+  // own words. It only rescues the small UK settlements the gazetteer does not
+  // carry — which no free-text location rule can safely tell from a foreign
+  // town, because an unrecognised label is unrecognised either way.
+  if (options.providerAssertsUkJurisdiction) {
+    return {
+      eligible: true,
+      evidence: [
+        formatEvidence("Location", location.trim() || "United Kingdom"),
+      ],
       reason: "explicit_uk_location",
     };
   }
