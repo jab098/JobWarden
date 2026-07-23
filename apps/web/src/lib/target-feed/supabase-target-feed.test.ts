@@ -25,7 +25,10 @@ function searchRow(overrides: Partial<Record<string, unknown>> = {}) {
     exclude_terms: [],
     industries: [],
     domains: [],
-    skill_concepts: ["sql"],
+    // Two concepts, both named by the default job ("Platform Engineer …
+    // platform role using SQL"), so the default fixture clears the two-match
+    // relevance minimum. A one-concept default would silently fail the gate.
+    skill_concepts: ["sql", "platform"],
     responsibility_concepts: [],
     current_seniority: "senior",
     target_seniority: "unspecified",
@@ -295,7 +298,8 @@ describe("Supabase target-feed repository", () => {
     const fake = createFakeClient({
       searches: [
         // Scores higher (one weak skill hit + free points) but fails the
-        // relevance gate: 1 of 5 skills is below the core floor.
+        // relevance gate: only 1 of its 5 skills is named, below the two-match
+        // minimum.
         searchRow({
           id: "63000000-0000-4000-8000-000000000001",
           name: "Niche",
@@ -336,22 +340,24 @@ describe("Supabase target-feed repository", () => {
 
   it("sorts by score desc, then postedAt desc, then id, within the 200 candidate cap", async () => {
     const fake = createFakeClient({
-      searches: [searchRow({ skill_concepts: ["sql"] })],
+      searches: [searchRow({ skill_concepts: ["sql", "platform"] })],
       jobsResponse: {
         data: [
           jobRow({
             id: "00000000-0000-4000-8000-000000000001",
             posted_at: "2026-07-10T09:00:00.000Z",
             closes_at: null,
-            // Both match the profile's SQL skill (so both clear the relevance
-            // gate); the older one sorts second on the recency tie-break.
-            description_text: "A fictional older role using SQL daily.",
+            // Both name the profile's SQL and platform skills (two matches, so
+            // both clear the relevance gate); the older one sorts second on the
+            // recency tie-break.
+            description_text:
+              "A fictional older platform role using SQL daily.",
           }),
           jobRow({
             id: "00000000-0000-4000-8000-000000000002",
             posted_at: "2026-07-16T09:00:00.000Z",
             closes_at: null,
-            description_text: "A fictional role using SQL daily.",
+            description_text: "A fictional platform role using SQL daily.",
           }),
         ],
         error: null,
@@ -370,7 +376,7 @@ describe("Supabase target-feed repository", () => {
 
   it("excludes dismissed jobs unless includeDismissed is requested", async () => {
     const fake = createFakeClient({
-      searches: [searchRow({ skill_concepts: ["sql"] })],
+      searches: [searchRow({ skill_concepts: ["sql", "platform"] })],
       decisionsResponse: {
         data: [{ job_id: jobRow().id, decision: "dismissed" }],
         error: null,
@@ -391,7 +397,7 @@ describe("Supabase target-feed repository", () => {
 
   it("hides every listing from a muted employer and reports the mute", async () => {
     const fake = createFakeClient({
-      searches: [searchRow({ skill_concepts: ["sql"] })],
+      searches: [searchRow({ skill_concepts: ["sql", "platform"] })],
       mutedResponse: {
         data: [{ employer: "Fictional Northstar Tools UK Ltd" }],
         error: null,
@@ -409,7 +415,7 @@ describe("Supabase target-feed repository", () => {
 
   it("produces deterministic results across repeated calls with no AI involved", async () => {
     const fake = createFakeClient({
-      searches: [searchRow({ skill_concepts: ["sql"] })],
+      searches: [searchRow({ skill_concepts: ["sql", "platform"] })],
     });
 
     const repository = createSupabaseTargetFeedRepository(fake.client);
@@ -432,7 +438,17 @@ describe("Supabase target-feed repository", () => {
     const withEvidence = await createSupabaseTargetFeedRepository(
       createFakeClient({
         searches: [evidenceOnlySearch],
-        evidence: [confirmedEvidenceRow()],
+        // Two confirmed concepts, both named by the default job, so the
+        // evidence-scored match clears the two-match relevance minimum.
+        evidence: [
+          confirmedEvidenceRow(),
+          {
+            ...confirmedEvidenceRow(),
+            id: "61000000-0000-4000-8000-000000000002",
+            normalized_concept: "platform",
+            label: "Platform",
+          },
+        ],
         profile,
       }).client,
     ).getFeed({ includeDismissed: false });

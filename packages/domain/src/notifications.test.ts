@@ -60,7 +60,7 @@ function baseJob(
     title: "Senior Analytics Engineer",
     employer: "Fictionex Ltd",
     descriptionText:
-      "We are hiring a senior analytics engineer with python experience to own measurement.",
+      "We are hiring a senior analytics engineer with python and SQL experience to own measurement.",
     location: "Manchester, UK",
     employmentType: "permanent",
     workingTime: "full_time",
@@ -84,6 +84,21 @@ function evidence(): CareerEvidenceItem[] {
       normalizedConcept: "python",
       label: "Python",
       category: "skill",
+      origin: "user",
+      confidence: 1,
+      evidenceReference: null,
+      evidenceExcerpt: null,
+      proficiencySignal: "demonstrated",
+      lastUsedAt: null,
+      confirmationState: "confirmed",
+    },
+    {
+      // A second confirmed concept, so a job naming both python and SQL clears
+      // the two-match relevance minimum the digest shares with the feed.
+      id: "71000000-0000-4000-8000-000000000002",
+      normalizedConcept: "sql",
+      label: "SQL",
+      category: "tool",
       origin: "user",
       confidence: 1,
       evidenceReference: null,
@@ -278,10 +293,12 @@ describe("selectNewMatches", () => {
       candidates: [
         baseJob({
           id: "10000000-0000-4000-8000-00000000000a",
-          // A real but weaker match: it uses python (so it clears the relevance
-          // gate) but names no seniority, so it scores below the senior roles.
+          // A real but weaker match: it names python and SQL (so it clears the
+          // relevance gate) but names no seniority, so it scores below the
+          // senior roles.
           title: "Analytics Engineer",
-          descriptionText: "Analytics engineer using python for measurement.",
+          descriptionText:
+            "Analytics engineer using python and SQL for measurement.",
           postedAt: "2026-07-10T00:00:00.000Z",
         }),
         baseJob({

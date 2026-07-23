@@ -13,14 +13,29 @@ export type AccessRequestView = {
   decisionReason: string | null;
 };
 
+/**
+ * Every provider a source the administrator *reads* can carry. Wider than the
+ * write set in `SaveJobSourceInput` (greenhouse/lever/ashby/workable): the
+ * environment-managed national sources — reed, teaching_vacancies, adzuna —
+ * exist as rows and must render, even though the admin form cannot create them.
+ * Declared once so a new provider is added here alone, not re-typed into four
+ * view shapes and three parse schemas — the omission that hid the adzuna row and
+ * took every source/ingestion panel down when it was left out.
+ */
+export const jobSourceProviders = [
+  "greenhouse",
+  "lever",
+  "ashby",
+  "workable",
+  "reed",
+  "teaching_vacancies",
+  "adzuna",
+] as const;
+
+export type JobSourceProvider = (typeof jobSourceProviders)[number];
+
 export type JobSourceView = Omit<SaveJobSourceInput, "provider"> & {
-  provider:
-    | "greenhouse"
-    | "lever"
-    | "ashby"
-    | "workable"
-    | "reed"
-    | "teaching_vacancies";
+  provider: JobSourceProvider;
   coverageMode: "complete" | "incremental";
   sourceId: string;
   lastSuccessfulSyncAt: string | null;
@@ -33,13 +48,7 @@ export type IngestionRunView = {
   runId: string;
   sourceId: string;
   employerName: string;
-  provider:
-    | "greenhouse"
-    | "lever"
-    | "ashby"
-    | "workable"
-    | "reed"
-    | "teaching_vacancies";
+  provider: JobSourceProvider;
   triggerType: "scheduled" | "admin" | "manual";
   status: "running" | "succeeded" | "failed";
   responseComplete: boolean;
@@ -72,13 +81,7 @@ export type IngestionRequestView = {
   correlationId: string;
   sourceId: string;
   employerName: string;
-  provider:
-    | "greenhouse"
-    | "lever"
-    | "ashby"
-    | "workable"
-    | "reed"
-    | "teaching_vacancies";
+  provider: JobSourceProvider;
   status: "pending" | "claimed" | "completed" | "cancelled";
   requestedAt: string;
 };
@@ -86,13 +89,7 @@ export type IngestionRequestView = {
 export type SourceHealthView = {
   sourceId: string;
   employerName: string;
-  provider:
-    | "greenhouse"
-    | "lever"
-    | "ashby"
-    | "workable"
-    | "reed"
-    | "teaching_vacancies";
+  provider: JobSourceProvider;
   coverageMode: "complete" | "incremental";
   enabled: boolean;
   freshnessState: "fresh" | "stale" | "failed" | "never" | "disabled";

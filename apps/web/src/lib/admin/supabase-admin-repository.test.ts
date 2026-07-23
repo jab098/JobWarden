@@ -223,6 +223,41 @@ describe("Supabase administrator repository", () => {
     ]);
   });
 
+  // Regression: an Adzuna source is an environment-managed national provider
+  // that was created in production but left out of the admin provider enum, so
+  // parsing threw and every source/ingestion panel showed "unavailable". This
+  // is the exact shape the live row carries; it must map, not fail.
+  it("maps a national Adzuna source row", async () => {
+    const { client } = createClient({
+      job_sources: {
+        data: [
+          {
+            ...sourceRow,
+            id: "a1a2a3a4-46b6-476e-92bc-74f6cd47057c",
+            provider: "adzuna",
+            board_token: "gb-discovery",
+            employer_name: "Adzuna",
+            allowed_hosts: ["www.adzuna.co.uk"],
+            coverage_mode: "incremental",
+          },
+        ],
+        error: null,
+      },
+    });
+
+    await expect(
+      createSupabaseAdminRepository(
+        client,
+        () => new Date("2026-07-18T12:00:00.000Z"),
+      ).listSources(),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        provider: "adzuna",
+        coverageMode: "incremental",
+      }),
+    ]);
+  });
+
   it.each([
     ["1 day", 1_440],
     ["7 days", 10_080],

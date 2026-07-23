@@ -47,6 +47,7 @@ export const requiredMigrationFiles = [
   "202607220017_route_rate_limits.sql",
   "202607220018_job_source_provider.sql",
   "202607220019_notification_candidate_source_provider.sql",
+  "202607230001_ingestion_schedule_working_hours.sql",
 ];
 
 const publicTables = [
@@ -578,7 +579,7 @@ export function verifyFoundationSql(files) {
       "scheduler must gate candidate hours in Europe/London",
     ],
     [
-      "'0 8,9,11,12,14,15,17,18 * * 1-5'",
+      "'0 7,8,9,10,11,12,14,15,16,17 * * 1-5'",
       "scheduler must cover GMT and BST candidate hours",
     ],
     [

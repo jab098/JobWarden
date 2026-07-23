@@ -73,24 +73,22 @@ export interface TargetFeedExplanation {
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
- * Minimum core relevance a match must earn to surface, measured on the two
- * components that describe the actual work — skills (45) and responsibilities
- * (20), 65 together. Deliberately not a floor on the total score: seniority,
- * industry and preference-fit award ~30 points before any skill matches, so a
- * total floor is polluted by them and, because the skills score is averaged
- * over the whole profile, a genuine match against a long skill list still lands
- * low. Measuring the core directly is robust to both. A single weak hit (one
- * tool of many) clears "at least one match" but not this — which is the line
- * between "mentions one of your tools" and "is about your work". One knob.
+ * How many distinct core concepts — skills, tools or responsibilities — a job
+ * must actually name before it counts as "about your work" rather than merely
+ * "mentions one of your tools". Two, not one: a lone hit (one tool of a long
+ * list) is the weak signal the mass-match feed was full of.
  *
- * Applied to the summed skills + responsibilities points, the bar is
- * skills-primary: ~a third of skills, or the responsibility plus a little,
- * clears it. A responsibility-only profile therefore needs most of its
- * responsibilities to match; that is an accepted tuning choice while profiles
- * carry skills, and the knob is the place to revisit it if they routinely do
- * not.
+ * Deliberately a *count of matches*, not a floor on core points. The core score
+ * is averaged over the whole profile (`weight * matched / candidates`), so a
+ * points floor silently rises with profile breadth: a broad profile that names
+ * eight skills scores ~6 points for a genuine two-skill match — well under any
+ * fixed floor — and its feed empties to nothing, while a two-skill profile
+ * clears the same floor on a single hit. Counting matches is invariant to how
+ * many concepts you carry, so "two of your real skills showed up" means the same
+ * thing for everyone. This is the one knob: raise to 3 for a stricter feed,
+ * lower to 1 for a broader one.
  */
-export const TARGET_FEED_MIN_CORE = 15;
+export const TARGET_FEED_MIN_CORE_MATCHES = 2;
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -635,8 +633,8 @@ export function profileHasCoreConcepts(
  * so a job touching none of your skills still scored ~30 and appeared, which is
  * the mass-match complaint this closes.
  *
- * A profile with real skills/responsibilities must land at least one genuine
- * core match AND earn `TARGET_FEED_MIN_CORE` core points. A profile with no core
+ * A profile with real skills/responsibilities must land at least
+ * `TARGET_FEED_MIN_CORE_MATCHES` genuine core matches. A profile with no core
  * concepts to match on keeps the prior behaviour, because there is nothing to
  * require a hit against and gating it would just empty the feed.
  */
@@ -645,18 +643,11 @@ export function meetsRelevanceThreshold(
   hasCoreConcepts: boolean,
 ): boolean {
   if (!hasCoreConcepts) return true;
-  const coreComponents = explanation.components.filter(
-    (component) =>
-      component.key === "skills" || component.key === "responsibilities",
-  );
-  const coreMatches = coreComponents.reduce(
-    (total, component) => total + component.matched.length,
-    0,
-  );
-  if (coreMatches === 0) return false;
-  const coreAwarded = coreComponents.reduce(
-    (total, component) => total + component.awarded,
-    0,
-  );
-  return coreAwarded >= TARGET_FEED_MIN_CORE;
+  const coreMatches = explanation.components
+    .filter(
+      (component) =>
+        component.key === "skills" || component.key === "responsibilities",
+    )
+    .reduce((total, component) => total + component.matched.length, 0);
+  return coreMatches >= TARGET_FEED_MIN_CORE_MATCHES;
 }

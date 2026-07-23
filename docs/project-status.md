@@ -14,6 +14,16 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 A deep-dive audit opened an ordered task list covering security hardening, abuse/quota limits, feed scalability, and functionality (mute controls, closing-soon awareness, richer digests). Landed so far:
 
+### 2026-07-23 — reported-issue fixes (admin Adzuna panel, relevance gate, ingestion schedule)
+
+Three fixes from an owner bug report, each confirmed against the **live database** before changing code:
+
+- **Admin sources/ingestion panels showed "Administrator data could not be loaded".** The Adzuna integration (PR #96) created an enabled `adzuna` `job_sources` row in production, but the web admin repository's provider validation never listed `adzuna` — so `z.array(sourceRowSchema).parse(...)` threw, taking down every admin surface that reads `job_sources` (sources, ingestion runs/requests, source health). The read-side provider list was duplicated across **7 declarations** (4 zod enums + 4 view unions minus overlap), which is exactly why the new provider was missed. Consolidated into one exported `jobSourceProviders` const including `adzuna`; regression test pins that a national Adzuna row parses. Note `packages/domain/src/admin.ts` (the `upsert_job_source` write set) deliberately still excludes `adzuna` — a general admin form must not be able to weaken the national source's pinned identity.
+- **Target feed collapsed from ~130 matches to 0.** PR #94's relevance gate required `coreAwarded >= 15`, but the core score is averaged over the whole profile (`weight * matched / candidates`), so a broad profile's genuine two-skill match is diluted below the floor and the feed empties. Replaced with a breadth-invariant `TARGET_FEED_MIN_CORE_MATCHES = 2` (a job must name at least two of your skills/tools/responsibilities). Measured on the owner's real analytics profile against 913 live jobs: old rule ≈2 jobs, **≥2 = 12 jobs**, ≥1 = 75. One knob; the digest shares the same gate via `meetsRelevanceThreshold`.
+- **Ingestion schedule widened to working hours.** Migration `202607230001` reschedules `jobwarden-ingestion-weekdays` to **08/09/10/12/15/17 Europe/London** (was 09/12/15/18), keeping the DST-safe two-layer design (pg_cron fires in UTC; the function's London-hour gate selects the six local hours). Per-source `minimum_sync_interval` still governs how often any one source actually re-ingests, so a national 6h source still runs ~twice a day.
+
+**18 Adzuna jobs is not a filter bug.** One Adzuna run has happened (the "10:40pm" run was a manual trigger, not the schedule); it received 193 adverts and published 18, quarantining 175 (91%) as ambiguous UK eligibility. The binding constraint remains UK-location recognition, not the connector. The owner's profile is analytics/marketing-data, so Adzuna — not the eng-heavy Greenhouse boards — is their most relevant source.
+
 - **PR #79 — unblock CI.** `pnpm verify` had gone red on `main` for two clock/registry reasons, not code: the applications **fixtures** repository read `new Date()` while carrying fixed dates, so the follow-up-overdue count drifted on 2026-07-22 (now anchored to a frozen fictional `now`, with a determinism test); and `pnpm audit --prod` flagged three advisories — `shadcn` was a **production** dependency (build-time only) dragging `fast-uri`/`@hono/node-server` into the prod tree (moved to `devDependencies`), and `sharp` 0.34.x carried the libvips CVEs (pinned to 0.35.0 via a pnpm override).
 - **PR #80 — security response headers (S1) + private-beta robots (S5).** The hub served private CV data with **no** CSP and was framable. Added a per-route, environment-derived header set — CSP (`frame-ancestors 'none'`, connect/script scoped to self + Supabase + Turnstile), `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, production-only HSTS (2y, includeSubDomains, no `preload`) — as a unit-tested pure module in `apps/web/src/lib/security-headers.ts`, plus `app/robots.ts` disallowing all crawlers, and deleted the dead `create-next-app` SVGs. **Verified live on production**: all headers present, landing + hub render under CSP with zero violations.
 - **PR #82 — security.txt (S5).** RFC 9116 `/.well-known/security.txt` with the owner's disclosure contact (`consulting@jabed.co.uk`). Serves 200 on production (Vercel serves the dotfolder).
@@ -54,9 +64,9 @@ Confirmed by querying it, not remembered:
 | Turnstile keys                                      | done                                                                              |
 | Resend                                              | done                                                                              |
 | `ingest-jobs` and `extract-career-profile` deployed | done                                                                              |
-| Cron `jobwarden-ingestion-weekdays`                 | active, 08/09/11/12/14/15/17/18 UTC                                               |
+| Cron `jobwarden-ingestion-weekdays`                 | active; **08/09/10/12/15/17 London** since `202607230001` (was 09/12/15/18)       |
 | AI extraction                                       | **enabled**, allowance 10 in both gates, and has produced **nothing** — see below |
-| Adzuna                                              | adapter and vocabulary merged, migration applied, **0 source rows, deliberately** |
+| Adzuna                                              | **live**: 1 enabled source, 18 published jobs (1 run, 175/193 quarantined 91%)    |
 
 **Not started:** `send-digests` is undeployed, and Sentry is optional and skipped.
 
