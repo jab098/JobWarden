@@ -47,6 +47,29 @@ and a forty-line one open at the same speed. Do not reintroduce a bare
 
 ---
 
+## PostgREST `or` filters: the `ilike` wildcard is `*`, not `%`
+
+Building the target-feed relevance pre-filter (PR #100),
+`query.or("title.ilike.%sql%,description_text.ilike.%sql%")` returned **no
+rows**, with no error. The single-column helper `.ilike("col", "%sql%")`
+rewrites `%` to `*` as it builds the URL, but `.or(...)` passes its filter
+string through as written, and PostgREST's `ilike` wildcard there is `*`. A
+literal `%` is percent-encoded and matched literally, so the pattern never
+fires.
+
+**Do this instead.** Use `*` in an `or` filter, and double-quote a value that
+carries spaces, dots or commas so `column.op.value` parsing does not break on
+them: `title.ilike."*power bi*"`, `description_text.ilike."*.net*"`. Verified
+against the live REST API: `"*sql*"` returns the SQL rows, `%sql%` returns
+nothing.
+
+**How this hides.** A unit test asserting the built filter string is a false
+green — it pins the shape your code emits, not what PostgREST does with it. A
+`%`-shaped test passed while the live query matched nothing. Verify a generated
+query against the real endpoint, not only its string form.
+
+---
+
 ## A route-change "blink" is a gap, not a missing animation
 
 The entrance animation ran the whole time. It started at `opacity: 0`, and the

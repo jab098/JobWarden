@@ -4,11 +4,28 @@ This file is the durable cross-session recovery map. Update task status to `revi
 
 ## Start here if you are picking this up
 
-**JobWarden is deployed and serving real jobs.** Updated 2026-07-21, evening.
+**JobWarden is deployed and serving real jobs.** Updated 2026-07-23, evening.
 
 - **Live at https://jobwarden.jabed.co.uk** — Vercel, valid certificate, sign-in works end to end.
-- **457 UK jobs** across **47 enabled sources** (46 Greenhouse employer boards + Teaching Vacancies).
-- `main` is clean; seven pull requests merged 2026-07-21, #70 through #77.
+- **~1,459 active UK jobs** across **59 enabled sources**: 767 Greenhouse (57 employer boards), 478 Teaching Vacancies, **214 Adzuna** — the only all-category source, live since the 2026-07-23 recognition fix.
+- `main` is clean; PRs #93–#101 merged 2026-07-22/23. Latest is #101 (job-detail UI).
+
+### Latest session (2026-07-23) — what changed, and what is still open
+
+A chain of owner-reported issues was closed across PRs #97–#101. The dated records further down carry the full diagnosis; in brief:
+
+- **Admin panels + relevance gate + ingestion schedule** (PR #97, migration `202607230001`) — see the 2026-07-23 record.
+- **Adzuna UK recognition** (PR #98) — provider-asserted jurisdiction (`ProviderJob.assertsUkJurisdiction`); **Adzuna went 18 → 214 active jobs**.
+- **Ingestion enqueue slots** (PR #99) — the `ingest-jobs` `SCHEDULED_HOURS` constant had drifted from the cron the schedule migration set.
+- **Target-feed retrieval** (PR #100) — the feed scored only the 200 most-recent jobs, so a niche profile's relevant-but-older matches were never fetched (**0 → 12 matches**); it now pre-filters candidates by concept.
+- **Job-detail UI** (PR #101) — skills field (green = the reader's own), collapsible description, and a match-score breakdown.
+
+**Open follow-ups — deliberately deferred, none blocking; a good place for a future agent to pick up:**
+
+1. **Preserve paragraph breaks at ingestion.** `htmlToPlainText` (`packages/ingestion/src/normalise.ts`) flattens block boundaries to single spaces, so stored descriptions are one block; `JobDescription` renders paragraph-aware but existing rows have no breaks to show. Emitting newlines instead re-paragraphs jobs on re-ingestion — but ~13 `normalise.test.ts` assertions pin the flattened output, so update them together. Deferred as riskier than the collapse, which already tames length.
+2. **Expand the job-skills vocabulary.** `packages/domain/src/job-skills.ts` is a curated, deliberately non-exhaustive skill list (the reader's own skills always match regardless). Add well-known skills as gaps show; skip short/ambiguous names (R, Go, C) — whole-word matching them paints false skills.
+3. **Server-side relevance retrieval at volume — the documented S8 `tsvector` upgrade.** PostgREST caps any fetch at **1000 rows** (verified live), and a recency-ordered window cannot reach older relevant jobs past it. PR #100's concept `or`-ilike pre-filter sidesteps this today (it fetches only concept-matching rows), but a `tsvector` + GIN index is the scalable path as the catalogue grows. `candidateCap` is still 200.
+4. **Targeted Adzuna ingestion for catalogue diversity.** The catalogue skews Greenhouse-engineering + teaching; a niche field (the owner's is analytics/marketing-data) has few matching jobs. Adzuna's API accepts a `what=` keyword — a per-profile or category-targeted Adzuna query would bring recent, relevant jobs into the field. This is the personalised-search direction (a feature), not a fix.
 
 ### Hardening and functionality workstream — started 2026-07-22
 
@@ -29,6 +46,16 @@ Three fixes from an owner bug report, each confirmed against the **live database
 **UK-location recognition was the binding constraint; PR #98 fixes it.** Adzuna's GB endpoint returns only UK adverts (`area[0]` is always `"UK"`), but the classifier's "every location label must be recognised" barrier quarantined the ~91% written `Village, Town` where the village is below the gazetteer. A general "names the UK ⇒ eligible" location rule was prototyped and **rejected** — it cannot tell an unknown UK village from an unknown foreign city in a multi-location advert (`"London, England, Paris, Ile-de-France"`), and a pre-existing Workable test caught it publishing that. Instead, `ProviderJob.assertsUkJurisdiction` (set by the Adzuna adapter from `area[0]="UK"`, withheld for Crown dependencies) is passed to `classifyUkEligibility` and is decisive **only after** the location and description checks, so it never overrides a foreign anchor or a UK-excluding description. Spec: `docs/superpowers/specs/2026-07-23-adzuna-uk-recognition-design.md`. **Proven on the live Adzuna API** (adapter → normalise → classifier over 98 real adverts): **13 → 98 eligible, 0 quarantined**, zero non-UK leaked. `ingest-jobs` Edge Function redeployed.
 
 **Adzuna is now live at 214 active jobs (was 18), 0 quarantined — the recognition fix works end to end in production.** A clean scheduled invocation of `ingest-jobs` fetched 199 adverts and upserted all 199. The earlier "the scheduler never claims Adzuna" appearance (its request pending since the 08:00 slot with `attempt_count = 0`) was **a test artefact, not a code fault**: driving the queue with rapid concurrent manual `invoke_jobwarden_ingestion()` calls (every ~7s while each invocation runs ~30s) caused `for update … skip locked` contention that starved the oldest rows. `claim_ingestion_requests` returns Adzuna correctly (verified in a rolled-back `begin; claim(4); rollback;`), and one un-concurrent invocation processed it. The one genuine bug found in passing: **PR #99** — the `ingest-jobs` `SCHEDULED_HOURS` still gated `enqueueScheduled()` on the old `09/12/15/18` after migration `202607230001` moved the cron to `08/09/10/12/15/17`, so new due sources were never enqueued at the 08/10/17 slots (the claim loop still ran, so it degraded refresh frequency rather than stopping ingestion). Aligned, with a comment binding the constant to the migration.
+
+### 2026-07-23 (evening) — job-detail readability and a skills field (PR #101)
+
+Owner report: the job-detail description was an unbroken wall of text with the skills buried inside it. Three UI changes, all following `docs/design/design-system.md` and verified in the browser at desktop and 390px (DOM-measured, per `frontend-traps.md`):
+
+- **Skills field** on job detail. `matchJobSkills` (`packages/domain/src/job-skills.ts`) recognises a curated skill vocabulary **plus the reader's own skills** (so a skill the vocabulary lacks still surfaces) whole-word in the title + description. `/jobs/[jobId]/page.tsx` fetches the reader's skills (confirmed skill/tool evidence + search `skillConcepts`) and `JobDetailView` renders pills — the reader's in success green, the rest neutral. Deterministic, no model call.
+- **Collapsible description.** `JobDescription` (`apps/web/src/components/jobs/job-description.tsx`) collapses a long advert to a 12-line preview with Show more/less; the control appears only when the content actually overflows (measured `scrollHeight`, not a character guess). No gradient fade (design system forbids gradients). It is paragraph-aware for when descriptions carry breaks — see open follow-up 1.
+- **Match detail** (`target-feed-item.tsx`). Replaced the sparse "No synonym credit was applied" line with a real score breakdown (the five scored components as `MeterRow`s); the synonym-credit section renders only when there is a credit.
+
+New verified trap, added to `frontend-traps.md`: in a PostgREST `or` filter the `ilike` wildcard is `*`, not `%` — a `%` pattern silently matches nothing. This is why PR #100's relevance pre-filter and its tests use `*`.
 
 - **PR #79 — unblock CI.** `pnpm verify` had gone red on `main` for two clock/registry reasons, not code: the applications **fixtures** repository read `new Date()` while carrying fixed dates, so the follow-up-overdue count drifted on 2026-07-22 (now anchored to a frozen fictional `now`, with a determinism test); and `pnpm audit --prod` flagged three advisories — `shadcn` was a **production** dependency (build-time only) dragging `fast-uri`/`@hono/node-server` into the prod tree (moved to `devDependencies`), and `sharp` 0.34.x carried the libvips CVEs (pinned to 0.35.0 via a pnpm override).
 - **PR #80 — security response headers (S1) + private-beta robots (S5).** The hub served private CV data with **no** CSP and was framable. Added a per-route, environment-derived header set — CSP (`frame-ancestors 'none'`, connect/script scoped to self + Supabase + Turnstile), `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, production-only HSTS (2y, includeSubDomains, no `preload`) — as a unit-tested pure module in `apps/web/src/lib/security-headers.ts`, plus `app/robots.ts` disallowing all crawlers, and deleted the dead `create-next-app` SVGs. **Verified live on production**: all headers present, landing + hub render under CSP with zero violations.
