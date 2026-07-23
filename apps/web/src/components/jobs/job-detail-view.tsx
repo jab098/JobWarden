@@ -1,15 +1,19 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { matchJobSkills } from "@jobwarden/domain";
 
+import { JobDescription } from "@/components/jobs/job-description";
 import { formatPostedAge } from "@/components/jobs/job-format";
 import { JobFacts } from "@/components/jobs/job-facts";
 import { sourceAttribution } from "@/lib/jobs/source-attribution";
 import type { JobDetail } from "@/lib/jobs/types";
+import { cn } from "@/lib/utils";
 
 export function JobDetailView({
   job,
   dataMode,
   actions,
+  userSkills = [],
 }: {
   job: JobDetail;
   dataMode: "supabase" | "fixtures";
@@ -19,7 +23,19 @@ export function JobDetailView({
    * the back link stays the first thing on the page.
    */
   actions?: React.ReactNode;
+  /**
+   * The reader's own skills, lifted from their profile, so the skills this
+   * listing names can be marked with the ones they already have. Empty for a
+   * signed-out or profile-less reader, which simply leaves every skill neutral.
+   */
+  userSkills?: readonly string[];
 }) {
+  const skills = matchJobSkills(
+    `${job.title} ${job.descriptionText}`,
+    userSkills,
+  );
+  const mineCount = skills.filter((skill) => skill.mine).length;
+
   return (
     <div className="mx-auto max-w-list px-4 py-5 sm:px-6">
       <Link
@@ -62,6 +78,41 @@ export function JobDetailView({
             </div>
           ) : null}
         </header>
+        {skills.length > 0 ? (
+          <section
+            className="mt-7 border-t border-border pt-6"
+            aria-labelledby="skills-heading"
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <h2
+                id="skills-heading"
+                className="text-sm font-semibold text-foreground"
+              >
+                Skills
+              </h2>
+              {mineCount > 0 ? (
+                <span className="text-xs text-ink-faint">
+                  {mineCount} on your profile
+                </span>
+              ) : null}
+            </div>
+            <ul className="mt-3 flex flex-wrap gap-1.5">
+              {skills.map((skill) => (
+                <li
+                  key={skill.label}
+                  className={cn(
+                    "rounded-sm px-2 py-0.5 text-xs font-medium",
+                    skill.mine
+                      ? "border border-success/35 bg-success/10 text-success"
+                      : "border border-border bg-surface-sunken text-ink-secondary",
+                  )}
+                >
+                  {skill.label}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
         <section
           className="mt-7 border-t border-border pt-6"
           aria-labelledby="description-heading"
@@ -72,9 +123,7 @@ export function JobDetailView({
           >
             Role description
           </h2>
-          <p className="mt-3 text-sm leading-7 whitespace-pre-wrap text-ink-secondary">
-            {job.descriptionText}
-          </p>
+          <JobDescription text={job.descriptionText} className="mt-3" />
         </section>
         <section
           className="mt-7 border-t border-border pt-6"

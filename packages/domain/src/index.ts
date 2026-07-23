@@ -7,6 +7,7 @@ export * from "./dashboard.ts";
 export * from "./compensation.ts";
 export * from "./explore.ts";
 export * from "./job.ts";
+export * from "./job-skills.ts";
 export * from "./notifications.ts";
 export * from "./onboarding.ts";
 export * from "./onboarding-answers.ts";
