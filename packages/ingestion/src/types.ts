@@ -60,6 +60,15 @@ export type ProviderJob = {
   employmentType?: EmploymentType;
   workingTime?: NormalisedJob["workingTime"];
   compensation?: ProviderCompensation;
+  /**
+   * Whether the provider structurally asserts UK jurisdiction for this advert —
+   * a country-scoped endpoint (Adzuna GB, whose `area[0]` is always "UK"), not a
+   * free-text location guess. `classifyUkEligibility` takes it as decisive UK
+   * evidence only after a foreign location or a UK-excluding description has had
+   * its say, so it never overrides the advert's own words. Absent for adapters
+   * that read a per-employer feed with no country guarantee.
+   */
+  assertsUkJurisdiction?: boolean;
 };
 
 export type ProviderFetchResult = {

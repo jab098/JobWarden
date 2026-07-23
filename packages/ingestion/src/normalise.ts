@@ -380,7 +380,13 @@ export async function normaliseProviderJob(
   const classificationText = [titleText, descriptionText, ...metadataText].join(
     " ",
   );
-  const ukEligibility = classifyUkEligibility(locationText, classificationText);
+  const ukEligibility = classifyUkEligibility(
+    locationText,
+    classificationText,
+    {
+      providerAssertsUkJurisdiction: providerJob.assertsUkJurisdiction,
+    },
+  );
 
   if (!ukEligibility.eligible) {
     return ukEligibility.reason === "non_uk"

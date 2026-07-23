@@ -58,7 +58,12 @@ describe("Adzuna GB adapter", () => {
     expect(jobs[0]).toMatchObject({
       providerJobId: "5792974745",
       title: "Art Teacher/ Instructor",
+      // The location stays the honest settlement; the UK jurisdiction the GB
+      // endpoint asserts (area[0]="UK") rides on assertsUkJurisdiction, which is
+      // what lets the classifier publish small places (Littleworth) the
+      // gazetteer does not carry.
       location: "Littleworth, Worcestershire",
+      assertsUkJurisdiction: true,
       employerName: "Outcomes First Group",
       updatedAt: "2026-07-08T19:58:52Z",
     });
@@ -125,17 +130,24 @@ describe("Adzuna GB adapter", () => {
     });
   });
 
-  it("never reads the provider's country assertion as the location", async () => {
-    // area[0] is always the literal "UK". Using it would make the provider's
-    // own claim the eligibility evidence.
+  it("asserts UK jurisdiction from area[0] while keeping the honest location", async () => {
+    // area[0] is always the literal "UK" on the GB endpoint. Reading it is
+    // deliberate (owner-authorised): it rides on assertsUkJurisdiction, the
+    // evidence the classifier needs to publish small UK settlements the
+    // gazetteer does not carry — while the location stays the named place.
     const { jobs } = await adapterReturning({
-      results: [result({ location: { display_name: null, area: ["UK"] } })],
+      results: [
+        result({
+          location: { display_name: "Padanaram, Forfar", area: ["UK"] },
+        }),
+      ],
     }).fetchJobs(source);
 
-    expect(jobs[0]!.location).toBe("");
+    expect(jobs[0]!.location).toBe("Padanaram, Forfar");
+    expect(jobs[0]!.assertsUkJurisdiction).toBe(true);
   });
 
-  it("falls back to the most specific area when no place is named", async () => {
+  it("falls back to the most specific area when no place is named, still asserting UK", async () => {
     const { jobs } = await adapterReturning({
       results: [
         result({
@@ -145,6 +157,26 @@ describe("Adzuna GB adapter", () => {
     }).fetchJobs(source);
 
     expect(jobs[0]!.location).toBe("Fife");
+    expect(jobs[0]!.assertsUkJurisdiction).toBe(true);
+  });
+
+  it("withholds the UK assertion from a Crown dependency Adzuna surfaces under GB", async () => {
+    // Isle of Man / Channel Islands are outside the UK for right-to-work. They
+    // must never carry the jurisdiction assertion; the classifier also refuses
+    // them by name.
+    const { jobs } = await adapterReturning({
+      results: [
+        result({
+          location: {
+            display_name: "Douglas, Isle of Man",
+            area: ["UK", "Isle of Man", "Douglas"],
+          },
+        }),
+      ],
+    }).fetchJobs(source);
+
+    expect(jobs[0]!.location).toBe("Douglas, Isle of Man");
+    expect(jobs[0]!.assertsUkJurisdiction).toBe(false);
   });
 
   it("refuses a source that is not Adzuna", async () => {
