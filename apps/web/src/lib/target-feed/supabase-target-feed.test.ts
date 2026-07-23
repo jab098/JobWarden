@@ -124,12 +124,14 @@ function createFakeClient(options: {
     select: vi.fn(),
     eq: vi.fn(),
     in: vi.fn(),
+    or: vi.fn(),
     order: vi.fn(),
     limit: vi.fn().mockResolvedValue(jobsResponse),
   };
   candidateBuilder.select.mockReturnValue(candidateBuilder);
   candidateBuilder.eq.mockReturnValue(candidateBuilder);
   candidateBuilder.in.mockReturnValue(candidateBuilder);
+  candidateBuilder.or.mockReturnValue(candidateBuilder);
   candidateBuilder.order.mockReturnValue(candidateBuilder);
 
   const decisionBuilder = {
@@ -237,6 +239,50 @@ describe("Supabase target-feed repository", () => {
       (call) => call[0] === "employment_type",
     );
     expect(employmentPushdown).toBe(false);
+  });
+
+  it("narrows the candidate fetch to concept-matching jobs when every profile has core concepts", async () => {
+    // The recency trap: the candidate fetch is bounded, so a niche profile's
+    // older-but-relevant jobs were never scored. Narrowing retrieval to rows
+    // that mention a core concept fetches the jobs that can clear the gate.
+    const fake = createFakeClient({
+      searches: [searchRow({ skill_concepts: ["sql", "power bi"] })],
+    });
+
+    await createSupabaseTargetFeedRepository(fake.client).getFeed({
+      includeDismissed: false,
+    });
+
+    expect(fake.candidateBuilder.or).toHaveBeenCalledOnce();
+    const filter = fake.candidateBuilder.or.mock.calls[0]?.[0] as string;
+    // The PostgREST ilike wildcard is `*` (not `%`), both columns, both terms,
+    // and the space-bearing term stays quoted so it cannot break parsing. This
+    // exact shape is verified against the live REST API.
+    expect(filter).toContain('title.ilike."*sql*"');
+    expect(filter).toContain('description_text.ilike."*sql*"');
+    expect(filter).toContain('title.ilike."*power bi*"');
+  });
+
+  it("does not narrow the fetch for an aspiration profile with no core concepts", async () => {
+    const fake = createFakeClient({
+      searches: [
+        searchRow({
+          skill_concepts: [],
+          responsibility_concepts: [],
+          role_families: [
+            { normalizedConcept: "analytics leadership", label: "Analytics" },
+          ],
+        }),
+      ],
+      evidence: [],
+    });
+
+    await createSupabaseTargetFeedRepository(fake.client).getFeed({
+      includeDismissed: false,
+    });
+
+    // Breadth, not concept overlap: narrowing would empty an aspiration feed.
+    expect(fake.candidateBuilder.or).not.toHaveBeenCalled();
   });
 
   it("re-applies the domain gate in memory regardless of pushdown, so a location mismatch always excludes", async () => {

@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   applyEligibilityGate,
+  collectRetrievalTerms,
   compensationPeriods,
   compensationProvenances,
   employmentTypes,
@@ -87,6 +88,7 @@ type CandidateQuery = {
   select(columns: string): CandidateQuery;
   eq(column: string, value: string): CandidateQuery;
   in(column: string, values: readonly string[]): CandidateQuery;
+  or(filter: string): CandidateQuery;
   order(
     column: string,
     options: { ascending: boolean; nullsFirst?: boolean },
@@ -273,6 +275,51 @@ function pushdownValues(
   return [...new Set([...first, "unknown"])];
 }
 
+/**
+ * A PostgREST `or` filter that keeps a candidate only if its title or
+ * description mentions one of the profiles' core concepts, or `null` when
+ * retrieval must not be narrowed. This is the fix for the recency trap: the
+ * candidate fetch is bounded (`candidateCap`, and PostgREST's own row ceiling),
+ * so ordering by `posted_at` alone buried a niche profile's genuinely relevant
+ * but older jobs beneath a flood of recent, irrelevant ones — they were never
+ * scored. Narrowing to concept-matching rows fetches the jobs that can actually
+ * clear the relevance gate regardless of age, and fewer of them.
+ *
+ * Returns `null` unless *every* enabled profile has core concepts: an aspiration
+ * profile (none) is surfaced on breadth and must still see recent jobs, so a
+ * mixed set keeps the unfiltered fetch. The match here is a coarse substring
+ * pre-filter; `scoreJobForProfile` still does the precise whole-word scoring.
+ */
+function relevanceOrFilter(
+  profiles: readonly NamedSearchProfileDraft[],
+  confirmedEvidence: readonly CareerEvidenceItem[],
+): string | null {
+  if (
+    profiles.length === 0 ||
+    !profiles.every((profile) =>
+      profileHasCoreConcepts(profile, confirmedEvidence),
+    )
+  ) {
+    return null;
+  }
+  const terms = collectRetrievalTerms(profiles, confirmedEvidence);
+  if (terms.length === 0) return null;
+
+  const conditions = terms.flatMap((term) => {
+    // In a PostgREST `or` filter the ilike wildcard is `*`, not `%`. The value is
+    // double-quoted so a term's spaces/dots/commas ("google analytics", ".net")
+    // cannot break `column.op.value` parsing; `*`/`%`/`_` are neutralised so a
+    // stray one can't turn into a wildcard, and `"`/`\` are escaped for the
+    // quotes. Verified against the live REST API — a `%`-wildcard silently
+    // matches nothing here.
+    const literal = term.replace(/[*%_]/g, " ").trim();
+    if (!literal) return [];
+    const quoted = `"*${literal.replace(/["\\]/g, (c) => `\\${c}`)}*"`;
+    return [`title.ilike.${quoted}`, `description_text.ilike.${quoted}`];
+  });
+  return conditions.length > 0 ? conditions.join(",") : null;
+}
+
 function data(response: QueryResponse): unknown {
   if (response.error !== null && response.error !== undefined) {
     throw new Error("query failed");
@@ -324,6 +371,11 @@ export function createSupabaseTargetFeedRepository(
           const values = pushdownValues(enabledSearches, selector);
           if (values) query = query.in(column, values);
         }
+        const relevanceFilter = relevanceOrFilter(
+          enabledSearches,
+          confirmedEvidence,
+        );
+        if (relevanceFilter) query = query.or(relevanceFilter);
         const jobsResponse = await query
           .order("posted_at", { ascending: false, nullsFirst: false })
           .order("id", { ascending: false })

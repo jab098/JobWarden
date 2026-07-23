@@ -6,6 +6,7 @@ import type {
 } from "./career-profile.ts";
 import {
   applyEligibilityGate,
+  collectRetrievalTerms,
   meetsRelevanceThreshold,
   profileHasCoreConcepts,
   scoreJobForProfile,
@@ -790,5 +791,38 @@ describe("meetsRelevanceThreshold", () => {
   it("leaves an aspiration profile (no core concepts) unfiltered", () => {
     const explanation = scoreJobForProfile(baseJob(), baseProfile(), [], now);
     expect(meetsRelevanceThreshold(explanation, false)).toBe(true);
+  });
+});
+
+describe("collectRetrievalTerms", () => {
+  it("gathers distinct lowercased core terms from profiles and confirmed evidence", () => {
+    const profile = baseProfile({
+      skillConcepts: ["Python"],
+      responsibilityConcepts: ["Analytics implementation"],
+    });
+    const evidence = [
+      evidenceItem({
+        category: "tool",
+        label: "SQL",
+        normalizedConcept: "sql",
+      }),
+      // Industry evidence is not a core concept and must be ignored.
+      evidenceItem({
+        category: "industry",
+        label: "Fintech",
+        normalizedConcept: "fintech",
+      }),
+    ];
+
+    const terms = collectRetrievalTerms([profile], evidence);
+
+    expect(terms).toContain("python");
+    expect(terms).toContain("analytics implementation");
+    expect(terms).toContain("sql");
+    expect(terms).not.toContain("fintech");
+  });
+
+  it("returns nothing for an aspiration profile with no core concepts", () => {
+    expect(collectRetrievalTerms([baseProfile()], [])).toEqual([]);
   });
 });

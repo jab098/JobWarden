@@ -626,6 +626,42 @@ export function profileHasCoreConcepts(
 }
 
 /**
+ * The distinct lowercased core concept terms — skills, tools, responsibilities —
+ * a feed can pre-filter candidate jobs on so retrieval finds jobs *about the
+ * work* rather than merely the most recent. Mirrors the categories
+ * `buildConceptCandidates` reads for the two core components, so a job that
+ * could ever clear the relevance gate (which needs ≥2 core matches) must contain
+ * at least one of these terms. Empty when no profile carries core concepts, in
+ * which case the caller must not narrow retrieval — an aspiration profile is
+ * surfaced on breadth, not concept overlap.
+ */
+export function collectRetrievalTerms(
+  profiles: readonly NamedSearchProfileDraft[],
+  confirmedEvidence: readonly CareerEvidenceItem[],
+): string[] {
+  const terms = new Set<string>();
+  const add = (value: string) => {
+    const term = normalise(value);
+    if (term) terms.add(term);
+  };
+  for (const profile of profiles) {
+    for (const concept of profile.skillConcepts) add(concept);
+    for (const concept of profile.responsibilityConcepts) add(concept);
+  }
+  for (const item of confirmedEvidence) {
+    if (
+      item.category === "skill" ||
+      item.category === "tool" ||
+      item.category === "responsibility"
+    ) {
+      add(item.label);
+      add(item.normalizedConcept);
+    }
+  }
+  return [...terms];
+}
+
+/**
  * Whether a scored match is relevant enough to surface. The eligibility gate
  * answers "could you do this job"; this answers "is it actually about your
  * work". Without it the feed showed every eligible job, because seniority,
