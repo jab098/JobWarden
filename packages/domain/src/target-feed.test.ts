@@ -9,7 +9,7 @@ import {
   meetsRelevanceThreshold,
   profileHasCoreConcepts,
   scoreJobForProfile,
-  TARGET_FEED_MIN_CORE,
+  TARGET_FEED_MIN_CORE_MATCHES,
   type TargetFeedExplanation,
   type TargetFeedJobInput,
 } from "./target-feed.ts";
@@ -734,10 +734,14 @@ describe("meetsRelevanceThreshold", () => {
     };
   }
 
-  // A job that earns real core points is relevant.
-  it("keeps a job whose core contribution clears the floor", () => {
+  // Two genuine core hits clear the bar — the job is about the profile's work.
+  it("keeps a job that names at least the minimum core concepts", () => {
     const profile = baseProfile({ skillConcepts: ["python", "postgres"] });
     const explanation = scoreJobForProfile(baseJob(), profile, [], now);
+    const coreMatches = explanation.components
+      .filter((c) => c.key === "skills" || c.key === "responsibilities")
+      .reduce((total, c) => total + c.matched.length, 0);
+    expect(coreMatches).toBeGreaterThanOrEqual(TARGET_FEED_MIN_CORE_MATCHES);
     expect(meetsRelevanceThreshold(explanation, true)).toBe(true);
   });
 
@@ -750,30 +754,35 @@ describe("meetsRelevanceThreshold", () => {
     expect(meetsRelevanceThreshold(explanation, true)).toBe(false);
   });
 
-  // A single weak hit (one tool of many) does not clear the core floor, even
-  // though the total score is high — the gate reads the core, not the total.
-  it("drops a weak core hit that stays below the core floor", () => {
-    const weak = explanationWith(
-      { skills: TARGET_FEED_MIN_CORE - 1, responsibilities: 0 },
+  // A single weak hit (one tool of many) is not enough, whatever the total
+  // score — the gate counts distinct core concepts named, not points.
+  it("drops a single core hit below the minimum match count", () => {
+    const oneHit = explanationWith(
+      { skills: 45, responsibilities: 0 }, // deliberately high points
       { skills: ["SQL"], responsibilities: [] },
     );
-    expect(meetsRelevanceThreshold(weak, true)).toBe(false);
-    // The same hit at the floor is kept — proves the boundary, not just "low".
-    const atFloor = explanationWith(
-      { skills: TARGET_FEED_MIN_CORE, responsibilities: 0 },
-      { skills: ["SQL"], responsibilities: [] },
-    );
-    expect(meetsRelevanceThreshold(atFloor, true)).toBe(true);
+    expect(meetsRelevanceThreshold(oneHit, true)).toBe(false);
   });
 
-  // Responsibility points count toward the core: matching the actual work
-  // qualifies even with no skill hit.
-  it("counts responsibility points toward the core floor", () => {
-    const explanation = explanationWith(
-      { skills: 0, responsibilities: TARGET_FEED_MIN_CORE },
-      { skills: [], responsibilities: ["Analytics implementation"] },
+  // The regression this fix closes: a broad profile whose genuine two-skill
+  // match is averaged down to a handful of points. A points floor emptied its
+  // feed; the match count keeps it. This is the "130 matches, then 0" bug.
+  it("keeps a broad-profile match whose averaged core points are low", () => {
+    const dilutedButRelevant = explanationWith(
+      { skills: 6, responsibilities: 0 }, // e.g. round(45 * 2 / 15) — far below any points floor
+      { skills: ["Python", "Postgres"], responsibilities: [] },
     );
-    expect(meetsRelevanceThreshold(explanation, true)).toBe(true);
+    expect(meetsRelevanceThreshold(dilutedButRelevant, true)).toBe(true);
+  });
+
+  // A skill hit and a responsibility hit together reach the minimum: matching
+  // the actual work across both core components qualifies.
+  it("counts skill and responsibility matches together toward the minimum", () => {
+    const mixed = explanationWith(
+      { skills: 3, responsibilities: 4 },
+      { skills: ["Python"], responsibilities: ["Analytics implementation"] },
+    );
+    expect(meetsRelevanceThreshold(mixed, true)).toBe(true);
   });
 
   // An aspiration profile has nothing to require a core hit against, so it is
