@@ -2,6 +2,18 @@
 
 JobWarden is a private-beta, UK-only job-search command centre. The approved foundation lives in the [foundation design](docs/superpowers/specs/2026-07-17-jobwarden-foundation-design.md); the approved personalisation experience lives in the [personalised search design](docs/superpowers/specs/2026-07-18-personalised-job-search-design.md).
 
+## License and reuse
+
+JobWarden's original source code is proprietary and is provided under the
+[JobWarden Evaluation License](LICENSE). You may view it, fork it, and run an
+unmodified copy locally for personal evaluation, education, and review. Other
+copying, modification, redistribution, hosting, deployment, and commercial use
+require prior written permission.
+
+Third-party software, content, generated datasets, trademarks, and their
+attribution or licence notices are excluded from this license and remain under
+their own terms.
+
 The durable recovery map is [project status](docs/project-status.md), Tasks 7–16 are defined in the [canonical product roadmap](docs/product/roadmap.md), and provider/cost decisions are maintained in [free-tier services](docs/architecture/free-tier-services.md). Future agents should read those files before choosing work.
 
 ## Product surfaces

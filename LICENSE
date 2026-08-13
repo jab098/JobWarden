@@ -1,0 +1,40 @@
+JobWarden Evaluation License
+Copyright (c) 2026 Jabed Ahmed
+
+This repository and its original source code are proprietary and are not
+open-source software. All rights are reserved except for the limited
+permission granted below.
+
+Permission is granted to any person who obtains a copy of this repository to
+view the source code, clone or fork the repository, and run an unmodified copy
+locally solely for personal evaluation, education, and review.
+
+Without prior written permission from the copyright holder, you may not:
+
+* copy, reproduce, or publish the source code or substantial portions of it;
+* modify, adapt, translate, or create derivative works from the source code;
+* distribute, sublicense, sell, rent, or otherwise make the source code
+  available to another person;
+* deploy, host, or operate the source code for other users; or
+* use the source code or a derivative for commercial purposes.
+
+This permission does not grant rights to any trademarks, service marks, logos,
+third-party software, third-party content, generated datasets, or other
+materials that are identified as belonging to someone else. Those materials
+remain subject to their own terms and licences. In particular, attribution
+and licence notices for generated UK place data must be preserved and do not
+become part of this licence.
+
+No permission is granted to use the JobWarden name or branding in a way that
+suggests endorsement, affiliation, or authorship by the copyright holder.
+
+THE SOURCE CODE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE SOURCE CODE OR THE USE OR OTHER DEALINGS IN THE SOURCE
+CODE.
+
+Any use outside this limited permission requires prior written permission from
+the copyright holder.
