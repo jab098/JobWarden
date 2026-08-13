@@ -4,6 +4,9 @@ JobWarden is a private-beta, UK-only job-search command centre. The approved fou
 
 ## License and reuse
 
+Copyright (c) 2026 Jabed Ahmed. All rights reserved except as stated in the
+[license](LICENSE).
+
 JobWarden's original source code is proprietary and is provided under the
 [JobWarden Evaluation License](LICENSE). You may view it, fork it, and run an
 unmodified copy locally for personal evaluation, education, and review. Other
